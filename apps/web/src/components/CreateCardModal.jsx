@@ -54,7 +54,7 @@ export default function CreateCardModal({card, onClose, onCardPosted, mediaButto
             <CreateCardForm
                 card={card}
                 onSuccess={() => {
-                    onCardPosted();
+                    onCardPosted?.();
                     onClose();
                 }}
                 mediaButton={mediaButton}
