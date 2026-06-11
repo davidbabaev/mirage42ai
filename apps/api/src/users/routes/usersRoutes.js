@@ -102,11 +102,11 @@ router.put('/users/:id', auth, uploadImageOnly.fields([
                     }
                 )
                 console.log("Updated User: ", updatedUser);
-                
-                res.send(updatedUser);
+
+                return res.send(updatedUser);
             }
             else{
-                res.status(403).send('You not allowed to edit this')
+                return res.status(403).send('You not allowed to edit this')
             }
         }   
         catch(err){
