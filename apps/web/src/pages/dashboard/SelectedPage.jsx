@@ -1,5 +1,4 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom';
 import useSelectedUsers from '../../hooks/useSelectedUsers';
 import { Avatar, Box, Button, Container, Grid, IconButton, Paper, Typography } from '@mui/material';
 import { useCardsProvider } from '../../providers/CardsProvider';
@@ -16,11 +15,9 @@ export default function SelectedPage() {
     <Container 
         maxWidth='lg' 
         sx={{
-            display: 'grid', 
+            display: 'grid',
             gridTemplateColumns: {xs: 'repeat(1, 1fr)', md:'repeat(3, 1fr)'},
-            py: 3, 
-            gap: 2,
-            py: 3, 
+            py: 3,
             gap: 2,
         }}
     >

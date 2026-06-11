@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import useAnalytics from '../hooks/useAnalytics'
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../providers/AuthProvider';
@@ -19,9 +19,8 @@ export default function LastFiveJoinedUsers() {
     const navigate = useNavigate();
 
     const {user: loggedInUser} = useAuth();
-    const [isLoading, setIsLoading] = useState(false)
     const {refreshFeed} = useCardsProvider();
-    const {toggleFollow, isFollowByMe, getFollowingCount, getFollowersCount} = useFollowUser();
+    const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
 
   return (
     <Box

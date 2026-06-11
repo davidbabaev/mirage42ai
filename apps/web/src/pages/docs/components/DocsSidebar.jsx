@@ -40,7 +40,7 @@ export default function DocsSidebar() {
           display: 'flex', 
           flexDirection: 'column',
         }}>
-          {DOCS_PAGES.map((page, index) => {
+          {DOCS_PAGES.map((page) => {
             const Icon = page.icon
             return(
               <Box

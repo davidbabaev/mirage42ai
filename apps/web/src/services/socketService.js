@@ -12,10 +12,6 @@ export function connectSocket(){
         }
     })
 
-    socket.on('connect', () => {
-        console.log('Connected to server:', socket.id);
-    })
-
     socket.on('connect_error', (error) => {
         console.log('Connection error:', error.message);
     })

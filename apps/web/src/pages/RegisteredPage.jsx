@@ -10,7 +10,6 @@ import GoogleIcon from '@mui/icons-material/Google';
 import MirageLogo from '../assets/MirageLogo';
 import { DatePicker } from '@mui/x-date-pickers';
 import dayjs from 'dayjs';
-import { useThemeContext } from '../providers/ThemeProvider';
 import bgImg from '../assets/Gemini_Generated_Image_ssn5lpssn5lpssn5.png'
 import bgImgMobile from '../assets/Gemini_Generated_Image_78keg978keg978ke.png'
 

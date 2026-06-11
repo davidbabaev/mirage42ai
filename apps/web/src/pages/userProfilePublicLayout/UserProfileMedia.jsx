@@ -10,12 +10,12 @@ import { useUsersProvider } from '../../providers/UsersProvider';
 
 export default function UserProfileMedia() {
 
-    const [count, setCount] = useState(10);
+    const [count] = useState(10);
     const {users} = useUsersProvider();
     const {registeredCards} = useCardsProvider();
     const {id} = useParams();
     const [selectedCardId, setSelectedCardId] = useState(null);
-    const {user, isLoggedIn} = useAuth();
+    const {isLoggedIn} = useAuth();
 
     const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
     function onCloseLoginPopup(){

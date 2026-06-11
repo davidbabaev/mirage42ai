@@ -50,7 +50,7 @@ function useChat(
 
     const handleDeleteChat = async (conversationId) => {
         try{
-            const response = await deleteChat(conversationId)
+            await deleteChat(conversationId)
             // set the list to a new list without this id of deleted chat
             setConversationsList(prev => prev.filter(c => c._id !== conversationId))
         }
@@ -85,8 +85,6 @@ function useChat(
         });
         
         socket.on('deleted-conversation', (deletedId) => {
-            console.log('deleted conversation received:', deletedId);
-
             setConversationsList(prev => prev.filter(c => c._id !== deletedId))
 
             // tell the page about it (if it wants to know)

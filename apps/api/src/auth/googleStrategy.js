@@ -16,7 +16,6 @@ async (accessToken, refreshToken, profile, done) => {
     try{
         const user = await User.findOne({googleId: profile.id})
         const fullName = profile.displayName.split(' ');
-        console.log(profile.photos[0].value);
 
         if(user?.isBanned) return done(null, false, {message: "You Banned :("})
 

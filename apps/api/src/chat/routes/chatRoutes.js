@@ -42,7 +42,6 @@ module.exports = (io) => {
                 ? deletedChat.toUser
                 : deletedChat.fromUser 
 
-            console.log('emitting deleted-conversation to:', otherUserId.toString())
             io.to(otherUserId.toString()).emit('deleted-conversation', deletedChat._id)
 
             res.send(deletedChat)

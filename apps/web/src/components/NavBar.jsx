@@ -28,7 +28,7 @@ export default function NavBar() {
     const profileRef = useRef(null);
     const navigate = useNavigate();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const {setIsChatOpen, isChatOpen} = useUI();
+    const {isChatOpen} = useUI();
     
 
     // mobile scroll logic:

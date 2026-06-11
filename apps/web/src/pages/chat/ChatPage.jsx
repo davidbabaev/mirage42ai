@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useChat from '../../hooks/useChat'
 import { useAuth } from '../../providers/AuthProvider';
 import { Avatar, Box, Button, Container, Grid, Icon, IconButton, InputAdornment, Menu, MenuItem, Paper, TextField, Tooltip, Typography } from '@mui/material';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import SearchIcon from '@mui/icons-material/Search';
 import getTimeAgo from '../../utils/getTimeAgo';
 import MessageIcon from '@mui/icons-material/Message';
@@ -63,9 +63,6 @@ export default function ChatPage() {
             if(previewMedia) URL.revokeObjectURL(previewMedia)
             } 
     }, [previewMedia])
-
-    // console.log('mediaFile:', mediaFile), 'preview media:', previewMedia;
-    
 
     const handleConversationDeleted = useCallback((deletedId) => {
         setSelectedChat(prev => {
@@ -176,8 +173,6 @@ export default function ChatPage() {
     useEffect(() => {
         if(user?._id){
             handleOpenChatList();
-            console.log('requesting chats for:', user?._id);
-            
         }
     }, [user?._id]);
 
@@ -212,9 +207,6 @@ export default function ChatPage() {
         }
         else{
             const otherNewUserTo = users.find(u => u._id === toUserId);
-            // console.log('toUserId from URL:', toUserId)
-            // console.log('users array length:', users.length)
-            // console.log('found other user:', otherNewUserTo)
 
             setSelectedChat({
                 conversationId: null,

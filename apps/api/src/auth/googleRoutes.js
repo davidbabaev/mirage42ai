@@ -13,7 +13,6 @@ router.get('/auth/google/callback',
     }), 
     async (req,res) => {
     try{
-        console.log("Callback req.user: ", req.user);
         const token = signNewToken(req.user)
         res.redirect(`${process.env.CLIENT_URL}?token=${token}`)
     }

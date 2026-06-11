@@ -3,7 +3,6 @@ import React, { useState } from 'react'
 import CloseIcon from '@mui/icons-material/Close';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import CheckIcon from '@mui/icons-material/Check';
-import useSelectedUsers from '../hooks/useSelectedUsers';
 import useFollowUser from '../hooks/useFollowUser';
 import { useCardsProvider } from '../providers/CardsProvider';
 import { useNavigate } from 'react-router-dom';

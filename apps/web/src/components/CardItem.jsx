@@ -1,5 +1,4 @@
 import React, { useRef, useState } from 'react'
-import useFavoriteCards from '../hooks/useFavoriteCards';
 import { useAuth } from '../providers/AuthProvider';
 import useLikedCards from '../hooks/useLikedCards';
 import { useNavigate } from 'react-router-dom';
@@ -36,7 +35,7 @@ export default function CardItem({
     }
     
     const {addComment, countComments, removeComment} = useCommentsCards();
-    const {toggleFollow, isFollowByMe, getFollowingCount, getFollowersCount} = useFollowUser();
+    const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
     const {refreshFeed} = useCardsProvider();
     const [isExpanded, setIsExpanded] = useState(false)
     const theme = useTheme();

@@ -37,7 +37,7 @@ export default function CreateCardForm({onSuccess, mediaButton, card}) {
 
 
     const [error, setError] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
+    const [, setSuccessMessage] = useState('');
     const {handleCardRegister, handleEditCard} = useCardsProvider();
     const [isLoading, setIsLoading] = useState(false);
     const [isEmojiOpen, setIsEmojiOpen] = useState(false);

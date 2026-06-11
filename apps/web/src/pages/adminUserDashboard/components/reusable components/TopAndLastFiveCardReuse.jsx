@@ -7,9 +7,8 @@ import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 
 export default function TopAndLastFiveCardReuse({
-    topFiveValue, 
-    usersArrayValue, 
-    mainTitle, 
+    topFiveValue,
+    usersArrayValue,
     showInteractions
 }) {
 

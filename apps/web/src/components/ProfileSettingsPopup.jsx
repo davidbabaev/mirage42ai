@@ -12,7 +12,7 @@ import BookmarkIcon from '@mui/icons-material/Bookmark';
 
 export default function ProfileSettingsPopup({onClose}) {
 
-  const {user, handleLogout, isLoggedIn} = useAuth();
+  const {user, handleLogout} = useAuth();
   const navigate = useNavigate();
   const onLogOut = () => {
     handleLogout();

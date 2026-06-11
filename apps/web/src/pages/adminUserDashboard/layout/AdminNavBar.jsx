@@ -18,7 +18,7 @@ export default function AdminNavBar({onToggle}) {
     const {darkMode, handleToggle} = useThemeContext();
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [isProfileAvaterOpen, setIsProfileAvaterOpen] = useState(false);
-    const {isLoggedIn, user} = useAuth();
+    const {user} = useAuth();
 
     const {
         notifications,

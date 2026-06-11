@@ -23,8 +23,6 @@ function useCountries() {
 
             setApiCountriesList(countryName)
             localStorage.setItem('apiCountriesListV2', JSON.stringify(countryName))
-
-            console.log(countryName);
         }
         catch(err){
             console.log(err.message);

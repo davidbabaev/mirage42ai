@@ -23,7 +23,6 @@ export default function useCities(countryName) {
             }
             
             const result = await response.json()
-            console.log("Success: ", result);
             setCities(result.data);
         }
         catch(err){

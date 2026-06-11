@@ -27,13 +27,12 @@ export default function ProfileSection({editMode ,onEditMode, onCloseEdit}) {
     const [editCity, setEditCity] = useState('');
     const [editprofilePicture, setEditprofilePicture] = useState('');
     const [editCoverImage, setEditCoverImage] = useState('');
-    const [editAge, setEditAge] = useState('');
+    const [, setEditAge] = useState('');
     const [editJob, setEditJob] = useState('');
     const [editGender, setEditGender] = useState('');
     const [editBirthDate, setEditBirthDate] = useState('');
     const [editPhone, setEditPhone] = useState('');
     const [editAboutMe, setEditAboutMe] = useState('');
-    const [mediaFile, setMediaFile] = useState(null);
     const fileInputRef = useRef(null);
     const fileCoverImgInputRef = useRef(null);
     const [error, setError] = useState('');
@@ -131,7 +130,7 @@ export default function ProfileSection({editMode ,onEditMode, onCloseEdit}) {
 
     
     const countryMenuItems = useMemo(() => {
-        return apiCountriesList.map((country, index) => (
+        return apiCountriesList.map((country) => (
             <MenuItem 
                 key={country.code} 
                 value={country.name}

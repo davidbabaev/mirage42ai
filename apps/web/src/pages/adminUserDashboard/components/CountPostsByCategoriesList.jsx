@@ -7,7 +7,6 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 export default function CountPostsByCategoriesList() {
 
     const {arrayCountPerCategory} = useAnalytics();
-    const [expand, setExpand] = useState(false);
     const [count, setCount] = useState(10)
 
     const countedArr = arrayCountPerCategory.slice(0, count)

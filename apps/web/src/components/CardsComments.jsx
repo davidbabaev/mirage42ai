@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useState } from 'react'
 import { useAuth } from '../providers/AuthProvider';
 import { Avatar, Box, Button, IconButton, TextField, Tooltip, Typography } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -30,7 +30,7 @@ export default function CardsComments({card, users, addComment, removeComment, f
         }
     }
 
-    const {toggleFollow, isFollowByMe, getFollowingCount, getFollowersCount} = useFollowUser();
+    const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
 
 
     const countedComments = (card?.comments || []).sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0, commentsCount)

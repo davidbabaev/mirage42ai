@@ -32,7 +32,7 @@ export default function UserProfileLayout() {
         setIsLoginPopupOpen(false)
     }
     
-    const {toggleFollow, isFollowByMe, getFollowingCount, getFollowersCount} = useFollowUser();
+    const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
     const {selectedUsers ,selectHandleUser} = useSelectedUsers();
     const [messageOpen, setMessageOpen] = useState(false)
 
@@ -48,7 +48,6 @@ export default function UserProfileLayout() {
     
     const userProfile = users.find(u => u._id === id);
     
-    const mystyle = {marginRight: '8px'};
     const navigate = useNavigate();
 
     const postsAmount = registeredCards.filter((card) => card.userId === id).length

@@ -42,11 +42,11 @@ export default function UserProfileFollowing() {
 
         <Box sx={{ p: 2, gap: {xs: 2, md: 0},display: 'flex', flexDirection: {xs: 'column',md: 'row'},flexWrap: 'wrap', justifyContent: 'space-between'}}>
           {currentUserFollowing.map((following) => (
-              <Box sx={{
-                display: 'flex', 
-                gap: 1.5, 
-                width: {xs: '100%',md:'48%'}, 
-                alignItems: 'center', 
+              <Box key={following?._id} sx={{
+                display: 'flex',
+                gap: 1.5,
+                width: {xs: '100%',md:'48%'},
+                alignItems: 'center',
                 px: {xs: 0 ,md:1},
                 pt: {xs: 0 ,md:1},
                 pb: 2, 

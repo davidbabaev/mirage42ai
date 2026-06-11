@@ -250,7 +250,7 @@ export default function AllCardsPage() {
                     </Typography>
 
 
-                    {CARD_CATEGORIES.slice(0, showAllCategories ? CARD_CATEGORIES.length : 7).map((category, index) => {
+                    {CARD_CATEGORIES.slice(0, showAllCategories ? CARD_CATEGORIES.length : 7).map((category) => {
 
                         const countedPostsByCat = registeredCards.filter(card => card.category === category).length
 

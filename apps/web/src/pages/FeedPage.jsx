@@ -3,7 +3,7 @@ import CardItem from '../components/CardItem'
 import { useCardsProvider } from '../providers/CardsProvider';
 import { useAuth } from '../providers/AuthProvider';
 import useFollowUser from '../hooks/useFollowUser';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import useDebounce from '../hooks/useDebounce';
 import { Alert, Avatar, Box, Button, Card, Container, Grid, Paper, Typography} from '@mui/material';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
@@ -21,10 +21,10 @@ import FolderIcon from '@mui/icons-material/Folder';
 export default function FeedPage() {
 
     const {feedCards} = useCardsProvider();
-    const [count, setCount] = useState(50);
+    const [count] = useState(50);
     const {user} = useAuth();
     const {users} = useUsersProvider();
-    const{getFollowingCount, getFollowersCount, toggleFollow, isFollowByMe} = useFollowUser();
+    const{getFollowersCount, toggleFollow, isFollowByMe} = useFollowUser();
     const navigate = useNavigate();
     const debounceFollowing = useDebounce(user?.following, 3000);
     const {refreshFeed} = useCardsProvider();

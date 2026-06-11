@@ -25,8 +25,7 @@ export function AuthProvider({children}) {
                 const decoded = jwtDecode(googleToken);
                 const userGoogle = await getSingleUser(decoded.userId)
                 setUser(userGoogle);
-                console.log(userGoogle);
-                
+
                 setIsLoggedIn(true);
                 connectSocket();
                 window.history.replaceState({}, document.title, '/');

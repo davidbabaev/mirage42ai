@@ -28,16 +28,13 @@ export default function CardDetailsModal({cardId, onClose}) {
         const {favoriteCards, handleFavoriteCards} = useFavoriteCards();
         const {users} = useUsersProvider();
         const {user} = useAuth();
-        const {toggleFollow, isFollowByMe, getFollowingCount, getFollowersCount} = useFollowUser();
+        const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
         const [isExpanded, setIsExpanded] = useState(false)
         const theme = useTheme();
 
         const {refreshFeed} = useCardsProvider();
 
-        const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
-        function onCloseLoginPopup(){
-            setIsLoginPopupOpen(false)
-        }
+        const [, setIsLoginPopupOpen] = useState(false);
         const {addComment, countComments, removeComment} = useCommentsCards();
         const navigate = useNavigate();
 

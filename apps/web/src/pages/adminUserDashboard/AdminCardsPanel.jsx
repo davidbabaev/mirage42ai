@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useCardsProvider } from '../../providers/CardsProvider';
 import useDebounce from '../../hooks/useDebounce';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../providers/AuthProvider';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import useFavoriteCards from '../../hooks/useFavoriteCards';
@@ -60,8 +59,6 @@ export default function AdminCardsPanel() {
       setSortConfig({column:column ,direction: sortConfig.direction === 'asc' ? 'desc' : 'asc'})
     }
   }
-
-  const navigate = useNavigate();
 
   const filteredCards = useMemo(() => {
   

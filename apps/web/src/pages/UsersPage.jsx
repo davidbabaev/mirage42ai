@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react'
 import useDebounce from '../hooks/useDebounce';
-import { useNavigate } from 'react-router-dom';
 import useSelectedUsers from '../hooks/useSelectedUsers';
 import { Box, Button, Checkbox, Chip, Container, Grid, IconButton, InputAdornment, Paper, TextField, Typography } from '@mui/material';
 import UsersPageSorts from '../components/UsersPageSorts';
@@ -36,7 +35,6 @@ function UsersPage() {
     // Mobile:
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
     
-    const navigateToUser = useNavigate();
 
     const SORT_AGE = [
         {label: 'All', value: ''},
@@ -109,8 +107,6 @@ function UsersPage() {
         setSearch('')
     }
 
-    const maleCount = users.filter(u => u.gender === 'Male').length
-    
     const filtred = useMemo(() => {
         let result = users;
 
@@ -253,7 +249,7 @@ function UsersPage() {
                             p: 2,
                         }}
                     >
-                        {countries.slice(0, 10).map((countryC, index) => {
+                        {countries.slice(0, 10).map((countryC) => {
 
                             const countedUsersByCountry = filteredWithoutCountry.filter(u => u.address.country.toLowerCase() === countryC).length
 

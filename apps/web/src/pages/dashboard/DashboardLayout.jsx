@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Route, Routes, useNavigate } from 'react-router-dom'
 import SelectedPage from './SelectedPage'
 import ProfileSection from './ProfileSection'
 import MyCardsSection from './MyCardsSection'
