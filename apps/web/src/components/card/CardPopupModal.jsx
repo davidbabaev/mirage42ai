@@ -7,6 +7,11 @@ export default function CardPopupModal({cardId, onClose}) {
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
+    // Pause any <video> playing behind the modal (e.g. a feed card video) so
+    // its audio doesn't keep leaking through under the now-foregrounded details
+    // view. The modal's own video isn't autoplaying, so this is a no-op for
+    // it until the user clicks play in the modal.
+    document.querySelectorAll('video').forEach((v) => v.pause())
     return () => {
       document.body.style.overflow = 'unset'
     }
