@@ -16,6 +16,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import useFavoriteCards from '../hooks/useFavoriteCards';
 import { useUsersProvider } from '../providers/UsersProvider';
 import FolderIcon from '@mui/icons-material/Folder';
+import isProfileIncomplete from '../utils/isProfileIncomplete';
 
 
 export default function FeedPage() {
@@ -38,24 +39,9 @@ export default function FeedPage() {
     
     const [isFilled, setIsFilled] = useState(false)
 
-    const isUserDataFill = () => {
-        if(
-            user?.address.country === "Not Defined" && "" ||
-            user?.phone === '' ||
-            user?.age === '' ||
-            user?.job === "Not Defined" ||
-            user?.gender === "Unknown" ||
-            user?.birthDate === null ||
-            user?.aboutMe === "Not Defined"
-        ){
-            return setIsFilled(true);
-        }
-        return setIsFilled(false)
-    }
-    
     useEffect(() => {
         if(!user) return;
-        isUserDataFill();
+        setIsFilled(isProfileIncomplete(user));
     }, [])
 
     const [openCommentCardId, setOpenCommentCardId] = useState(null);
