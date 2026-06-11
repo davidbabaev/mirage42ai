@@ -4,6 +4,7 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('../users/models/User');
 const normalizeUser = require('../users/helpers/normalizeUser');
 
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 passport.use(new GoogleStrategy({
     // config object - your credentials
     clientID: process.env.GOOGLE_CLIENT_ID,
@@ -47,3 +48,4 @@ async (accessToken, refreshToken, profile, done) => {
         return done(err)
     }
 }))
+}
