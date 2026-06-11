@@ -39,6 +39,9 @@ router.delete('/notifications/:id', auth, async (req,res) => {
             const deleteTheNotification = await deleteNotification(req.params.id)
             res.send(deleteTheNotification);
         }
+        else{
+            res.status(403).send('You not allowed to delete this notification')
+        }
     }
     catch(err){
         handleError(res, err)
