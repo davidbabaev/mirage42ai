@@ -33,14 +33,20 @@ module.exports = (io) => {
         console.log('user connected and joined room:', socket.userId)
 
         socket.on('send-message', async (message) => {
-            const conversation = await getOrCreateConversation(socket.userId, message.toUser)
+            try{
+                const conversation = await getOrCreateConversation(socket.userId, message.toUser)
 
-            const newMessage = await createNewMessage(
-                {...message, conversationId: conversation._id},
-                socket.userId
-            )
+                const newMessage = await createNewMessage(
+                    {...message, conversationId: conversation._id},
+                    socket.userId
+                )
 
-            io.to(socket.userId).to(message.toUser).emit('receive-message', newMessage)
+                io.to(socket.userId).to(message.toUser).emit('receive-message', newMessage)
+            }
+            catch(err){
+                console.log('send-message error:', err.message);
+                socket.emit('send-message-error', {message: err.message});
+            }
         })
     })
 }
