@@ -53,12 +53,12 @@ const loginUser = async ({email, password}) => {
     try{
         // find the user by email in mongoDB
         let user = await User.findOne({email});
-        if(!user) throw new Error("Invalid email or password");
-        if(user.isBanned) throw createError(400, "You Banned :("); 
+        if(!user) throw createError(401, "Invalid email or password");
+        if(user.isBanned) throw createError(400, "You Banned :(");
 
         // compare plain password with hashed password form DB
         const isMatch = await comparePassword(password, user.password);
-        if(!isMatch) throw new Error("Invalid email or password");
+        if(!isMatch) throw createError(401, "Invalid email or password");
 
         user.lastLoginAt = Date.now()
         user = await user.save()
