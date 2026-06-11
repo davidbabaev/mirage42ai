@@ -1,0 +1,172 @@
+// CRUD operations - requests:
+
+const express = require('express');
+const router = express.Router();
+const {handleError, createError} = require('../../utils/handleErrors')
+
+const {
+    createNewUser, 
+    getUsers, 
+    getUser, 
+    updateUser, 
+    deleteUser,
+    loginUser,
+    followUser,
+    // cardsFeed,
+    banUser, 
+    promoteUserToAdmin,
+} = require('../service/usersSvc');
+const validateUser = require('../validation/joi/validateUserWithJoi');
+const auth = require('../../auth/authService');
+const { uploadImageOnly } = require('../../middlewares/multer');
+const uploadToCloudinary = require('../../utils/cloudinary');
+
+
+router.get('/users', async (req, res) => {
+    try{
+        const users = await getUsers();
+        res.send(users);
+    }
+    catch(err){
+        handleError(res, err);
+    }
+})
+
+router.get('/users/:id', async (req, res) => {
+    try{
+        const user = await getUser(req.params.id);
+        res.send(user);
+    }
+    catch(err){
+        handleError(res, err);
+    }
+})
+
+router.post('/users' ,async (req, res) => {
+        try{
+            const {error} = validateUser(req.body)
+            if(error) return res.status(400).send(error.details[0].message);
+        
+            let newUser = await createNewUser(req.body);
+            res.send(newUser);
+        }
+        catch(err){
+            handleError(res, err);
+            console.log(err.message);
+        }
+})
+
+router.post('/users/login', async (req,res) => {
+    try{
+        const token = await loginUser(req.body);
+        res.send(token);
+    }
+    catch(err){
+        handleError(res, err);
+    }
+})
+
+router.put('/users/:id', auth, uploadImageOnly.fields([
+        {name: 'profilePicture', maxCount: 1},
+        {name: 'coverImage', maxCount: 1}
+    ]) ,async (req, res) => {
+        try{
+            const user = await getUser(req.params.id); 
+
+            if(req.user.userId === req.params.id || req.user.isAdmin){
+
+                let defaultProfile = user.profilePicture; 
+                let defaultCover = user.coverImage; 
+                let profilePictureUrl;
+                let coverImageUrl;
+
+                if(req.files['profilePicture']){
+                    profilePictureUrl = await uploadToCloudinary(req.files['profilePicture']?.[0].buffer, "users")
+                }
+                else{
+                    profilePictureUrl = defaultProfile
+                }
+
+                if(req.files['coverImage']){
+                    coverImageUrl = await uploadToCloudinary(req.files['coverImage']?.[0].buffer, "users")
+                }
+                else{
+                    coverImageUrl = defaultCover
+                }
+
+                let updatedUser = await updateUser(req.params.id, 
+                    {
+                        ...req.body,
+                        profilePicture: profilePictureUrl,
+                        coverImage: coverImageUrl
+                    }
+                )
+                console.log("Updated User: ", updatedUser);
+                
+                res.send(updatedUser);
+            }
+            else{
+                res.status(403).send('You not allowed to edit this')
+            }
+        }   
+        catch(err){
+            handleError(res, err);
+    }
+})
+
+router.patch('/users/:id/follow', auth, async (req, res) => {
+    try{
+        let followOnUser = await followUser(req.user.userId, req.params.id);
+        res.send(followOnUser);
+    }
+    catch(err){
+        handleError(res, err)
+        console.log(err.message);
+    }
+})
+
+router.delete('/users/:id', auth , async (req, res) => {
+    try{
+        if(req.user.isAdmin && req.user.userId.toString() === req.params.id.toString()) throw createError(403, 'Admin cannot delete himself, always need to be admin to the app')
+
+        if(req.user.userId === req.params.id || req.user.isAdmin){
+            const deletedUser = await deleteUser(req.params.id);
+            res.send(deletedUser);
+        }
+        else{
+            res.status(403).send('You not allowed to delete users beside yourself')
+        }
+    }
+    catch(err){
+       handleError(res, err);
+       console.log(err.message);
+    }
+})
+
+router.patch('/users/:id/ban', auth, async (req,res) => {
+    try{
+        if(!req.user.isAdmin) throw createError(403, 'Only admin Can ban users!')
+        if(req.user.userId.toString() === req.params.id.toString()) throw createError(400, 'cannot ban yourself')
+
+        const banned = await banUser(req.params.id) 
+        res.send(banned)
+    }
+    catch(err){
+        handleError(res, err)
+    }
+})
+
+router.patch('/users/:id/promote', auth, async(req,res) => {
+    try{
+        if(!req.user.isAdmin) throw createError(403, 'Admin only');
+        if(req.user.userId.toString() === req.params.id.toString()) throw createError(400, 'cannot promote yourself');
+
+        const promoted = await promoteUserToAdmin(req.params.id);
+        res.send(promoted)
+    }
+    catch(err){
+        handleError(res ,err)
+    }
+})
+
+module.exports = router;

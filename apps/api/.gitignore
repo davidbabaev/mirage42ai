@@ -1,0 +1,8 @@
+node_modules/
+.env
+dist/
+build/
+*.log
+.vscode/
+.DS_Store
+google_client_secret.json

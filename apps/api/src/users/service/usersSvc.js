@@ -1,0 +1,175 @@
+const User = require('../models/User');
+const _ = require('lodash');
+const {generateUserPassword, comparePassword} = require('../helpers/bcrypt');
+const {signNewToken} = require('../../auth/providers/jwt');
+const { createError } = require('../../utils/handleErrors');
+const normalizesser = require('../helpers/normalizeUser');
+const Card = require('../../cards/models/Card');
+const { pickSafeCardFields } = require('../../cards/service/cardsSvc');
+const Notification = require('../../notifications/models/Notifications');
+ 
+const pickSafeUserFields = (user) => {
+    return _.pick(user.toObject() , [
+        "name", 
+        "lastName", 
+        "email", 
+        "phone", 
+        "profilePicture", 
+        "coverImage",
+        "address",
+        "age",
+        "job",
+        "gender",
+        "birthDate",
+        "aboutMe",
+        "createdAt",
+        "_id",
+        "following",
+        "isAdmin",
+        "isBanned",
+        "lastLoginAt"
+    ]);
+}
+
+// MongoDB operation
+
+const createNewUser = async (user) => {
+    try{
+        user.password = await generateUserPassword(user.password)
+        const normalizedUser = normalizeUser(user)
+        let newUser = new User(normalizedUser);
+        newUser = await newUser.save();
+
+        const token = signNewToken(newUser);
+        const safeUser = pickSafeUserFields(newUser);
+        return{token, safeUser}
+    }
+    catch(err){
+        throw err;        
+    }
+}
+
+const loginUser = async ({email, password}) => {
+    try{
+        // find the user by email in mongoDB
+        let user = await User.findOne({email});
+        if(!user) throw new Error("Invalid email or password");
+        if(user.isBanned) throw createError(400, "You Banned :("); 
+
+        // compare plain password with hashed password form DB
+        const isMatch = await comparePassword(password, user.password);
+        if(!isMatch) throw new Error("Invalid email or password");
+
+        user.lastLoginAt = Date.now()
+        user = await user.save()
+
+        // password correct --> generate JWT token
+        const token = signNewToken(user);
+        const safeUser = pickSafeUserFields(user);
+        return{token, safeUser}
+    }
+    catch(err){
+        throw err;
+    }
+}
+
+const getUsers = async () => {
+        const users = await User.find();
+        // return pickSafeUserFields(users)
+        return users.map(user => pickSafeUserFields(user))
+}
+
+const getUser = async (userId) => {
+        const user = await User.findById(userId);
+        if(!user) throw createError(401, "User not found")
+        return pickSafeUserFields(user) 
+}
+
+const updateUser = async (userId, content) => {
+    const normalizeContent = normalizeUser(content);
+    const updatedUser = await User.findByIdAndUpdate(userId, normalizeContent, {new: true});
+    if(!updatedUser) throw createError(404, "Update not not possible")
+    return pickSafeUserFields(updatedUser)
+}
+
+const followUser = async (userId, followingUserId) => {
+    // cannot follow yourself
+    if(userId === followingUserId) throw createError(400, "Cannot Follow Yourself")
+
+    const user = await User.findById(userId);
+    if(!user) throw createError(404, 'User didnt found')
+
+    // if user.following have and id if not put this id in this array
+    if(user.following.includes(followingUserId)){
+        user.following = user.following.filter(id => id !== followingUserId);
+    }
+    else{
+        user.following.push(followingUserId)
+        let notification = new Notification({actionType: 'follow', fromUser: userId, toUser: followingUserId})
+        notification = await notification.save()
+    }
+
+    const saveFollow = await user.save()
+    return pickSafeUserFields(saveFollow);
+}   
+
+const deleteUser = async (deletedUserId) => {
+    const deleted = await User.findByIdAndDelete(deletedUserId);
+    if(!deleted) throw createError(404, "Delete user not possible")
+
+    await Card.deleteMany(
+        {userId: deletedUserId},
+    )
+
+    await Card.updateMany(
+        {likes: deletedUserId},
+        {$pull: {likes: deletedUserId}}
+    )
+
+    await Card.updateMany(
+        {'comments.userId': deletedUserId},
+        {$pull: {comments: {userId: deletedUserId}}}
+    )
+
+    await User.updateMany(
+        {following: deletedUserId},
+        {$pull: {following: deletedUserId}}
+    )
+
+    return pickSafeUserFields(deleted)
+} 
+
+const banUser = async(bannedUserId) => {
+
+    let bannedUser = await User.findById(bannedUserId)
+    if(!bannedUser) throw createError(404, "user not found");
+
+    bannedUser.isBanned = !bannedUser.isBanned
+
+    const updatedBannedUser = await bannedUser.save();
+    return pickSafeUserFields(updatedBannedUser)
+}
+
+const promoteUserToAdmin = async (promotedUserId) => {
+    let promotedUser = await User.findById(promotedUserId)
+    if(!promotedUser) throw createError(404, "user not found")
+
+    promotedUser.isAdmin = !promotedUser.isAdmin;
+
+    const updatedPromotedUser = await promotedUser.save()
+    return pickSafeUserFields(updatedPromotedUser)
+}
+
+module.exports = {
+    createNewUser, 
+    getUsers, 
+    getUser, 
+    updateUser, 
+    deleteUser, 
+    loginUser, 
+    pickSafeUserFields, 
+    followUser, 
+    // cardsFeed, 
+    banUser, 
+    promoteUserToAdmin
+};

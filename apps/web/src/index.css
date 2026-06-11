@@ -1,0 +1,65 @@
+.recharts-wrapper:focus,
+.recharts-wrapper *:focus {
+  outline: none;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+/* target the scroll bar itself - controls width (vertical) and height (horizontal) */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+@media (max-width: 600px){
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  *{
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* the 'track os the background lane the thumb slides on */
+::-webkit-scrollbar-track {
+  background: rgba(127, 119, 221, 0.20);
+}
+
+/* the 'thumb' is the draggaable part you grab to scroll  */
+::-webkit-scrollbar-thumb {
+  background: rgba(127, 119, 221, 0.3);
+  border-radius: 4px;
+}
+
+/* when you hover over the thumb, it gets slightly more visible */
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(127, 119, 221, 0.5);
+}
+
+/* table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  border: 1px solid lightgray;
+  padding: 10px 16px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+th{
+  background-color: #f5f5f5;
+  font-weight: bold;
+}
+
+tbody tr:hover {
+  background-color: #f9f9f9;
+  cursor: pointer;
+} */
+
