@@ -64,8 +64,12 @@ app.use((err, req, res, next ) => {
     res.status(500).send('Internal error of the server')
 })
 
-// Start the server
-server.listen(PORT, () => {
-    console.log(chalk.yellow('App is listening to port', PORT));
-    connectToDB();
-});
+// Start the server only when run directly (skipped when imported by tests)
+if (require.main === module) {
+    server.listen(PORT, () => {
+        console.log(chalk.yellow('App is listening to port', PORT));
+        connectToDB();
+    });
+}
+
+module.exports = { app, server };
