@@ -51,6 +51,22 @@ export default function CardItem({
 
     const getLikesUsers = users.filter((u) => card.likes.includes(u._id)).slice(0,4)
 
+    const cardRef = useRef(null);
+
+    // Defensive: pause this card's video at click time so even if the modal's
+    // own mount sweep is deferred (lazy import / Suspense boundary added in
+    // future) or skipped (render error inside CardDetailsModal), the feed
+    // video still stops. Today, React's batched commit + synchronous useEffect
+    // means the modal sweep alone would also pause it; this is belt-and-
+    // suspenders, not a bug fix on its own.
+    const handleCardClick = () => {
+        if(!isLoggedIn){
+            setIsLoginPopupOpen(true);
+            return;
+        }
+        cardRef.current?.querySelectorAll('video').forEach(v => v.pause());
+        onOpenCard();
+    }
 
   return (
         <Box sx={{
@@ -192,13 +208,13 @@ export default function CardItem({
 
             {/* Media display */}
 
-            <Box onClick={isLoggedIn ? onOpenCard : () => setIsLoginPopupOpen(true)} sx={{cursor: 'pointer'}}>
+            <Box ref={cardRef} onClick={handleCardClick} sx={{cursor: 'pointer'}}>
                 <MediaDisplay
                     mediaUrl={card.mediaUrl}
                     mediaType={card.mediaType}
                     style={{
-                        width: '100%', 
-                        // height: '100%', 
+                        width: '100%',
+                        // height: '100%',
                         objectFit: 'cover'
                     }}
                 />
