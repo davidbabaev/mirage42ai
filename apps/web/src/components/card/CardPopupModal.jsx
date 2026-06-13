@@ -15,11 +15,13 @@ export default function CardPopupModal({cardId, onClose}) {
     // video (rendered inside CardDetailsModal) must be left alone so the user
     // can click play on it.
     const modalEl = containerRef.current;
-    // Defensive: if the ref hasn't attached for any reason, skip the sweep
-    // entirely rather than fall through to pausing the modal's own video.
+    const allVideos = document.querySelectorAll('video');
+    console.log('[CardPopupModal] MOUNT effect', { totalVideos: allVideos.length, modalEl: !!modalEl, t: performance.now().toFixed(0) });
     if (modalEl) {
-      document.querySelectorAll('video').forEach((v) => {
-        if (modalEl.contains(v)) return;
+      allVideos.forEach((v) => {
+        const inside = modalEl.contains(v);
+        console.log('[CardPopupModal] video', { inside, paused: v.paused, src: v.currentSrc?.slice(-50) });
+        if (inside) return;
         v.pause();
       })
     }

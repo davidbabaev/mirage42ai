@@ -64,7 +64,12 @@ export default function CardItem({
             setIsLoginPopupOpen(true);
             return;
         }
-        cardRef.current?.querySelectorAll('video').forEach(v => v.pause());
+        const vids = cardRef.current?.querySelectorAll('video');
+        console.log('[CardItem] CLICK', { card: card._id, found: vids?.length, t: performance.now().toFixed(0) });
+        vids?.forEach(v => {
+            console.log('[CardItem] calling pause(), was paused?', v.paused);
+            v.pause();
+        });
         onOpenCard();
     }
 

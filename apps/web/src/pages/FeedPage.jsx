@@ -264,26 +264,6 @@ export default function FeedPage() {
 
                         </Box>
                     </Paper>
-                    <Button sx={{
-                        display: 'flex',
-                        fontSize: 12,
-                        justifyContent: 'center',
-                        color: 'text.secondary',
-                        textTransform: 'none',
-                        textDecoration: 'underline',
-                        '&:hover': {
-                            background: 'transparent'
-                        }
-                    }}
-                        disableRipple
-                        disableFocusRipple
-                        disableTouchRipple
-                        fullWidth
-                        startIcon={<FolderIcon/>}
-                        onClick={() => navigate('/docs')}
-                    >
-                        App Documentation
-                    </Button>
 
                 </Grid>
 
