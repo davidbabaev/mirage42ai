@@ -30,13 +30,20 @@ export default function MessageList({ messages, currentUserId, otherUser, contai
         <Box
             ref={containerRef}
             onScroll={onScroll}
-            sx={{
+            sx={(theme) => ({
                 flex: 1,
                 px: { xs: 1.5, md: 2 },
                 py: 2,
                 overflowY: 'auto',
-                visibility: isChatReady ? 'visible' : 'hidden'
-            }}
+                visibility: isChatReady ? 'visible' : 'hidden',
+                // Subtle, theme-aware chat wallpaper (Telegram/WhatsApp style):
+                // a soft tinted base with a faint dotted pattern behind the bubbles.
+                backgroundColor: theme.palette.mode === 'dark' ? '#0c1015' : '#f4f2fb',
+                backgroundImage: `radial-gradient(${
+                    theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.045)' : 'rgba(127,119,221,0.12)'
+                } 1.3px, transparent 1.3px)`,
+                backgroundSize: '22px 22px',
+            })}
         >
             {messages.map((message, i) => {
                 const isSent = currentUserId === message.userId;
