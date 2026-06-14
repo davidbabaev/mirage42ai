@@ -3,6 +3,7 @@ import { useAuth } from '../providers/AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import useNotifications from '../hooks/useNotifications';
+import { useChatList } from '../providers/ChatProvider';
 import Notifications from './Notifications';
 import { AppBar, Avatar, Badge, Box, Button, Container, IconButton, Toolbar, Typography } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home'
@@ -64,6 +65,8 @@ export default function NavBar() {
         unreadCount,
         handleMarkAsRead
       } = useNotifications();
+
+    const { totalUnread } = useChatList();
 
     useEffect(() => {  
         const handler = (e) => {
@@ -172,7 +175,9 @@ export default function NavBar() {
                             onClick={() => navigate('/chat')}
                             sx={navLinkSx('/chat')}
                             >
-                            <MessageIcon fontSize='small'/>
+                            <Badge badgeContent={totalUnread} color='error' invisible={!totalUnread} overlap='circular'>
+                                <MessageIcon fontSize='small'/>
+                            </Badge>
                             <Typography variant='caption'>Messages</Typography>
                         </Box>
                     )}
@@ -353,8 +358,10 @@ export default function NavBar() {
                     sx={navLinkSx('/chat')}
                     // onClick={() => setIsModalOpen(true)}
                 >
-                    <MessageIcon fontSize='small'/>
-                    <Typography 
+                    <Badge badgeContent={totalUnread} color='error' invisible={!totalUnread} overlap='circular'>
+                        <MessageIcon fontSize='small'/>
+                    </Badge>
+                    <Typography
                         variant='caption'
                     >
                         Messages

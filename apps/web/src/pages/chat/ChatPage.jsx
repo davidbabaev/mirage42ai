@@ -5,6 +5,7 @@ import { Alert, Box, Container, Grid, Snackbar } from '@mui/material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useUsersProvider } from '../../providers/UsersProvider';
 import { useUI } from '../../providers/UIProvider';
+import { useChatList } from '../../providers/ChatProvider';
 import ConversationList from './components/ConversationList';
 import ChatHeader from './components/ChatHeader';
 import MessageList from './components/MessageList';
@@ -20,6 +21,7 @@ export default function ChatPage() {
     const {user} = useAuth();
     const {users} = useUsersProvider();
     const {setIsChatOpen} = useUI();
+    const {conversations, markRead, deleteConversation, setActiveConversationId} = useChatList();
 
     // emoji
     const [isEmojiOpen, setIsEmojiOpen] = useState(false);
@@ -82,12 +84,9 @@ export default function ChatPage() {
     }, [user?._id])
 
     const {
-        handleOpenChatList,
         handleOpenConversation,
         handleSendNewMessage,
-        conversationsList,
         chatMessages,
-        handleDeleteChat,
         sendError,
         clearSendError
     } = useChat(
@@ -95,6 +94,14 @@ export default function ChatPage() {
         handleConversationDeleted,
         handleMessageReceived
     );
+
+    // keep ChatProvider in sync with which conversation is on screen, and mark
+    // it read when opened (clears its badge + the nav total)
+    useEffect(() => {
+        const id = selectedChat?.conversationId ?? null;
+        setActiveConversationId(id);
+        if (id) markRead(id);
+    }, [selectedChat?.conversationId, setActiveConversationId, markRead])
 
     const handleSend = () => {
         handleSendNewMessage({
@@ -172,12 +179,6 @@ export default function ChatPage() {
         setMessageText('');
     }, [selectedChat?.conversationId])
 
-    useEffect(() => {
-        if(user?._id){
-            handleOpenChatList();
-        }
-    }, [user?._id]);
-
     const [searchParams, setSearchParams] = useSearchParams();
     const toUserId = searchParams.get('to')
 
@@ -189,7 +190,7 @@ export default function ChatPage() {
         // wait until we have data before deciding
         if(users.length === 0) return;
 
-        const conversation = conversationsList.find(c =>
+        const conversation = conversations.find(c =>
             (c.fromUser === user._id && c.toUser === toUserId) ||
             (c.fromUser === toUserId && c.toUser === user._id)
         )
@@ -217,7 +218,7 @@ export default function ChatPage() {
         }
 
 
-    }, [toUserId, conversationsList, user, users])
+    }, [toUserId, conversations, user, users])
 
     const handleSelectChat = (chat, otherUser) => {
         setIsChatReady(false);
@@ -247,7 +248,7 @@ return (
             display: {xs: selectedChat ? 'none' : 'block', md: 'block'}
         }}>
         <ConversationList
-            conversationsList={conversationsList}
+            conversationsList={conversations}
             users={users}
             currentUserId={user._id}
             selectedConversationId={selectedChat?.conversationId}
@@ -279,7 +280,7 @@ return (
                     onBack={() => setSelectedChat(null)}
                     onViewProfile={() => navigate(`/profiledashboard/${selectedChat.otherUser?._id}/profilemain`)}
                     onDeleteChat={() => {
-                        handleDeleteChat(selectedChat.conversationId)
+                        deleteConversation(selectedChat.conversationId)
                         setSelectedChat(null)
                     }}
                 />

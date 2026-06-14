@@ -22,6 +22,7 @@ import ChatPage from './pages/chat/ChatPage'
 import { UsersProvider } from './providers/UsersProvider'
 import { UIProvider } from './providers/UIProvider'
 import { VideoCoordinatorProvider } from './providers/VideoCoordinatorProvider'
+import { ChatProvider } from './providers/ChatProvider'
 import RotateOverlay from './components/style/RotateOverlay'
 import RequireAuth from './components/RequireAuth'
 import PageNotFound from './pages/PageNotFound'
@@ -39,6 +40,7 @@ export default function App(){
           <UsersProvider>
             <UIProvider>
               <VideoCoordinatorProvider>
+              <ChatProvider>
               <RotateOverlay/>
               <Box
                 sx={{
@@ -126,6 +128,7 @@ export default function App(){
                 </Box>
 
               </Box>
+              </ChatProvider>
               </VideoCoordinatorProvider>
             </UIProvider>
           </UsersProvider>

@@ -1,14 +1,15 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getSocket } from '../services/socketService';
 import { useAuth } from '../providers/AuthProvider';
-import { deleteChat, getChats, getSingleChatMessages, uploadChatMedia } from '../services/apiService';
+import { getSingleChatMessages, uploadChatMedia } from '../services/apiService';
 
+// Owns the OPEN conversation thread (messages + send). The conversation list,
+// unread counts and previews live in ChatProvider.
 function useChat(
-    selectedConversationId, 
-    onConversationDeleted, 
+    selectedConversationId,
+    onConversationDeleted,
     onMessageReceived
 ) {
-    const [conversationsList, setConversationsList] = useState([]);
     const [chatMessages, setChatMessages] = useState([]);
     const [sendError, setSendError] = useState(null);
 
@@ -16,22 +17,11 @@ function useChat(
 
     const {user} = useAuth();
 
-    const handleOpenChatList = async () => {
-        try{
-            const response = await getChats();
-            setConversationsList(response);
-        }   
-        catch(err){
-           console.log(err.message);
-            
-        }
-    }
-
     const handleOpenConversation = async (id) => {
         try{
             const response = await getSingleChatMessages(id);
             setChatMessages(response);
-        }   
+        }
         catch(err){
            console.log(err.message);
         }
@@ -56,75 +46,58 @@ function useChat(
         }
     }
 
-    const handleDeleteChat = async (conversationId) => {
-        try{
-            await deleteChat(conversationId)
-            // set the list to a new list without this id of deleted chat
-            setConversationsList(prev => prev.filter(c => c._id !== conversationId))
-        }
-        catch(err){
-            console.log(err.message);
-        }
-    }
-    
     useEffect(() => {
         const socket = getSocket();
-        if(!socket) return;
-        
-        socket.on('receive-message', (newMessage) => {
-            // if(newMessage.conversationId === selectedConversationId){
-            //     setChatMessages(prev => [...prev, newMessage])
-            // }
-            // handleOpenChatList();
+        if(!socket) return undefined;
 
+        // Append incoming messages to the open thread. (List/unread updates are
+        // handled separately by ChatProvider.) Named handlers + targeted off so
+        // we don't clobber ChatProvider's listeners.
+        const onReceive = (newMessage) => {
             if(onMessageReceived){
-                onMessageReceived(newMessage)   
+                onMessageReceived(newMessage)
             }
 
-            const isOurOpenChat = 
+            const isOurOpenChat =
                 newMessage.conversationId === selectedConversationId ||
                 selectedConversationId === null;
 
             if(isOurOpenChat){
                 setChatMessages(prev => [...prev, newMessage])
             }
+        };
 
-            handleOpenChatList();
-        });
-        
-        socket.on('deleted-conversation', (deletedId) => {
-            setConversationsList(prev => prev.filter(c => c._id !== deletedId))
-
-            // tell the page about it (if it wants to know)
+        const onDeleted = (deletedId) => {
             if(onConversationDeleted){
                 onConversationDeleted(deletedId)
             }
-        })
+        };
 
         // surface server-side send failures (the backend emits this to the sender)
-        socket.on('send-message-error', (payload) => {
+        const onSendError = (payload) => {
             setSendError(payload?.message || 'Message failed to send. Please try again.')
-        })
+        };
+
+        socket.on('receive-message', onReceive);
+        socket.on('deleted-conversation', onDeleted);
+        socket.on('send-message-error', onSendError);
 
         return () => {
-            socket.off('receive-message');
-            socket.off('deleted-conversation');
-            socket.off('send-message-error');
+            socket.off('receive-message', onReceive);
+            socket.off('deleted-conversation', onDeleted);
+            socket.off('send-message-error', onSendError);
         }
 
     }, [
-        user?._id, selectedConversationId, 
-        onConversationDeleted, 
+        user?._id, selectedConversationId,
+        onConversationDeleted,
         onMessageReceived
     ]); // <- re-runs when the actual ID changes.
 
     return{
-        handleOpenChatList, 
-        handleOpenConversation, 
+        handleOpenConversation,
         handleSendNewMessage,
-        conversationsList,
         chatMessages,
-        handleDeleteChat,
         sendError,
         clearSendError
     }

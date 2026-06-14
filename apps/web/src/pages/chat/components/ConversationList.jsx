@@ -1,5 +1,16 @@
-import { Avatar, Box, Paper, Typography } from '@mui/material';
+import { Avatar, Badge, Box, Paper, Typography } from '@mui/material';
 import getTimeAgo from '../../../utils/getTimeAgo';
+
+// Build the list preview from the denormalized lastMessage: media gets an icon,
+// and your own last message is prefixed with "You:".
+function previewText(lastMessage, currentUserId) {
+    if (!lastMessage) return 'No messages yet';
+    const body = lastMessage.mediaType === 'image' ? '📷 Photo'
+        : lastMessage.mediaType === 'video' ? '🎥 Video'
+        : (lastMessage.text || '');
+    const mine = lastMessage.senderId && String(lastMessage.senderId) === String(currentUserId);
+    return mine ? `You: ${body}` : body;
+}
 
 // Left pane: list of conversations. Selecting one is delegated to the parent
 // via onSelectChat(chat, otherUser).
@@ -44,6 +55,8 @@ export default function ConversationList({
                     const otherUserId = chat.fromUser === currentUserId ? chat.toUser : chat.fromUser
                     const otherUser = users.find(u => u._id === otherUserId)
                     const isActive = selectedConversationId === chat._id;
+                    const unread = chat.unreadCount || 0;
+                    const hasUnread = unread > 0;
 
                     return(
                         <Box
@@ -69,20 +82,32 @@ export default function ConversationList({
                                 }}
                             />
 
-                            <Box sx={{flex: 1, minWidth: 0, flexWrap: 'nowrap'}}>
-                                <Typography>
+                            <Box sx={{flex: 1, minWidth: 0}}>
+                                <Typography noWrap fontWeight={hasUnread ? 700 : 400}>
                                     {otherUser?.name} {otherUser?.lastName}
                                 </Typography>
                                 <Typography
-                                    fontSize={11} color='text.secondary'
+                                    noWrap
+                                    fontSize={12}
+                                    color={hasUnread ? 'text.primary' : 'text.secondary'}
+                                    fontWeight={hasUnread ? 600 : 400}
                                 >
-                                    last message here..
+                                    {previewText(chat.lastMessage, currentUserId)}
                                 </Typography>
                             </Box>
 
-                            <Typography fontSize={11} color='text.secondary'>
-                                {getTimeAgo(chat.updatedAt)}
-                            </Typography>
+                            <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.5}}>
+                                <Typography fontSize={11} color={hasUnread ? 'primary.main' : 'text.secondary'}>
+                                    {getTimeAgo(chat.updatedAt)}
+                                </Typography>
+                                {hasUnread && (
+                                    <Badge
+                                        badgeContent={unread}
+                                        color='error'
+                                        sx={{ '& .MuiBadge-badge': { position: 'static', transform: 'none' } }}
+                                    />
+                                )}
+                            </Box>
                         </Box>
                     )
                 })}

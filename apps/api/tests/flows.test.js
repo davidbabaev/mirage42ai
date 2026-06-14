@@ -209,3 +209,51 @@ describe('GET /users gating + field projection', () => {
         expect(self.body.email).toBe(userA.email);
     });
 });
+
+describe('chat unread + last-message preview + mark-read', () => {
+    let tokenB;
+    let conversationId;
+
+    it('logs user B in (the message recipient)', async () => {
+        const res = await request(app)
+            .post('/users/login')
+            .send({ email: userB.email, password: userB.password });
+        expect(res.status).toBe(200);
+        tokenB = res.body.token;
+    });
+
+    it('A sends B a media message -> conversation gets a lastMessage snapshot', async () => {
+        const res = await request(app)
+            .post('/chat/upload-media')
+            .set('auth-token', tokenA)
+            .field('toUser', userBId)
+            .field('text', '')
+            .attach('media', Buffer.from('fake-image-bytes'), { filename: 'pic.png', contentType: 'image/png' });
+        expect(res.status).toBe(200);
+        conversationId = res.body.conversationId;
+        expect(conversationId).toBeTruthy();
+
+        const chats = await request(app).get('/chats').set('auth-token', tokenB);
+        const convo = chats.body.find(c => c._id === conversationId);
+        expect(convo.lastMessage.mediaType).toBe('image');
+        expect(String(convo.lastMessage.senderId)).toBe(userAId);
+    });
+
+    it('counts unread per user: recipient sees 1, sender sees 0 (own message)', async () => {
+        const asB = await request(app).get('/chats').set('auth-token', tokenB);
+        expect(asB.body.find(c => c._id === conversationId).unreadCount).toBe(1);
+
+        const asA = await request(app).get('/chats').set('auth-token', tokenA);
+        expect(asA.body.find(c => c._id === conversationId).unreadCount).toBe(0);
+    });
+
+    it('marking the conversation read clears the recipient\'s unread count', async () => {
+        const read = await request(app)
+            .patch(`/chats/${conversationId}/read`)
+            .set('auth-token', tokenB);
+        expect(read.status).toBe(200);
+
+        const asB = await request(app).get('/chats').set('auth-token', tokenB);
+        expect(asB.body.find(c => c._id === conversationId).unreadCount).toBe(0);
+    });
+});

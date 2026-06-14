@@ -5,6 +5,7 @@ const {
     createNewMessage,
     getMessages,
     getChats,
+    markConversationRead,
     deleteChat
 } = require('../service/chatSvc');
 const auth = require('../../auth/authService');
@@ -28,6 +29,18 @@ module.exports = (io) => {
         try{
             const messages = await getMessages(req.params.conversationId);
             res.send(messages)
+        }
+        catch(err){
+            handleError(res, err);
+        }
+    })
+
+    // Mark a conversation read for the requesting user; notify their other tabs.
+    router.patch('/chats/:conversationId/read', auth, async (req, res) => {
+        try{
+            const conversation = await markConversationRead(req.user.userId, req.params.conversationId);
+            io.to(req.user.userId.toString()).emit('conversation-read', { conversationId: conversation._id })
+            res.send({ conversationId: conversation._id })
         }
         catch(err){
             handleError(res, err);
