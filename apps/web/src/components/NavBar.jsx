@@ -123,21 +123,25 @@ export default function NavBar() {
                 <Box 
                     sx={{display: {xs: 'none', md: 'flex'}, flex: '1', justifyContent: 'center'}}
                 >
-                    <Box
-                        onClick={() => navigate('/')}
-                        sx={navLinkSx('/')}
-                        >
-                        <HomeIcon fontSize='small'/>
-                        <Typography variant='caption'>Feed</Typography>
-                    </Box>
+                    {isLoggedIn && (
+                        <Box
+                            onClick={() => navigate('/')}
+                            sx={navLinkSx('/')}
+                            >
+                            <HomeIcon fontSize='small'/>
+                            <Typography variant='caption'>Feed</Typography>
+                        </Box>
+                    )}
 
-                    <Box
-                        onClick={() => navigate('/allusers')}
-                        sx={navLinkSx('/allusers')}
-                        >
-                        <PeopleIcon fontSize='small'/>
-                        <Typography variant='caption'>Users</Typography>
-                    </Box>
+                    {isLoggedIn && (
+                        <Box
+                            onClick={() => navigate('/allusers')}
+                            sx={navLinkSx('/allusers')}
+                            >
+                            <PeopleIcon fontSize='small'/>
+                            <Typography variant='caption'>Users</Typography>
+                        </Box>
+                    )}
 
                     {isLoggedIn && (
                         <Box
@@ -145,7 +149,7 @@ export default function NavBar() {
                             onClick={() => setIsModalOpen(true)}
                         >
                             <AddBoxIcon fontSize='small'/>
-                            <Typography 
+                            <Typography
                                 variant='caption'
                             >
                                 Add Post
@@ -153,13 +157,15 @@ export default function NavBar() {
                         </Box>
                     )}
 
-                    <Box
-                        onClick={() => navigate('/allcards')}
-                        sx={navLinkSx('/allcards')}
-                        >
-                        <ExploreIcon fontSize='small'/>
-                        <Typography variant='caption'>Explore Posts</Typography>
-                    </Box>
+                    {isLoggedIn && (
+                        <Box
+                            onClick={() => navigate('/allcards')}
+                            sx={navLinkSx('/allcards')}
+                            >
+                            <ExploreIcon fontSize='small'/>
+                            <Typography variant='caption'>Explore Posts</Typography>
+                        </Box>
+                    )}
 
                     {isLoggedIn && (
                         <Box
@@ -282,7 +288,8 @@ export default function NavBar() {
 
     </AppBar>
 
-    {/* Mobile Bottom navbar */}
+    {/* Mobile Bottom navbar — only for signed-in users */}
+    {isLoggedIn && (
     <Box
         position={'fixed'}
         sx={{
@@ -356,6 +363,7 @@ export default function NavBar() {
             )}
         </Box>
     </Box>
+    )}
 
     </>
   )

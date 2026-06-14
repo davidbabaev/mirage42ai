@@ -13,6 +13,10 @@ const [feedCards, setFeedCards] = useState([]);
 const {isLoggedIn} = useAuth();
 
 const fetchCards = async () => {
+    // Cards are only shown to signed-in users now (the public pages are walled),
+    // so skip the request while logged out instead of firing a wasted GET /cards.
+    const token = localStorage.getItem('auth-token')
+    if(!token) return;
     try{
         const response = await getAllCards();
         setRegisteredCards(response);
@@ -21,16 +25,16 @@ const fetchCards = async () => {
         console.log(err.message);
     }
 }
-// useEffect on mount
-useEffect(() => {
-    fetchCards();
-}, [])
 
-// fetches feed on mount (first load)
+// Fetch cards + feed once authenticated, and re-fetch on login. On logout,
+// drop the previous user's data so it isn't left sitting in state.
 useEffect(() => {
-    const token = localStorage.getItem('auth-token')
-    if(token){
+    if(isLoggedIn){
+        fetchCards();
         refreshFeed();
+    } else {
+        setRegisteredCards([]);
+        setFeedCards([]);
     }
 }, [isLoggedIn]);
 

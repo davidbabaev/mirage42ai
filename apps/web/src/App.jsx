@@ -23,6 +23,7 @@ import { UsersProvider } from './providers/UsersProvider'
 import { UIProvider } from './providers/UIProvider'
 import { VideoCoordinatorProvider } from './providers/VideoCoordinatorProvider'
 import RotateOverlay from './components/style/RotateOverlay'
+import RequireAuth from './components/RequireAuth'
 import PageNotFound from './pages/PageNotFound'
 import LandingPage from './pages/landing/LandingPage'
 import DocsLayout from './pages/docs/DocsLayout'
@@ -90,20 +91,32 @@ export default function App(){
                         <DashboardLayout/>
                       </ProtectedRoute>
                     }/>
-                    <Route path='/profiledashboard/:id/*' element={<UserProfileLayout/>}/>
+                    <Route path='/profiledashboard/:id/*' element={
+                      <RequireAuth>
+                        <UserProfileLayout/>
+                      </RequireAuth>
+                    }/>
                     <Route path='/createnewcard' element={
                       <ProtectedRoute>
                         <CardsRegisterPage/>
                       </ProtectedRoute>
                     }/>
-                    <Route path='/allusers' element ={<UsersPage/>}/>
+                    <Route path='/allusers' element ={
+                      <RequireAuth>
+                        <UsersPage/>
+                      </RequireAuth>
+                    }/>
                     <Route path='/*' element ={<PageNotFound/>}/>
                     <Route path='/registered' element ={
                       <PublicOnlyRoute>
                         <RegisteredPage/>
                       </PublicOnlyRoute>
                     }/>
-                    <Route path='/allcards' element ={<AllCardsPage/>}/>
+                    <Route path='/allcards' element ={
+                      <RequireAuth>
+                        <AllCardsPage/>
+                      </RequireAuth>
+                    }/>
                     <Route path='/chat' element={
                         <ProtectedRoute>
                         <ChatPage/>
