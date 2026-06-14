@@ -1,4 +1,5 @@
-import { Avatar, Box, Chip, Typography } from '@mui/material';
+import { Avatar, Box, Chip, CircularProgress, Typography } from '@mui/material';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import MediaDisplay from '../../../components/MediaDisplay';
 import getMessageTime from '../../../utils/getMessageTime';
 
@@ -100,7 +101,7 @@ export default function MessageList({ messages, currentUserId, otherUser, contai
                                 }}
                             >
                                 {message.mediaUrl && (
-                                    <Box sx={{ mb: message.text ? 0.75 : 0, overflow: 'hidden' }}>
+                                    <Box sx={{ mb: message.text ? 0.75 : 0, overflow: 'hidden', position: 'relative' }}>
                                         <MediaDisplay
                                             mediaUrl={message.mediaUrl}
                                             mediaType={message.mediaType}
@@ -109,9 +110,20 @@ export default function MessageList({ messages, currentUserId, otherUser, contai
                                                 maxHeight: 280,
                                                 objectFit: 'cover',
                                                 display: 'block',
-                                                borderRadius: 10
+                                                borderRadius: 10,
+                                                opacity: (message.status === 'sending' || message.status === 'failed') ? 0.55 : 1
                                             }}
                                         />
+                                        {message.status === 'sending' && (
+                                            <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <CircularProgress size={30} sx={{ color: '#fff' }} />
+                                            </Box>
+                                        )}
+                                        {message.status === 'failed' && (
+                                            <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(0,0,0,0.35)', borderRadius: '10px' }}>
+                                                <ErrorOutlineIcon sx={{ color: '#fff' }} />
+                                            </Box>
+                                        )}
                                     </Box>
                                 )}
 
@@ -126,10 +138,16 @@ export default function MessageList({ messages, currentUserId, otherUser, contai
                                     sx={{
                                         alignSelf: 'flex-end',
                                         mt: 0.25,
-                                        color: isSent ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'
+                                        color: message.status === 'failed'
+                                            ? '#ffb4a8'
+                                            : (isSent ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary')
                                     }}
                                 >
-                                    {getMessageTime(message.createdAt)}
+                                    {message.status === 'sending'
+                                        ? 'Sending…'
+                                        : message.status === 'failed'
+                                            ? 'Not sent'
+                                            : getMessageTime(message.createdAt)}
                                 </Typography>
                             </Box>
                         </Box>
