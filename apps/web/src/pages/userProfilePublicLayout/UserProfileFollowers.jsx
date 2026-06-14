@@ -2,7 +2,6 @@ import React from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../providers/AuthProvider';
 import useFollowUser from '../../hooks/useFollowUser';
-import { useCardsProvider } from '../../providers/CardsProvider';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { Avatar, Box, Button, Paper, Typography } from '@mui/material';
 import OnLoadingSkeletonBox from '../../components/OnLoadingSkeletonBox';
@@ -16,7 +15,6 @@ export default function UserProfileFollowers() {
   const {user} = useAuth();
   const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
   const navigate = useNavigate();
-  const {refreshFeed} = useCardsProvider();
   
   
   const currentUserProfile = users.find((userP) => userP._id === id);
@@ -101,7 +99,6 @@ export default function UserProfileFollowers() {
                           startIcon={<PersonAddIcon/>}
                           onClick={async () => {
                               await toggleFollow(follower?._id)
-                              await refreshFeed();
                           }}
                           sx={{
                               fontSize: 9, 
@@ -145,7 +142,6 @@ export default function UserProfileFollowers() {
             onClick={
               async() => {
                 await toggleFollow(follower._id)
-                await refreshFeed();
             }}
           >{isFollowByMe(follower._id) ? "Unfollow" : "Follow"}</button>
         )}

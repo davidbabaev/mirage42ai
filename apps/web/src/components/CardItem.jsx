@@ -10,7 +10,6 @@ import MediaDisplay from './MediaDisplay';
 import { Avatar, Box, Button, Chip, Divider, Typography, useTheme } from '@mui/material';
 import useFollowUser from '../hooks/useFollowUser';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import { useCardsProvider } from '../providers/CardsProvider';
 import LaunchIcon from '@mui/icons-material/Launch';
 import BookmarkBorderOutlinedIcon from '@mui/icons-material/BookmarkBorderOutlined';
 import BookmarkAddedIcon from '@mui/icons-material/BookmarkAdded';
@@ -36,7 +35,6 @@ export default function CardItem({
     
     const {addComment, countComments, removeComment} = useCommentsCards();
     const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
-    const {refreshFeed} = useCardsProvider();
     const [isExpanded, setIsExpanded] = useState(false)
     const theme = useTheme();
     const inputRef = useRef(null);    
@@ -136,7 +134,6 @@ export default function CardItem({
                         startIcon={<PersonAddIcon/>}
                         onClick={async () => {
                             await toggleFollow(creator?._id)
-                            await refreshFeed();
                         }}
                         sx={{
                             fontSize: 9, 

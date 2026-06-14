@@ -100,17 +100,13 @@ export function AuthProvider({children}) {
         try{
             const response = await followUnfollowUser(userId);
             setUser(response)
-
-            return{
-                success: true,
-                message: "Followed Successfully"
-            }
+            // Return the updated current user so callers can sync the users
+            // list in place (no full re-fetch needed).
+            return response
         }
         catch(err){
-            return{
-                success: false,
-                message: err.message
-            }
+            console.log(err.message);
+            return null
         }
     }
 

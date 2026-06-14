@@ -4,7 +4,6 @@ import CloseIcon from '@mui/icons-material/Close';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import CheckIcon from '@mui/icons-material/Check';
 import useFollowUser from '../hooks/useFollowUser';
-import { useCardsProvider } from '../providers/CardsProvider';
 import { useNavigate } from 'react-router-dom';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
@@ -23,7 +22,6 @@ export default function UserReusableCard({
 
     // const {selectedUsers, handleRemoveUser, selectHandleUser} = useSelectedUsers();
     const{getFollowersCount, toggleFollow, isFollowByMe} = useFollowUser();
-    const {refreshFeed} = useCardsProvider();
     const navigate = useNavigate();
     const {user, isLoggedIn} = useAuth();
 
@@ -245,8 +243,6 @@ export default function UserReusableCard({
                         return;
                     }
                     await toggleFollow(userObject._id)
-                    await refreshFeed()
-                    
                 }}
                 fullWidth
                 sx={{

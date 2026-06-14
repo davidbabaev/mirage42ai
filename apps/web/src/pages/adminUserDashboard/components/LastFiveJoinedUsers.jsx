@@ -2,7 +2,6 @@ import React from 'react'
 import useAnalytics from '../hooks/useAnalytics'
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../providers/AuthProvider';
-import { useCardsProvider } from '../../../providers/CardsProvider';
 import useFollowUser from '../../../hooks/useFollowUser';
 import { Avatar, Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
 import getTimeAgo from '../../../utils/getTimeAgo';
@@ -19,7 +18,6 @@ export default function LastFiveJoinedUsers() {
     const navigate = useNavigate();
 
     const {user: loggedInUser} = useAuth();
-    const {refreshFeed} = useCardsProvider();
     const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
 
   return (
@@ -92,7 +90,6 @@ export default function LastFiveJoinedUsers() {
                                 startIcon={<PersonAddIcon/>}
                                 onClick={async () => {
                                     await toggleFollow(userF?._id)
-                                    await refreshFeed();
                                 }}
                                 sx={{fontSize: 9, minWidth: 70, borderRadius: 5, py: 0.3,
                                     '& .MuiButton-startIcon' : {mb: 0.2}, lineHeight: 0 

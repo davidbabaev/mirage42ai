@@ -26,7 +26,7 @@ export default function UserProfileLayout() {
     const {id} = useParams();
     const{users} = useUsersProvider();
     const {user, isLoggedIn} = useAuth();
-    const {refreshFeed, registeredCards} = useCardsProvider();
+    const {registeredCards} = useCardsProvider();
     const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
     function onCloseLoginPopup(){
         setIsLoginPopupOpen(false)
@@ -331,8 +331,6 @@ export default function UserProfileLayout() {
                                 return;
                             } 
                             await toggleFollow(userProfile._id)
-                            await refreshFeed()
-                          
                         }}
                         color={isFollowByMe(userProfile._id) ? 'inherit' : 'primary'}
                       >
@@ -478,7 +476,6 @@ export default function UserProfileLayout() {
                         return;
                     }
                     await toggleFollow(userProfile._id)
-                    await refreshFeed()
                 }}
                 color={isFollowByMe(userProfile._id) ? 'inherit' : 'primary'}
                 >

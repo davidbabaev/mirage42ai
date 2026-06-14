@@ -2,7 +2,6 @@ import React from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../providers/AuthProvider';
 import useFollowUser from '../../hooks/useFollowUser';
-import { useCardsProvider } from '../../providers/CardsProvider';
 import { Avatar, Box, Button, Grid, Paper, Typography } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import OnLoadingSkeletonBox from '../../components/OnLoadingSkeletonBox';
@@ -15,7 +14,6 @@ export default function UserProfileFollowing() {
   const {user} = useAuth();
   const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
   const navigate = useNavigate();
-  const {refreshFeed} = useCardsProvider();
   
   
   const currentUserProfile = users.find((userP) => userP._id === id);
@@ -90,7 +88,6 @@ export default function UserProfileFollowing() {
                           startIcon={<PersonAddIcon/>}
                           onClick={async () => {
                               await toggleFollow(following?._id)
-                              await refreshFeed();
                           }}
                           sx={{
                               fontSize: 9, 

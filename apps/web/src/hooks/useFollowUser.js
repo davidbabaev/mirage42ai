@@ -3,15 +3,18 @@ import { useUsersProvider } from "../providers/UsersProvider";
 
 function useFollowUser() {
 
-  const{ handleToggleFollow, user} = useAuth(); 
-  const {users, getUsers} = useUsersProvider();
+  const{ handleToggleFollow, user} = useAuth();
+  const {users, syncUser} = useUsersProvider();
 
     // toggle Follow
 
     const toggleFollow = async (userId) => {
         if(!user) return false;
-        await handleToggleFollow(userId);
-        getUsers(); // re-fetch users so counts update
+        // Update in place: patch the current user in the users list with the
+        // server's response, so the button and counts update without a full
+        // re-fetch (which caused re-renders / scroll jump).
+        const updatedUser = await handleToggleFollow(userId);
+        syncUser(updatedUser);
     }
 
     // isFollow by me

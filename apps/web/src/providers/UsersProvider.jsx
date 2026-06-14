@@ -29,6 +29,18 @@ export function UsersProvider({children}) {
         }
     }
 
+    // Patch a single user in the list in place (e.g. after follow/unfollow),
+    // so follower/following counts derived from `users` stay correct without
+    // re-fetching everyone. Keeps the existing profilePicture fallback.
+    const syncUser = (updatedUser) => {
+        if (!updatedUser?._id) return;
+        setUsers(prev => prev.map(u => (
+            u._id === updatedUser._id
+                ? { ...u, ...updatedUser, profilePicture: updatedUser.profilePicture || u.profilePicture }
+                : u
+        )));
+    }
+
     const handleDeleteUser = async (userId) => {
         try{
             await deleteUser(userId);
@@ -93,10 +105,11 @@ export function UsersProvider({children}) {
   
     return(
         <UsersContext.Provider value={{
-            users, 
-            loading, 
-            getUsers, 
-            handleDeleteUser, 
+            users,
+            loading,
+            getUsers,
+            syncUser,
+            handleDeleteUser,
             handleBanUser, 
             handlePromoteUser
         }}>

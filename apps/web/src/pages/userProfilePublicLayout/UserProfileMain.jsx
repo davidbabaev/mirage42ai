@@ -22,7 +22,6 @@ export default function UserProfileMain() {
     const {user, isLoggedIn} = useAuth();
     const navigate = useNavigate();
     const [count, setCount] = useState(10);
-    const {refreshFeed} = useCardsProvider();
     const {favoriteCards ,handleFavoriteCards, handleRemoveCard} = useFavoriteCards();
 
     
@@ -316,7 +315,6 @@ return (
                                         startIcon={<PersonAddIcon/>}
                                         onClick={async () => {
                                             await toggleFollow(person?._id)
-                                            await refreshFeed();
                                         }}
                                         sx={{
                                             fontSize: 9, 

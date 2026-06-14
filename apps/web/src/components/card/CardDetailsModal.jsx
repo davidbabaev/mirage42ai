@@ -32,7 +32,6 @@ export default function CardDetailsModal({cardId, onClose}) {
         const [isExpanded, setIsExpanded] = useState(false)
         const theme = useTheme();
 
-        const {refreshFeed} = useCardsProvider();
 
         const [, setIsLoginPopupOpen] = useState(false);
         const {addComment, countComments, removeComment} = useCommentsCards();
@@ -147,7 +146,6 @@ export default function CardDetailsModal({cardId, onClose}) {
                         startIcon={<PersonAddIcon/>}
                         onClick={async () => {
                             await toggleFollow(creator?._id)
-                            await refreshFeed()
                         }}
                         sx={{fontSize: 10, minWidth: 70}}
                     >

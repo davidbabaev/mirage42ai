@@ -440,7 +440,6 @@ export default function FeedPage() {
                                             startIcon={<PersonAddIcon/>}
                                             onClick={async () => {
                                                 await toggleFollow(userF?._id)
-                                                await refreshFeed();
                                             }}
                                             sx={{
                                                 fontSize: 9, 

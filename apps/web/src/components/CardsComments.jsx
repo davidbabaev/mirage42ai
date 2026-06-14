@@ -4,7 +4,6 @@ import { Avatar, Box, Button, IconButton, TextField, Tooltip, Typography } from 
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import useFollowUser from '../hooks/useFollowUser';
 import getTimeAgo from '../utils/getTimeAgo';
-import { useCardsProvider } from '../providers/CardsProvider';
 import { useNavigate } from 'react-router-dom';
 import DeleteIcon from '@mui/icons-material/Delete';
 
@@ -14,7 +13,6 @@ export default function CardsComments({card, users, addComment, removeComment, f
     const {user: loggedInUser} = useAuth();
     const [commentsCount, setCommentsCount] = useState(5);
     const [isLoading, setIsLoading] = useState(false)
-    const {refreshFeed} = useCardsProvider();
     const navigate = useNavigate();
     
     
@@ -146,7 +144,6 @@ export default function CardsComments({card, users, addComment, removeComment, f
                                     startIcon={<PersonAddIcon/>}
                                     onClick={async () => {
                                         await toggleFollow(userComment?._id)
-                                        await refreshFeed();
                                     }}
                                     sx={{fontSize: 9, minWidth: 70, borderRadius: 5, py: 0.3,
                                         '& .MuiButton-startIcon' : {mb: 0.2}, lineHeight: 0 
