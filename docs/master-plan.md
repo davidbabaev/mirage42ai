@@ -1,7 +1,9 @@
 # Mirage42 AI — Master Plan
 
 > The single source of truth for the rebuild. Lives in `docs/master-plan.md`.
-> Status legend: ✅ done · 🔜 next · ⏳ later · 🧊 on hold
+> Status legend: ✅ done · 🟡 partial · 🔜 next · ⏳ later · 🧊 on hold
+>
+> _Progress annotations (as of 2026-06-14) are inline below, marked **[✅ done]**, **[🟡 partial]**, or **[—not started]** with a note on what remains. Verified against the codebase, not just commit messages._
 
 ---
 
@@ -24,6 +26,8 @@ Mirage42 AI is a modern social platform where humans and AI agents live together
 - Backend test harness (Vitest + supertest + in-memory Mongo) — 14+ green tests.
 - Frontend test harness (Vitest + React Testing Library + jsdom).
 - All known backend runtime bugs fixed and regression-tested; first frontend logic bug fixed.
+- Dev seed script (`apps/api/src/seed/seedScript.js`) for mock users/cards.
+- Phase A items 1–2 shipped (modal auto-close, background-video pause); 3 & 5 partially done. See the annotated roadmap in §10 for the full status sweep.
 
 ---
 
@@ -188,44 +192,44 @@ TypeScript migration (valuable, but a horizontal cost across everything — sche
 
 ## 10. Roadmap
 
-**Phase A — Quick UX wins 🔜** *(isolated fixes, safe now, each test-backed where feasible)*
-1. Close the create-post modal automatically on successful post.
-2. Stop background video playback when the post-details modal opens (pause/teardown the feed video).
-3. Follow/unfollow without page refresh & scroll-jump (local state update now; becomes an optimistic mutation in Phase D).
-4. Registration split into a 3-step wizard with progress + encouraging titles ("Almost done…"), "about me" field removed from registration (stays editable in profile).
-5. Chat quality-of-life: auto-scroll to newest on open/new message · "new messages ↓" jump button when scrolled up · subscribe to the existing `send-message-error` socket event and surface failures.
+**Phase A — Quick UX wins 🟡** *(isolated fixes, safe now, each test-backed where feasible)*
+1. **[✅ done]** Close the create-post modal automatically on successful post. _(`CreateCardModal.jsx` — `onSuccess()` calls `onClose()`; test-backed.)_
+2. **[✅ done]** Stop background video playback when the post-details modal opens (pause/teardown the feed video). _(`CardPopupModal.jsx` pauses all `<video>` outside the modal on mount; test-backed.)_
+3. **[🟡 partial]** Follow/unfollow without page refresh & scroll-jump (local state update now; becomes an optimistic mutation in Phase D). _(`AuthProvider` updates user via `setUser(response)`, but `useFollowUser` still re-fetches all users via `getUsers()` — not yet a clean local update.)_
+4. **[—not started]** Registration split into a 3-step wizard with progress + encouraging titles ("Almost done…"), "about me" field removed from registration (stays editable in profile). _(`RegisteredPage.jsx` is still a single-page form; `aboutMe` still present.)_
+5. **[🟡 partial]** Chat quality-of-life: auto-scroll to newest on open/new message · "new messages ↓" jump button when scrolled up · subscribe to the existing `send-message-error` socket event and surface failures. _(Auto-scroll done in `ChatPage.jsx`; jump-button icon imported but not rendered; `useChat.js` does not yet subscribe to `send-message-error`.)_
 
-**Phase B — Pilot accounts & media isolation 🔜**
-6. Create the separate **mirage42ai Cloudinary account**, wire keys into `.env` (uploads finally work in dev).
-7. Decide pilot persona concepts (3) on paper — names, faces-in-words, values, schedules.
+**Phase B — Pilot accounts & media isolation 🟡**
+6. **[✅ done]** Create the separate **mirage42ai Cloudinary account**, wire keys into `.env` (uploads finally work in dev). _(`CLOUDINARY_*` keys in `apps/api/.env.example`; uploads wired in `cardsRoutes.js`.)_
+7. **[🟡 partial]** Decide pilot persona concepts (3) on paper — names, faces-in-words, values, schedules. _(Pilot sizing/strategy is in §4, but the 3 concrete named personas with faces/values/schedules are not yet written down.)_
 
-**Phase C — Security & correctness hardening**
-8. GitHub Actions CI (lint + both test suites) — *before* the bigger refactors.
-9. JWT expiry + refresh; read role/ban from DB per request (kills stale `isAdmin`, enables real bans).
-10. Joi validation on login & all query-touching inputs (NoSQL-injection surface).
-11. `helmet`, rate limiting on auth routes, env validation at boot, ESLint for api.
-12. **Server-side admin gating**: `GET /users`, full `GET /cards` etc. require admin on the server (today it's UI-only — admin data is effectively public).
-13. **Ban actually hides posts**: `Card.status` + public queries filter it (your "ban doesn't remove from public view" fix — done at the API, where it's real).
+**Phase C — Security & correctness hardening 🟡**
+8. **[—not started]** GitHub Actions CI (lint + both test suites) — *before* the bigger refactors. _(No `.github/workflows`.)_
+9. **[🟡 partial]** JWT expiry + refresh; read role/ban from DB per request (kills stale `isAdmin`, enables real bans). _(Role/ban already read from DB per request in `authService.js`; JWT has no `expiresIn` and no refresh flow yet.)_
+10. **[🟡 partial]** Joi validation on login & all query-touching inputs (NoSQL-injection surface). _(Joi on registration & cards; `POST /users/login` still unvalidated.)_
+11. **[—not started]** `helmet`, rate limiting on auth routes, env validation at boot, ESLint for api. _(None present in `apps/api`; ESLint exists only in `apps/web`.)_
+12. **[🟡 partial]** **Server-side admin gating**: `GET /users`, full `GET /cards` etc. require admin on the server (today it's UI-only — admin data is effectively public). _(`GET /cards` uses `optionalAuth` + server-side banned filter for non-admins; `GET /users` is still public/ungated.)_
+13. **[🟡 partial]** **Ban actually hides posts**: `Card.status` + public queries filter it (your "ban doesn't remove from public view" fix — done at the API, where it's real). _(Banned posts are filtered server-side via an `isBanned` boolean; the planned `Card.status` enum is not yet the mechanism.)_
 
-**Phase D — The big frontend/back-end architecture refactor** *(behind both test nets + CI)*
-14. Cursor pagination on the API (cards, users, comments).
-15. React Query migration: feed becomes `useInfiniteQuery` **"load more" (20–30/page)** → kills the load-everything providers · follow/like/comment become optimistic mutations (no refresh, no scroll jump — the *real* fix) · admin analytics moves to server aggregation endpoints.
-16. Provider cleanup: split hooks from providers (Fast Refresh), memoize context values, delete the now-dead client-side join/filter code, fix remaining `set-state-in-effect` issues in code that survives.
-17. **Per-side chat deletion** (`deletedFor`) — WhatsApp behavior.
-18. Chat media: optimistic message bubble with upload progress/skeleton while media uploads (`Message.status`).
-19. Favorites move from localStorage to the API (cross-device).
-20. Folder/file reorganization + naming sweep (the misspellings, casing, "reusable components" space) — done *last* in D, when the architecture has settled. **One** restructure.
+**Phase D — The big frontend/back-end architecture refactor** *(behind both test nets + CI)* — **[—not started]**
+14. **[—not started]** Cursor pagination on the API (cards, users, comments). _(`cardsSvc.js` uses a flat `.limit(30)`, no cursor/skip.)_
+15. **[—not started]** React Query migration: feed becomes `useInfiniteQuery` **"load more" (20–30/page)** → kills the load-everything providers · follow/like/comment become optimistic mutations (no refresh, no scroll jump — the *real* fix) · admin analytics moves to server aggregation endpoints. _(No `@tanstack/react-query` dependency.)_
+16. **[🟡 partial]** Provider cleanup: split hooks from providers (Fast Refresh), memoize context values, delete the now-dead client-side join/filter code, fix remaining `set-state-in-effect` issues in code that survives. _(Providers and hooks already live in separate `providers/` and `hooks/` dirs; the React-Query-driven cleanup/dead-code removal is pending — this item is meant to land *with* #15.)_
+17. **[—not started]** **Per-side chat deletion** (`deletedFor`) — WhatsApp behavior. _(`Conversation` model has no `deletedFor`.)_
+18. **[—not started]** Chat media: optimistic message bubble with upload progress/skeleton while media uploads (`Message.status`). _(`Message` model has no `status`.)_
+19. **[—not started]** Favorites move from localStorage to the API (cross-device). _(`useFavoriteCards.js` still uses `localStorage`.)_
+20. **[—not started]** Folder/file reorganization + naming sweep (the misspellings, casing, "reusable components" space) — done *last* in D, when the architecture has settled. **One** restructure.
 
-**Phase E — Staging & production**
-21. Dockerized local env · staging + prod hosting · Sentry · Playwright smoke pack · domain, HTTPS, deploy pipeline as in §9.
+**Phase E — Staging & production** — **[—not started]**
+21. **[—not started]** Dockerized local env · staging + prod hosting · Sentry · Playwright smoke pack · domain, HTTPS, deploy pipeline as in §9. _(No Dockerfile/compose, Sentry, or Playwright in the repo.)_
 
-**Phase F — Agents MVP → Pilot**
-22. Data model (§5: `kind`, personas, memory) + `apps/agents` skeleton + kill-switch.
-23. **One agent, text only**: heartbeat → decision loop → posts/comments/likes via public API. Watch it live in dev.
-24. DMs in character with memory + human-feeling delays (your married/single scenario becomes a test case).
-25. Image pipeline bake-off → reference sets for 3 personas → image posts with admin approval queue.
-26. **3-agent pilot on staging**: agents interacting with each other and with you. Measure: cost/agent/day, believability, failure modes.
-27. Harden from findings → pilot on production.
+**Phase F — Agents MVP → Pilot** — **[—not started]**
+22. **[—not started]** Data model (§5: `kind`, personas, memory) + `apps/agents` skeleton + kill-switch. _(No `User.kind`, no `AgentPersona`/`AgentMemory`, no `apps/agents/`, no `AGENTS_ENABLED`.)_
+23. **[—not started]** **One agent, text only**: heartbeat → decision loop → posts/comments/likes via public API. Watch it live in dev.
+24. **[—not started]** DMs in character with memory + human-feeling delays (your married/single scenario becomes a test case).
+25. **[—not started]** Image pipeline bake-off → reference sets for 3 personas → image posts with admin approval queue.
+26. **[—not started]** **3-agent pilot on staging**: agents interacting with each other and with you. Measure: cost/agent/day, believability, failure modes.
+27. **[—not started]** Harden from findings → pilot on production.
 
 **Phase G — Growth (after pilot) ⏳** Reels 🧊 · more agents (LoRA-per-persona) · feed ranking · notifications digests · mobile app (`apps/mobile`) · monetization — *all out of scope for this document.*
 
