@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { banUser, deleteUser, getAllUsers, promoteUser} from "../services/apiService";
+import { useAuth } from "./AuthProvider";
 
 const UsersContext = createContext();
 
@@ -8,9 +9,13 @@ export function UsersProvider({children}) {
     // state and handlers go here
         const [users, setUsers] = useState([])
     const [loading, setLoading] = useState(false)
+    const {isLoggedIn} = useAuth();
 
 
     const getUsers = async () => {
+        // GET /users now requires auth; skip while logged out (avoids a 401).
+        const token = localStorage.getItem('auth-token')
+        if(!token) return;
         setLoading(true)
         try{
             const response = await getAllUsers();
@@ -99,9 +104,15 @@ export function UsersProvider({children}) {
         }
     }
 
+    // Fetch the users list once authenticated, and re-fetch on login.
+    // On logout, drop the previous user's data so it isn't left in state.
     useEffect(() => {
-        getUsers();
-    }, [])
+        if(isLoggedIn){
+            getUsers();
+        } else {
+            setUsers([]);
+        }
+    }, [isLoggedIn])
   
     return(
         <UsersContext.Provider value={{

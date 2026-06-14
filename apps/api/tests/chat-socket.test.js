@@ -123,8 +123,9 @@ describe('chat socket: send-message error handling', () => {
         ).toHaveLength(0);
 
         // Belt-and-suspenders: the express side of the same process must still
-        // be alive after the bad emit.
-        const res = await request(app).get('/users');
+        // be alive after the bad emit. (Uses the public GET /cards endpoint —
+        // GET /users now requires auth and would 401 without a token.)
+        const res = await request(app).get('/cards');
         expect(res.status).toBe(200);
     });
 });

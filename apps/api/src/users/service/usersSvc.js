@@ -31,6 +31,34 @@ const pickSafeUserFields = (user) => {
     ]);
 }
 
+// Public projection: what any logged-in user may see about OTHER users.
+// Excludes PII/operational fields (email, phone, birthDate, isAdmin, isBanned,
+// lastLoginAt) and trims the address to country + city only.
+const pickPublicUserFields = (user) => {
+    const obj = user.toObject();
+    const fields = _.pick(obj, [
+        "name",
+        "lastName",
+        "profilePicture",
+        "coverImage",
+        "age",
+        "job",
+        "gender",
+        "aboutMe",
+        "createdAt",
+        "_id",
+        "following",
+    ]);
+    fields.address = _.pick(obj.address || {}, ["country", "city"]);
+    return fields;
+}
+
+// Full fields for admins and for a user's own record; public fields otherwise.
+const projectUser = (user, requesterId, isAdmin) => {
+    const isSelf = requesterId && String(user._id) === String(requesterId);
+    return (isAdmin || isSelf) ? pickSafeUserFields(user) : pickPublicUserFields(user);
+}
+
 // MongoDB operation
 
 const createNewUser = async (user) => {
@@ -73,16 +101,15 @@ const loginUser = async ({email, password}) => {
     }
 }
 
-const getUsers = async () => {
+const getUsers = async (requesterId, isAdmin) => {
         const users = await User.find();
-        // return pickSafeUserFields(users)
-        return users.map(user => pickSafeUserFields(user))
+        return users.map(user => projectUser(user, requesterId, isAdmin))
 }
 
-const getUser = async (userId) => {
+const getUser = async (userId, requesterId, isAdmin) => {
         const user = await User.findById(userId);
         if(!user) throw createError(401, "User not found")
-        return pickSafeUserFields(user) 
+        return projectUser(user, requesterId, isAdmin)
 }
 
 const updateUser = async (userId, content) => {

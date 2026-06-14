@@ -173,3 +173,39 @@ describe('core user + card flows (happy paths)', () => {
         expect(res.body.following).toContain(userBId);
     });
 });
+
+describe('GET /users gating + field projection', () => {
+    const PII = ['email', 'phone', 'birthDate', 'isAdmin', 'isBanned', 'lastLoginAt'];
+
+    it('returns 401 to unauthenticated callers (no internet scraping)', async () => {
+        expect((await request(app).get('/users')).status).toBe(401);
+        expect((await request(app).get(`/users/${userBId}`)).status).toBe(401);
+    });
+
+    it('gives a non-admin only a PUBLIC projection of OTHER users (no PII)', async () => {
+        const res = await request(app).get('/users').set('auth-token', tokenA);
+        expect(res.status).toBe(200);
+        const other = res.body.find(u => u._id === userBId);
+        expect(other).toBeTruthy();
+        PII.forEach(f => expect(other).not.toHaveProperty(f));
+        ['street', 'house', 'zip'].forEach(f => expect(other.address || {}).not.toHaveProperty(f));
+        // safe fields the UI relies on are still present
+        expect(other).toHaveProperty('name');
+        expect(other).toHaveProperty('following');
+    });
+
+    it('still gives a user their OWN full record (email present)', async () => {
+        const res = await request(app).get('/users').set('auth-token', tokenA);
+        const me = res.body.find(u => u._id === userAId);
+        expect(me.email).toBe(userA.email);
+    });
+
+    it('GET /users/:id hides PII for others but exposes it for self', async () => {
+        const other = await request(app).get(`/users/${userBId}`).set('auth-token', tokenA);
+        expect(other.status).toBe(200);
+        PII.forEach(f => expect(other.body).not.toHaveProperty(f));
+
+        const self = await request(app).get(`/users/${userAId}`).set('auth-token', tokenA);
+        expect(self.body.email).toBe(userA.email);
+    });
+});

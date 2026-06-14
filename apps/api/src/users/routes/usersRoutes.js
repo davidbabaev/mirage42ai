@@ -22,9 +22,9 @@ const { uploadImageOnly } = require('../../middlewares/multer');
 const uploadToCloudinary = require('../../utils/cloudinary');
 
 
-router.get('/users', async (req, res) => {
+router.get('/users', auth, async (req, res) => {
     try{
-        const users = await getUsers();
+        const users = await getUsers(req.user.userId, req.user.isAdmin);
         res.send(users);
     }
     catch(err){
@@ -32,9 +32,9 @@ router.get('/users', async (req, res) => {
     }
 })
 
-router.get('/users/:id', async (req, res) => {
+router.get('/users/:id', auth, async (req, res) => {
     try{
-        const user = await getUser(req.params.id);
+        const user = await getUser(req.params.id, req.user.userId, req.user.isAdmin);
         res.send(user);
     }
     catch(err){
