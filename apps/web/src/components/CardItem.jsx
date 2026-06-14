@@ -59,17 +59,17 @@ export default function CardItem({
     // video still stops. Today, React's batched commit + synchronous useEffect
     // means the modal sweep alone would also pause it; this is belt-and-
     // suspenders, not a bug fix on its own.
-    const handleCardClick = () => {
+    const handleCardClick = (e) => {
+        // Cancel the browser's native click-to-play/pause toggle on the feed
+        // <video controls>. Without this, the same click that opens the modal
+        // re-plays the video a frame after we pause it, so it keeps playing
+        // behind the modal.
+        e.preventDefault();
         if(!isLoggedIn){
             setIsLoginPopupOpen(true);
             return;
         }
-        const vids = cardRef.current?.querySelectorAll('video');
-        console.log('[CardItem] CLICK', { card: card._id, found: vids?.length, t: performance.now().toFixed(0) });
-        vids?.forEach(v => {
-            console.log('[CardItem] calling pause(), was paused?', v.paused);
-            v.pause();
-        });
+        cardRef.current?.querySelectorAll('video').forEach(v => v.pause());
         onOpenCard();
     }
 
