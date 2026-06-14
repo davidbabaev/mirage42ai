@@ -1,19 +1,39 @@
 require('dotenv').config();
+
+// Fail fast on missing critical config before anything else boots.
+require('./utils/validateEnv')();
+
 const morgan = require('morgan');
 const express = require('express');
 const passport = require('passport');
+const helmet = require('helmet');
 
 
 const corsPolicyMiddleware = require('./middlewares/cors');
+const { generalLimiter } = require('./middlewares/rateLimit');
 const app = express();
 
+// Correct per-IP rate limiting / client IP behind a proxy (e.g. Render).
+app.set('trust proxy', 1);
+
 require('./auth/googleStrategy');
+
+// Security headers first. API is JSON-only and the SPA is a separate origin,
+// so CSP adds nothing here and CORP must allow cross-origin (CORS is unchanged).
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+
 app.use(passport.initialize());
 
 app.use(corsPolicyMiddleware)
 app.use(express.json());
 // app.use(express.static(__dirname + '/public'));
 app.use(morgan("dev"));
+
+// Loose, app-wide rate limit (auth routes add a stricter limiter of their own).
+app.use(generalLimiter);
 
 const router = require('./router/router');
 const {connectToDB} = require('./dbService');

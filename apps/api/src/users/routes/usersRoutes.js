@@ -18,6 +18,7 @@ const {
 } = require('../service/usersSvc');
 const validateUser = require('../validation/joi/validateUserWithJoi');
 const auth = require('../../auth/authService');
+const { authLimiter } = require('../../middlewares/rateLimit');
 const { uploadImageOnly } = require('../../middlewares/multer');
 const uploadToCloudinary = require('../../utils/cloudinary');
 
@@ -42,7 +43,7 @@ router.get('/users/:id', auth, async (req, res) => {
     }
 })
 
-router.post('/users' ,async (req, res) => {
+router.post('/users' , authLimiter, async (req, res) => {
         try{
             const {error} = validateUser(req.body)
             if(error) return res.status(400).send(error.details[0].message);
@@ -56,7 +57,7 @@ router.post('/users' ,async (req, res) => {
         }
 })
 
-router.post('/users/login', async (req,res) => {
+router.post('/users/login', authLimiter, async (req,res) => {
     try{
         const token = await loginUser(req.body);
         res.send(token);
