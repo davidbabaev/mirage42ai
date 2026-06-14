@@ -21,6 +21,7 @@ import { Box } from '@mui/material'
 import ChatPage from './pages/chat/ChatPage'
 import { UsersProvider } from './providers/UsersProvider'
 import { UIProvider } from './providers/UIProvider'
+import { VideoCoordinatorProvider } from './providers/VideoCoordinatorProvider'
 import RotateOverlay from './components/style/RotateOverlay'
 import PageNotFound from './pages/PageNotFound'
 import LandingPage from './pages/landing/LandingPage'
@@ -36,8 +37,9 @@ export default function App(){
         <CardsProvider>
           <UsersProvider>
             <UIProvider>
+              <VideoCoordinatorProvider>
               <RotateOverlay/>
-              <Box 
+              <Box
                 sx={{
                   height: '100dvh',
                   display: 'flex',
@@ -109,8 +111,9 @@ export default function App(){
                     }/>
                   </Routes>
                 </Box>
-                
+
               </Box>
+              </VideoCoordinatorProvider>
             </UIProvider>
           </UsersProvider>
         </CardsProvider>

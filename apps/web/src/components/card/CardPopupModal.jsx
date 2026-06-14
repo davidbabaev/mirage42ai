@@ -1,37 +1,23 @@
 import CardDetailsModal from './CardDetailsModal';
 import { Box, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 export default function CardPopupModal({cardId, onClose}) {
 
-  const containerRef = useRef(null);
-
   useEffect(() => {
     document.body.style.overflow = 'hidden'
-    // Pause any <video> playing behind the modal (e.g. a feed card video) so
-    // its audio doesn't keep leaking through under the now-foregrounded details
-    // view. SCOPED: only pause videos OUTSIDE this modal — the modal's own
-    // video (rendered inside CardDetailsModal) must be left alone so the user
-    // can click play on it.
-    const modalEl = containerRef.current;
-    // Defensive: if the ref hasn't attached for any reason, skip the sweep
-    // entirely rather than fall through to pausing the modal's own video.
-    if (modalEl) {
-      document.querySelectorAll('video').forEach((v) => {
-        if (modalEl.contains(v)) return;
-        v.pause();
-      })
-    }
+    // Pausing the feed video behind the modal is now handled declaratively by
+    // the video coordinator: the modal's own video claims the single "active"
+    // slot on mount, which pauses every other video (see VideoCoordinatorProvider
+    // / useManagedVideo). No DOM sweep needed here.
     return () => {
       document.body.style.overflow = 'unset'
     }
-
   }, [])
 
   return (
     <Box
-      ref={containerRef}
       sx={{
         position: 'fixed',
         top: 0,

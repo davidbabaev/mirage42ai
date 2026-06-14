@@ -217,6 +217,7 @@ export default function CardItem({
                 <MediaDisplay
                     mediaUrl={card.mediaUrl}
                     mediaType={card.mediaType}
+                    videoMode="feed"
                     style={{
                         width: '100%',
                         // height: '100%',

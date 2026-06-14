@@ -70,9 +70,10 @@ export default function CardDetailsModal({cardId, onClose}) {
             <MediaDisplay
                 mediaUrl={currentCard.mediaUrl}
                 mediaType={currentCard.mediaType}
+                videoMode="modal"
                 style={{
-                    width: '100%', 
-                    height: '100%', 
+                    width: '100%',
+                    height: '100%',
                     objectFit: 'contain',
                     display: 'block',
                 }}

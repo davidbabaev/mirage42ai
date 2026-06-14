@@ -2,93 +2,107 @@ import React, { useState } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, screen, cleanup } from '@testing-library/react';
 import { renderWithRouter } from './test-utils/render-with-router';
+import { VideoCoordinatorProvider } from '../src/providers/VideoCoordinatorProvider';
+import MediaDisplay from '../src/components/MediaDisplay';
 
-// Stub CardDetailsModal so we don't need the real provider tree, but make the
-// stub render its OWN <video> element. That lets us assert two things:
-//   1. The feed video (rendered by the harness, simulating CardItem's video)
-//      pauses when the modal mounts.
-//   2. The modal's own video does NOT get paused — otherwise the user would
-//      have to click play in the modal too, which is the wrong UX.
-vi.mock('../src/components/card/CardDetailsModal', () => ({
-    default: () => <video src="" controls data-testid="modal-video" />,
-}));
+// Pausing the background feed video is now declarative: the modal's own video
+// (videoMode="modal") claims the single "active" slot on mount, and the
+// coordinator pauses every OTHER managed video that is currently playing.
+// (The old imperative document.querySelectorAll('video') sweep was removed.)
+//
+// jsdom never actually plays media, so a managed video always reports
+// paused === true and the coordinator — which only pauses a video when
+// !v.paused — would have nothing to pause. We therefore force the feed videos
+// to report as "playing" so the enforcement path is exercised. The real
+// play/pause timing is browser-verified (Playwright), not asserted here.
+function forcePlaying(el) {
+    Object.defineProperty(el, 'paused', { configurable: true, value: false });
+}
 
-import CardPopupModal from '../src/components/card/CardPopupModal';
+// Spy on HTMLMediaElement.prototype.pause; mock.contexts records `this` (the
+// element) for each call, so we can assert WHICH videos were paused.
+let pauseSpy;
+beforeEach(() => {
+    pauseSpy = vi.spyOn(HTMLMediaElement.prototype, 'pause');
+    // jsdom doesn't implement play(); stub it so the coordinator's
+    // enforcement effect (v.play() on the active video) doesn't throw.
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+});
 
-// Faithful approximation of FeedPage's relationship to CardPopupModal:
-// a sibling <video> element rendered by React (the feed card's video) and a
-// state-driven modal mount triggered by user interaction (FeedPage does this
-// via setSelectedCardId in CardItem's onOpenCard).
-function FeedHarness() {
-    const [isOpen, setIsOpen] = useState(false);
+afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+});
+
+// Mirrors FeedPage: managed feed videos rendered as siblings, plus a
+// state-driven modal-mode video mounted on user interaction.
+function Harness({ feedUrls }) {
+    const [open, setOpen] = useState(false);
     return (
-        <>
-            <video src="" controls data-testid="feed-video" />
-            <button data-testid="open" onClick={() => setIsOpen(true)}>open</button>
-            {isOpen && <CardPopupModal cardId="abc" onClose={() => setIsOpen(false)} />}
-        </>
+        <VideoCoordinatorProvider>
+            {feedUrls.map((u, i) => (
+                <div key={u} data-testid={`feed-wrap-${i}`}>
+                    <MediaDisplay mediaUrl={u} mediaType="video" videoMode="feed" />
+                </div>
+            ))}
+            <button data-testid="open" onClick={() => setOpen(true)}>open</button>
+            {open && (
+                <div data-testid="modal-wrap">
+                    <MediaDisplay mediaUrl="modal-clip" mediaType="video" videoMode="modal" />
+                </div>
+            )}
+        </VideoCoordinatorProvider>
     );
 }
 
-// Spy on HTMLMediaElement.prototype.pause so we can inspect *which* elements
-// it was called on after the modal mounts. mock.contexts records `this` for
-// each call, which is the element pause() was invoked on. We install this in
-// beforeEach so it's in place before any render happens and survives the
-// mount of the modal's own video (which we can't spy on after the fact —
-// the modal's mount effect runs synchronously inside fireEvent.click).
-let prototypePauseSpy;
-beforeEach(() => {
-    prototypePauseSpy = vi.spyOn(HTMLMediaElement.prototype, 'pause');
-});
+const videoIn = (testid) => screen.getByTestId(testid).querySelector('video');
 
-// We don't have globals: true in vitest.config, so @testing-library/react's
-// own automatic afterEach cleanup doesn't get installed. Run it manually so
-// each test starts with an empty DOM (otherwise getByTestId hits stale nodes
-// from the previous test). Also restore the prototype spy so it doesn't
-// accumulate on HTMLMediaElement.prototype across tests.
-afterEach(() => {
-    cleanup();
-    prototypePauseSpy.mockRestore();
-});
-
-describe('CardPopupModal — realistic composition', () => {
-    it('pauses a React-rendered feed video when state opens the modal', () => {
-        renderWithRouter(<FeedHarness />);
-        const feedVideo = screen.getByTestId('feed-video');
+describe('VideoCoordinator — single active video', () => {
+    it('pauses a playing feed video when the modal video claims active', () => {
+        renderWithRouter(<Harness feedUrls={['feed-a']} />);
+        const feedVideo = videoIn('feed-wrap-0');
+        forcePlaying(feedVideo);
 
         fireEvent.click(screen.getByTestId('open'));
 
-        expect(prototypePauseSpy.mock.contexts).toContain(feedVideo);
+        expect(pauseSpy.mock.contexts).toContain(feedVideo);
     });
 
-    it('does NOT pause the modal\'s own video', () => {
-        renderWithRouter(<FeedHarness />);
+    it("does NOT pause the modal's own video", () => {
+        renderWithRouter(<Harness feedUrls={['feed-a']} />);
+        forcePlaying(videoIn('feed-wrap-0'));
 
         fireEvent.click(screen.getByTestId('open'));
 
-        const modalVideo = screen.getByTestId('modal-video');
-        expect(prototypePauseSpy.mock.contexts).not.toContain(modalVideo);
+        const modalVideo = videoIn('modal-wrap');
+        expect(pauseSpy.mock.contexts).not.toContain(modalVideo);
     });
 
-    it('pauses every background video when there are multiple feed cards', () => {
-        function MultiHarness() {
-            const [isOpen, setIsOpen] = useState(false);
-            return (
-                <>
-                    <video src="" controls data-testid="feed-video-a" />
-                    <video src="" controls data-testid="feed-video-b" />
-                    <button data-testid="open" onClick={() => setIsOpen(true)}>open</button>
-                    {isOpen && <CardPopupModal cardId="abc" onClose={() => setIsOpen(false)} />}
-                </>
-            );
-        }
-        renderWithRouter(<MultiHarness />);
-        const a = screen.getByTestId('feed-video-a');
-        const b = screen.getByTestId('feed-video-b');
+    it('pauses every playing feed video when the modal opens', () => {
+        renderWithRouter(<Harness feedUrls={['feed-a', 'feed-b']} />);
+        const a = videoIn('feed-wrap-0');
+        const b = videoIn('feed-wrap-1');
+        forcePlaying(a);
+        forcePlaying(b);
 
         fireEvent.click(screen.getByTestId('open'));
 
-        expect(prototypePauseSpy.mock.contexts).toContain(a);
-        expect(prototypePauseSpy.mock.contexts).toContain(b);
+        expect(pauseSpy.mock.contexts).toContain(a);
+        expect(pauseSpy.mock.contexts).toContain(b);
+    });
+
+    it('manually playing one video pauses the others', () => {
+        renderWithRouter(<Harness feedUrls={['feed-a', 'feed-b']} />);
+        const a = videoIn('feed-wrap-0');
+        const b = videoIn('feed-wrap-1');
+        forcePlaying(a);
+        forcePlaying(b);
+
+        // Simulate the user pressing play on the first video.
+        fireEvent(a, new Event('play'));
+
+        // The other video gets paused; the one that claimed active does not.
+        expect(pauseSpy.mock.contexts).toContain(b);
+        expect(pauseSpy.mock.contexts).not.toContain(a);
     });
 });
