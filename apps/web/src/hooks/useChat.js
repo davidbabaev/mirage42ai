@@ -10,6 +10,9 @@ function useChat(
 ) {
     const [conversationsList, setConversationsList] = useState([]);
     const [chatMessages, setChatMessages] = useState([]);
+    const [sendError, setSendError] = useState(null);
+
+    const clearSendError = () => setSendError(null);
 
     const {user} = useAuth();
 
@@ -41,7 +44,12 @@ function useChat(
                 formData.append('toUser', message.toUser);
                 formData.append('text', message.text);
 
-            await uploadChatMedia(formData)   
+            try{
+                await uploadChatMedia(formData)
+            }
+            catch(err){
+                setSendError(err.message || 'Could not send media. Please try again.')
+            }
         }
         else{
             getSocket().emit('send-message', message)
@@ -93,9 +101,15 @@ function useChat(
             }
         })
 
+        // surface server-side send failures (the backend emits this to the sender)
+        socket.on('send-message-error', (payload) => {
+            setSendError(payload?.message || 'Message failed to send. Please try again.')
+        })
+
         return () => {
             socket.off('receive-message');
             socket.off('deleted-conversation');
+            socket.off('send-message-error');
         }
 
     }, [
@@ -110,7 +124,9 @@ function useChat(
         handleSendNewMessage,
         conversationsList,
         chatMessages,
-        handleDeleteChat
+        handleDeleteChat,
+        sendError,
+        clearSendError
     }
 }
 

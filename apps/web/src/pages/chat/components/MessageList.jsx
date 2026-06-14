@@ -1,108 +1,143 @@
-import { Avatar, Box, Typography } from '@mui/material';
+import { Avatar, Box, Chip, Typography } from '@mui/material';
 import MediaDisplay from '../../../components/MediaDisplay';
 import getMessageTime from '../../../utils/getMessageTime';
 
-// Scrollable message area. Bubbles aligned by sender; the parent owns the
-// container/end refs and the ready-to-reveal flag.
-export default function MessageList({ messages, currentUserId, otherUser, containerRef, endRef, isChatReady }) {
+const GROUP_GAP_MS = 5 * 60 * 1000; // messages within 5 min from the same sender group together
+const AVATAR = 32;
+const AVATAR_GAP = 8;
+
+const sameDay = (a, b) => {
+    const da = new Date(a), db = new Date(b);
+    return da.getFullYear() === db.getFullYear()
+        && da.getMonth() === db.getMonth()
+        && da.getDate() === db.getDate();
+};
+
+function dayLabel(dateStr) {
+    const d = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+    if (sameDay(d, today)) return 'Today';
+    if (sameDay(d, yesterday)) return 'Yesterday';
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// Scrollable message area: WhatsApp/IG-style grouped bubbles + day separators.
+// The parent owns the container/end refs, scroll tracking, and the reveal flag.
+export default function MessageList({ messages, currentUserId, otherUser, containerRef, endRef, isChatReady, onScroll }) {
     return (
         <Box
             ref={containerRef}
+            onScroll={onScroll}
             sx={{
                 flex: 1,
-                p: 2,
+                px: { xs: 1.5, md: 2 },
+                py: 2,
                 overflowY: 'auto',
                 visibility: isChatReady ? 'visible' : 'hidden'
             }}
         >
-            {messages.map((message) => {
+            {messages.map((message, i) => {
                 const isSent = currentUserId === message.userId;
-                // isSent === true → purple bubble, right side, no avatar
-                // isSent === false → dark bubble, left side, with the other user's avatar
+                const prev = messages[i - 1];
+                const next = messages[i + 1];
 
-                return(
-                    <Box key={message._id}
-                        sx={{
-                            display: 'flex',
-                            justifyContent: isSent ? 'flex-end' : 'flex-start',
-                            alignItems: 'flex-end',
-                            gap: 1,
-                            mb: 1.5
-                        }}
-                    >
-                        {!isSent && (
-                            <Avatar
-                                src={otherUser?.profilePicture}
-                                sx={{
-                                    width: 32,
-                                    height: 32
-                                }}
-                            />
+                const showDate = i === 0 || !sameDay(prev.createdAt, message.createdAt);
+
+                const firstOfGroup = showDate
+                    || prev.userId !== message.userId
+                    || (new Date(message.createdAt) - new Date(prev.createdAt)) > GROUP_GAP_MS;
+
+                const lastOfGroup = i === messages.length - 1
+                    || next.userId !== message.userId
+                    || !sameDay(next.createdAt, message.createdAt)
+                    || (new Date(next.createdAt) - new Date(message.createdAt)) > GROUP_GAP_MS;
+
+                // received avatar appears once, on the group's last bubble
+                const showAvatar = !isSent && lastOfGroup;
+                const needsAvatarSpacer = !isSent && !lastOfGroup;
+
+                return (
+                    <Box key={message._id}>
+                        {showDate && (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', my: 1.5 }}>
+                                <Chip
+                                    label={dayLabel(message.createdAt)}
+                                    size="small"
+                                    sx={{ bgcolor: 'action.hover', color: 'text.secondary', fontSize: 11 }}
+                                />
+                            </Box>
                         )}
-                        {/* bubble box message */}
+
                         <Box
                             sx={{
-                                bgcolor: isSent ? 'primary.main' : 'action.hover',
-                                color: isSent ? 'white' : 'text.primary',
-                                px: message.mediaUrl ? 1 : 2,
-                                py: message.mediaUrl ? 1 : 1.5,
-                                borderRadius: 4,
-                                maxWidth: '70%',
-                                // the tail
                                 display: 'flex',
-                                flexDirection: 'column',
-                                borderBottomLeftRadius: isSent ? 15 : 3,
-                                borderBottomRightRadius: !isSent ? 15 : 3,
-                                wordBreak: 'break-word'
+                                justifyContent: isSent ? 'flex-end' : 'flex-start',
+                                alignItems: 'flex-end',
+                                gap: `${AVATAR_GAP}px`,
+                                mb: lastOfGroup ? 1.5 : 0.3,
+                                ml: needsAvatarSpacer ? `${AVATAR + AVATAR_GAP}px` : 0,
                             }}
                         >
-
-                            {/* Media (if present) */}
-                            {message.mediaUrl && (
-                                <Box sx={{
-                                    mb: 1,
-                                    overflow: 'hidden'
-                                }}>
-                                    <MediaDisplay
-                                        mediaUrl={message.mediaUrl}
-                                        mediaType={message.mediaType}
-                                        style={{
-                                            width:'100%',
-                                            maxHeight: 280,
-                                            objectFit: 'cover',
-                                            display: 'block',
-                                            borderRadius: 10
-                                        }}
-                                    />
-                                </Box>
+                            {showAvatar && (
+                                <Avatar src={otherUser?.profilePicture} sx={{ width: AVATAR, height: AVATAR }} />
                             )}
 
-                            <Typography
-                                fontSize={15}
-                                lineHeight={1.4}
+                            <Box
                                 sx={{
-                                    whiteSpace: 'pre-wrap'
+                                    bgcolor: isSent ? 'primary.main' : 'action.hover',
+                                    color: isSent ? 'white' : 'text.primary',
+                                    px: message.mediaUrl ? 1 : 1.75,
+                                    py: message.mediaUrl ? 1 : 1.25,
+                                    borderRadius: 2.5,
+                                    maxWidth: { xs: '78%', md: '65%' },
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    // tail only on the group's last bubble
+                                    borderBottomRightRadius: isSent && lastOfGroup ? 2 : 2.5,
+                                    borderBottomLeftRadius: !isSent && lastOfGroup ? 2 : 2.5,
+                                    wordBreak: 'break-word'
                                 }}
                             >
-                                {message.text}
-                            </Typography>
+                                {message.mediaUrl && (
+                                    <Box sx={{ mb: message.text ? 0.75 : 0, overflow: 'hidden' }}>
+                                        <MediaDisplay
+                                            mediaUrl={message.mediaUrl}
+                                            mediaType={message.mediaType}
+                                            style={{
+                                                width: '100%',
+                                                maxHeight: 280,
+                                                objectFit: 'cover',
+                                                display: 'block',
+                                                borderRadius: 10
+                                            }}
+                                        />
+                                    </Box>
+                                )}
 
-                            <Typography
-                                fontSize={12}
-                                sx={{
-                                    alignSelf: 'flex-end',
-                                    color: isSent ? 'rgba(255, 255, 255, 0.69)' : 'text.secondary'
-                                }}
-                            >
-                                {getMessageTime(message.createdAt)}
-                            </Typography>
+                                {message.text && (
+                                    <Typography fontSize={15} lineHeight={1.4} sx={{ whiteSpace: 'pre-wrap' }}>
+                                        {message.text}
+                                    </Typography>
+                                )}
+
+                                <Typography
+                                    fontSize={11}
+                                    sx={{
+                                        alignSelf: 'flex-end',
+                                        mt: 0.25,
+                                        color: isSent ? 'rgba(255, 255, 255, 0.7)' : 'text.secondary'
+                                    }}
+                                >
+                                    {getMessageTime(message.createdAt)}
+                                </Typography>
+                            </Box>
                         </Box>
-
                     </Box>
-                )
+                );
             })}
-            {/* invisble market at the bottom */}
-            <Box ref={endRef}/>
+            {/* invisible marker at the bottom */}
+            <Box ref={endRef} />
         </Box>
     );
 }

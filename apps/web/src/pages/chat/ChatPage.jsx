@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useChat from '../../hooks/useChat'
 import { useAuth } from '../../providers/AuthProvider';
-import { Box, Container, Grid } from '@mui/material';
+import { Alert, Box, Container, Grid, Snackbar } from '@mui/material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useUsersProvider } from '../../providers/UsersProvider';
 import { useUI } from '../../providers/UIProvider';
@@ -10,6 +10,7 @@ import ChatHeader from './components/ChatHeader';
 import MessageList from './components/MessageList';
 import MessageInput from './components/MessageInput';
 import ChatEmptyState from './components/ChatEmptyState';
+import ScrollToBottomButton from './components/ScrollToBottomButton';
 
 export default function ChatPage() {
 
@@ -86,7 +87,9 @@ export default function ChatPage() {
         handleSendNewMessage,
         conversationsList,
         chatMessages,
-        handleDeleteChat
+        handleDeleteChat,
+        sendError,
+        clearSendError
     } = useChat(
         selectedChat?.conversationId,
         handleConversationDeleted,
@@ -109,18 +112,61 @@ export default function ChatPage() {
     const messageContainerRef = useRef(null);
     const messageEndRef = useRef(null);
 
+    // smart-scroll bookkeeping
+    const [isNearBottom, setIsNearBottom] = useState(true);
+    const [hasNewBelow, setHasNewBelow] = useState(false);
+    const isNearBottomRef = useRef(true);   // read inside the effect without re-subscribing
+    const prevConvIdRef = useRef(undefined);
+    const prevLenRef = useRef(0);
+
+    const scrollToBottom = (behavior = 'smooth') => {
+        messageEndRef.current?.scrollIntoView({ behavior });
+        setHasNewBelow(false);
+    };
+
+    const handleMessagesScroll = () => {
+        const c = messageContainerRef.current;
+        if (!c) return;
+        const distanceFromBottom = c.scrollHeight - c.scrollTop - c.clientHeight;
+        const near = distanceFromBottom < 120;
+        isNearBottomRef.current = near;
+        setIsNearBottom(near);
+        if (near) setHasNewBelow(false);
+    };
+
     useEffect(() => {
-        if(chatMessages.length === 0) return;
+        const len = chatMessages.length;
+        if (len === 0) return;
 
-        // jump to bottom (still invisible because isChatReady is false)
-        messageEndRef.current?.scrollIntoView({behavior: 'auto'})
+        // detect the open conversation from the loaded data (not the id state,
+        // which updates before the messages do)
+        const convId = chatMessages[0]?.conversationId;
+        const convChanged = convId !== prevConvIdRef.current;
 
-        // wait one paint frame, then reveal
-        requestAnimationFrame(() => {
-            setIsChatReady(true)
-        })
+        if (convChanged) {
+            // fresh conversation: jump to the latest instantly
+            messageEndRef.current?.scrollIntoView({ behavior: 'auto' });
+            setHasNewBelow(false);
+            setIsNearBottom(true);
+            isNearBottomRef.current = true;
+        } else if (len > prevLenRef.current) {
+            // new message in the open chat
+            const last = chatMessages[len - 1];
+            const mine = last?.userId === user?._id;
+            if (mine || isNearBottomRef.current) {
+                scrollToBottom('smooth');
+            } else {
+                setHasNewBelow(true); // they're reading history — don't yank
+            }
+        }
 
-    }, [chatMessages])
+        // reveal once messages are present (kept hidden until the first paint to
+        // avoid a scroll-jump flash)
+        requestAnimationFrame(() => setIsChatReady(true));
+
+        prevConvIdRef.current = convId;
+        prevLenRef.current = len;
+    }, [chatMessages, user?._id])
 
     useEffect(() => {
         setMessageText('');
@@ -222,6 +268,7 @@ return (
                     height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
+                    position: 'relative',
                     border: {xs: '0', md:'1px solid'},
                     borderColor: {md:'divider'},
                     borderRadius: {xs: 0, md: 3},
@@ -244,6 +291,13 @@ return (
                     containerRef={messageContainerRef}
                     endRef={messageEndRef}
                     isChatReady={isChatReady}
+                    onScroll={handleMessagesScroll}
+                />
+
+                <ScrollToBottomButton
+                    visible={!isNearBottom}
+                    hasNew={hasNewBelow}
+                    onClick={() => scrollToBottom('smooth')}
                 />
 
                 <MessageInput
@@ -264,6 +318,17 @@ return (
         )}
     </Grid>
 </Grid>
+
+<Snackbar
+    open={!!sendError}
+    autoHideDuration={5000}
+    onClose={clearSendError}
+    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+>
+    <Alert severity="error" variant="filled" onClose={clearSendError} sx={{ width: '100%' }}>
+        {sendError}
+    </Alert>
+</Snackbar>
 </Container>
 )
 }
