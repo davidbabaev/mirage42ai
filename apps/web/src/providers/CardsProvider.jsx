@@ -26,7 +26,7 @@ useEffect(() => {
     fetchCards();
 }, [])
 
-// fetches feed on mount (first load) 
+// fetches feed on mount (first load)
 useEffect(() => {
     const token = localStorage.getItem('auth-token')
     if(token){
@@ -46,6 +46,31 @@ const refreshFeed = async () => {
     catch(err){
         console.log(err.message);
     }
+}
+
+// Drop an author's posts from the feed in place (e.g. on unfollow), so they
+// disappear instantly without a refetch or scroll reset.
+const removeAuthorFromFeed = (userId) => {
+    if(!userId) return;
+    setFeedCards(prev => prev.filter(card => String(card.userId) !== String(userId)));
+}
+
+// Add a newly-followed author's posts to the feed in place. Their cards are
+// already loaded client-side in `registeredCards` (GET /cards returns all
+// non-banned cards), so we merge them in — deduped and date-sorted to match
+// the feed's order — without a refetch or scroll reset.
+const addAuthorToFeed = (userId) => {
+    if(!userId) return;
+    setFeedCards(prev => {
+        const present = new Set(prev.map(c => c._id));
+        const additions = registeredCards.filter(c =>
+            String(c.userId) === String(userId) && !c.isBanned && !present.has(c._id)
+        );
+        if(additions.length === 0) return prev;
+        return [...prev, ...additions].sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+    });
 }
 
 const handleCardRegister = async (cardData) => {
@@ -204,7 +229,9 @@ const handleCardRegister = async (cardData) => {
         handleToggleLike, 
         handleAddComment, 
         handleRemoveComment, 
-        refreshFeed, 
+        refreshFeed,
+        removeAuthorFromFeed,
+        addAuthorToFeed,
         feedCards,
         fetchCards,
         handleBanCard,

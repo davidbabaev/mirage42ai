@@ -1,10 +1,12 @@
 import { useAuth } from "../providers/AuthProvider";
 import { useUsersProvider } from "../providers/UsersProvider";
+import { useCardsProvider } from "../providers/CardsProvider";
 
 function useFollowUser() {
 
   const{ handleToggleFollow, user} = useAuth();
   const {users, syncUser} = useUsersProvider();
+  const {removeAuthorFromFeed, addAuthorToFeed} = useCardsProvider();
 
     // toggle Follow
 
@@ -15,6 +17,14 @@ function useFollowUser() {
         // re-fetch (which caused re-renders / scroll jump).
         const updatedUser = await handleToggleFollow(userId);
         syncUser(updatedUser);
+        if (!updatedUser) return;
+        // Reflect the change in the feed in place — no refetch, no scroll reset.
+        // Follow -> add their posts; unfollow -> drop them.
+        if ((updatedUser.following || []).includes(userId)) {
+            addAuthorToFeed(userId);
+        } else {
+            removeAuthorFromFeed(userId);
+        }
     }
 
     // isFollow by me
