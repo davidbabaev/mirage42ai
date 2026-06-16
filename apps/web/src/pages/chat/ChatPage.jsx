@@ -101,6 +101,11 @@ export default function ChatPage() {
         const id = selectedChat?.conversationId ?? null;
         setActiveConversationId(id);
         if (id) markRead(id);
+        // Clear the active conversation when leaving the chat page (unmount) or
+        // switching conversations. Without this, ChatProvider keeps treating the
+        // last-opened conversation as "active" after you navigate away, so its
+        // incoming messages never bump the unread badge.
+        return () => setActiveConversationId(null);
     }, [selectedChat?.conversationId, setActiveConversationId, markRead])
 
     const handleSend = () => {
