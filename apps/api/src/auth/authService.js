@@ -17,8 +17,10 @@ const auth = async (req, res, next) => {
         if(foundUser.isBanned === true){
             return res.status(403).send("You Banned :(")
         }
-        
-        req.user = decoded;
+
+        // Role comes from the DB, never the token, so promote/demote/ban take
+        // effect on the next request instead of waiting for the token to reissue.
+        req.user = { userId: decoded.userId, isAdmin: foundUser.isAdmin };
         next()
     }
     catch(err){
