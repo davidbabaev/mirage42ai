@@ -1,0 +1,37 @@
+name: CI
+
+# Run lint + both test suites on every push and pull request.
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Installs all workspaces from the single root lockfile.
+      - name: Install dependencies
+        run: npm ci
+
+      # API has no ESLint config yet (deferred), so lint runs on web only.
+      # Non-blocking for now: web lint has pre-existing Phase-D debt
+      # (set-state-in-effect, react-refresh) — it reports in the logs but does
+      # NOT fail the build. Remove continue-on-error to make it a hard gate once
+      # Phase D #16 (provider/hook cleanup) clears the errors.
+      - name: Lint (web)
+        run: npm run lint --workspace apps/web
+        continue-on-error: true
+
+      - name: Test (web)
+        run: npm run test --workspace apps/web
+
+      # API tests are self-contained: in-memory Mongo + env set in-test. No secrets.
+      - name: Test (api)
+        run: npm run test --workspace apps/api
