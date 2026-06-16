@@ -3,41 +3,78 @@ const BASE_URL = import.meta.env.VITE_API_URL;
 const getToken = () => localStorage.getItem('auth-token');
 export const FORCE_LOGOUT_EVENT = 'auth:force-logout'
 
-const httpRequest = async (endpoint, method, body) => {
-    const token = getToken();
+const forceLogout = (reason) => {
+    window.dispatchEvent(new CustomEvent(FORCE_LOGOUT_EVENT, { detail: { reason } }))
+}
 
-    const headers = {
-        "Content-Type": "application/json"
+// Single-flight refresh: many requests can 401 at once when the access token
+// expires; they all await the same /auth/refresh round-trip instead of each
+// firing their own. credentials:'include' sends the httpOnly refresh cookie.
+let refreshPromise = null;
+
+const requestRefresh = async () => {
+    const res = await fetch(BASE_URL + '/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+    })
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(data?.token) localStorage.setItem('auth-token', data.token);
+    return data?.token || null;
+}
+
+const refreshAccessToken = () => {
+    if(!refreshPromise){
+        refreshPromise = requestRefresh().finally(() => { refreshPromise = null; })
     }
+    return refreshPromise;
+}
 
+// Revoke the refresh cookie server-side on logout. Best-effort.
+export const logout = () => fetch(BASE_URL + '/auth/logout', {
+    method: 'POST',
+    credentials: 'include',
+})
+
+const buildOptions = (method, body, isFormData) => {
+    const token = getToken();
+    const headers = isFormData ? {} : { "Content-Type": "application/json" };
     if(token){
         headers['auth-token'] = token;
     }
-
-    const options = {
-        method,
-        headers,
-    }
-
+    const options = { method, headers, credentials: 'include' };
     if(body){
-        options.body = JSON.stringify(body);
+        options.body = isFormData ? body : JSON.stringify(body);
     }
+    return options;
+}
 
-    const response = await fetch(BASE_URL + endpoint, options)
+const send = async (endpoint, method, body, isFormData) => {
+    const hadToken = !!getToken();
+    let response = await fetch(BASE_URL + endpoint, buildOptions(method, body, isFormData))
+
+    // A 401 on an authenticated request usually means the access token expired.
+    // Try a one-shot refresh and replay the request once. If refresh fails, the
+    // session is genuinely over.
+    if(response.status === 401 && hadToken && endpoint !== '/auth/refresh'){
+        const newToken = await refreshAccessToken();
+        if(newToken){
+            response = await fetch(BASE_URL + endpoint, buildOptions(method, body, isFormData))
+        } else {
+            forceLogout('session');
+            throw new Error('Session expired');
+        }
+    }
 
     if(!response.ok){
         const message = await response.text()
 
         if(response.status === 401 && message === 'User not found :('){
-            window.dispatchEvent(new CustomEvent(FORCE_LOGOUT_EVENT, {
-                detail: {reason: 'deleted'}
-            }))
+            forceLogout('deleted');
         }
 
         if(response.status === 403 && message === 'You Banned :('){
-            window.dispatchEvent(new CustomEvent(FORCE_LOGOUT_EVENT, {
-                detail: {reason: 'banned'}
-            }))
+            forceLogout('banned');
         }
 
         throw new Error(message);
@@ -45,45 +82,8 @@ const httpRequest = async (endpoint, method, body) => {
     return await response.json();
 }
 
-const httpRequestFormData = async (endpoint, method, body) => {
-    const token = getToken();
-
-    const headers = {};
-
-    if(token){
-        headers['auth-token'] = token;
-    }
-
-    const options = {
-        method,
-        headers,
-    }
-
-    if(body){
-        options.body = body;
-    }
-
-    const response = await fetch(BASE_URL + endpoint, options)
-
-    if(!response.ok){
-        const message = await response.text();
-
-        if(response.status === 401 && message === 'User not found :('){
-            window.dispatchEvent(new CustomEvent(FORCE_LOGOUT_EVENT, {
-                detail: {reason: 'deleted'}
-            }))
-        }
-
-        if(response.status === 403 && message === 'You Banned :('){
-            window.dispatchEvent(new CustomEvent(FORCE_LOGOUT_EVENT, {
-                detail: {reason: 'banned'}
-            }))
-        }
-
-        throw new Error(message);
-    }
-    return await response.json();
-}
+const httpRequest = (endpoint, method, body) => send(endpoint, method, body, false);
+const httpRequestFormData = (endpoint, method, body) => send(endpoint, method, body, true);
 
 // Users Requests
 export const loginUser = (userData) => httpRequest('/users/login', 'POST', userData);

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { followUnfollowUser, loginUser, registerUser, updateUser, getSingleUser, FORCE_LOGOUT_EVENT } from '../services/apiService';
+import { followUnfollowUser, loginUser, registerUser, updateUser, getSingleUser, logout, FORCE_LOGOUT_EVENT } from '../services/apiService';
 import { jwtDecode } from 'jwt-decode';
 import { connectSocket, disconnectSocket } from '../services/socketService';
 import { useNavigate } from 'react-router-dom';
@@ -111,6 +111,8 @@ export function AuthProvider({children}) {
     }
 
     const handleLogout = () => {
+        // Best-effort: revoke the refresh token + clear its cookie server-side.
+        logout().catch(() => {});
         localStorage.removeItem('auth-token');
         setIsLoggedIn(false);
         setUser(null);
