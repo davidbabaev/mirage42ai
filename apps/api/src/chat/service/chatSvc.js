@@ -38,7 +38,11 @@ const createNewMessage = async (message, userId) => {
                     mediaType: newMessage.mediaType,
                     senderId: userId,
                     createdAt: newMessage.createdAt,
-                }
+                },
+                // NOTE: we deliberately do NOT touch deletedAt here. A new message
+                // (createdAt > deletedAt[me]) naturally resurfaces the chat for a
+                // user who had deleted it, while their deletedAt keeps the old
+                // history hidden — they only see messages newer than their cutoff.
             },
             {timestamps: true} // force updatedAt to refresh
         )
@@ -49,9 +53,17 @@ const createNewMessage = async (message, userId) => {
     }
 }
 
-const getMessages = async (conversationId) => {
-    const messages = await Message.find({conversationId}).sort({createdAt: 1})
-    // smae as: { conversationId: conversationId }
+// Per-user history: only messages newer than this user's delete cutoff. After
+// I delete, my thread is empty until new messages arrive; I never see the old
+// history. Passing no userId returns everything (used internally if needed).
+const getMessages = async (conversationId, userId) => {
+    const filter = { conversationId };
+    if (userId) {
+        const conversation = await Conversation.findById(conversationId);
+        const deletedAt = conversation?.deletedAt?.get(String(userId));
+        if (deletedAt) filter.createdAt = { $gt: deletedAt };
+    }
+    const messages = await Message.find(filter).sort({createdAt: 1})
     return messages;
 }
 
@@ -60,28 +72,42 @@ const getChats = async (userId) => {
         $or: [
             {fromUser: new mongoose.Types.ObjectId(userId)},
             {toUser: new mongoose.Types.ObjectId(userId)}
-        ]
+        ],
     }).sort({updatedAt: -1});
 
-    // Attach this user's unread count to each conversation: messages newer than
-    // their lastReadAt that they didn't send.
-    // SCALING NOTE: this runs one countDocuments per conversation (N+1). Fine for
-    // the per-user conversation counts we expect; if a user accumulates many
-    // hundreds of conversations, replace this loop with a single aggregation
+    // Per conversation: apply this user's delete cutoff, then attach unread count.
+    // SCALING NOTE: this runs one or two countDocuments per conversation (N+1).
+    // Fine for the per-user conversation counts we expect; if a user accumulates
+    // many hundreds of conversations, replace this loop with a single aggregation
     // ($lookup messages + $group, or a $facet) to compute all counts in one query.
     const enriched = await Promise.all(chats.map(async (chat) => {
+        const deletedAt = chat.deletedAt?.get(String(userId));
+
+        // Per-side delete: if I cleared this chat, hide it until a newer message
+        // exists (from either side). The other user's view is unaffected.
+        if (deletedAt) {
+            const visibleCount = await Message.countDocuments({
+                conversationId: chat._id,
+                createdAt: { $gt: deletedAt },
+            });
+            if (visibleCount === 0) return null;
+        }
+
+        // Unread = messages I didn't send, newer than the later of my read /
+        // delete cutoffs (so old, pre-delete messages never count).
         const lastRead = chat.lastReadAt?.get(String(userId));
+        const threshold = [lastRead, deletedAt].filter(Boolean).sort((a, b) => b - a)[0];
         const unreadFilter = {
             conversationId: chat._id,
             userId: { $ne: new mongoose.Types.ObjectId(userId) },
         };
-        if (lastRead) unreadFilter.createdAt = { $gt: lastRead };
+        if (threshold) unreadFilter.createdAt = { $gt: threshold };
         const unreadCount = await Message.countDocuments(unreadFilter);
 
         return { ...chat.toObject(), unreadCount };
     }));
 
-    return enriched;
+    return enriched.filter(Boolean);
 }
 
 // Mark a conversation read for this user (sets their read pointer to now).
@@ -99,19 +125,40 @@ const markConversationRead = async (userId, conversationId) => {
     return conversation;
 }
 
+// Per-side delete by timestamp: records the caller's cutoff (deletedAt[me] = now)
+// so they stop seeing messages on/before it. When BOTH participants have a cutoff
+// and no message is newer than the earlier one, nothing is visible to either side,
+// so the conversation + its messages are hard-deleted inline (no separate cleanup
+// job for the pilot). Returns the conversation + a hardDeleted flag for the route.
 const deleteChat = async (deleterUserId, conversationId) => {
     const conversation = await Conversation.findById(conversationId);
     if(!conversation) throw createError(404, 'Conversation not found');
-    
-    if(!(conversation.fromUser.toString() === deleterUserId || 
-        conversation.toUser.toString() === deleterUserId)
-    ){
+
+    const isParticipant =
+        conversation.fromUser.toString() === deleterUserId ||
+        conversation.toUser.toString() === deleterUserId;
+    if(!isParticipant){
         throw createError(403, 'Not allowed to delete this conversation')
     }
-    
-    await Message.deleteMany({conversationId: conversationId})
-    await Conversation.findByIdAndDelete(conversationId)
-    return conversation;
+
+    conversation.deletedAt.set(String(deleterUserId), new Date());
+
+    const aCut = conversation.deletedAt.get(String(conversation.fromUser));
+    const bCut = conversation.deletedAt.get(String(conversation.toUser));
+    if(aCut && bCut){
+        const minCut = aCut < bCut ? aCut : bCut;
+        const liveCount = await Message.countDocuments({
+            conversationId, createdAt: { $gt: minCut },
+        });
+        if(liveCount === 0){
+            await Message.deleteMany({conversationId: conversationId})
+            await Conversation.findByIdAndDelete(conversationId)
+            return { conversation, hardDeleted: true };
+        }
+    }
+
+    await conversation.save();
+    return { conversation, hardDeleted: false };
 }
 
 module.exports = {

@@ -27,7 +27,7 @@ module.exports = (io) => {
     
     router.get('/messages/:conversationId', auth ,async (req,res) => {
         try{
-            const messages = await getMessages(req.params.conversationId);
+            const messages = await getMessages(req.params.conversationId, req.user.userId);
             res.send(messages)
         }
         catch(err){
@@ -49,15 +49,15 @@ module.exports = (io) => {
     
     router.delete('/chats/:conversationId', auth, async (req, res) => {
         try{
-            const deletedChat = await deleteChat(req.user.userId, req.params.conversationId);
+            const { conversation } = await deleteChat(req.user.userId, req.params.conversationId);
 
-            const otherUserId = deletedChat.fromUser.toString() === req.user.userId 
-                ? deletedChat.toUser
-                : deletedChat.fromUser 
+            // Per-side delete: only the deleter loses the conversation. Notify
+            // the DELETER's own room so their other tabs/devices drop it too.
+            // The other participant's copy (and the messages) stay intact, so we
+            // do NOT emit to them.
+            io.to(req.user.userId.toString()).emit('deleted-conversation', conversation._id)
 
-            io.to(otherUserId.toString()).emit('deleted-conversation', deletedChat._id)
-
-            res.send(deletedChat)
+            res.send(conversation)
         }
         catch(err){
             handleError(res, err);

@@ -26,6 +26,16 @@ const ConversationSchema = new mongoose.Schema({
         of: Date,
         default: () => new Map(),
     },
+    // WhatsApp-style per-side delete, by timestamp. deletedAt[me] = when I last
+    // cleared this chat. I only see messages with createdAt > deletedAt[me], so
+    // old history stays gone even when the chat reappears on a new message. The
+    // other side is unaffected. When neither user can see any message, the
+    // conversation is eligible for hard cleanup. (Same Map pattern as lastReadAt.)
+    deletedAt: {
+        type: Map,
+        of: Date,
+        default: () => new Map(),
+    },
     lastMessage: LastMessageSchema,
 }, {timestamps: true})
 
