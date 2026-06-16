@@ -13,3 +13,8 @@ Always-on rules. Follow these on every turn.
 ## Debugging discipline
 - This is a visual web app. A passing jsdom/unit test is NOT proof that a visual or runtime behavior works. Verify visual/video/browser-runtime changes in a real browser (Playwright MCP) before claiming a fix is done. If you can't observe it, say so and ask me to verify — never assert success you haven't seen.
 - After two failed fix attempts on the same bug, STOP writing fixes and switch to diagnosis: state what you now believe the root cause is, what you already tried and why each failed, and what information is still missing. Then propose ONE targeted fix.
+
+## Responsive design
+- All UI must work well on both mobile and desktop. Build mobile-first, use the existing MUI breakpoint system (xs/sm/md/lg) and useMediaQuery rather than ad-hoc media queries, and keep touch targets comfortable on mobile.
+- When a layout genuinely differs between screen sizes (e.g. chat: two-pane on desktop, full-screen navigation on mobile), design and build both deliberately — don't just shrink the desktop layout.
+- Verify UI changes in a real browser at BOTH a mobile viewport (~390px) and a desktop viewport (~1280px) before claiming done.
