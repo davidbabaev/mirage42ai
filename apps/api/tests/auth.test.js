@@ -59,3 +59,42 @@ describe('POST /users/login — invalid credentials', () => {
         expect(res.status).toBe(401);
     });
 });
+
+describe('POST /users/login — input validation (NoSQL-injection guard)', () => {
+    it('still logs a real user in with valid string credentials (200 + token)', async () => {
+        const res = await request(app)
+            .post('/users/login')
+            .send({ email: existingUser.email, password: existingUser.password });
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('token');
+        expect(typeof res.body.token).toBe('string');
+    });
+
+    it('rejects a Mongo-operator injection payload with 400 (never reaches the DB query)', async () => {
+        const res = await request(app)
+            .post('/users/login')
+            .send({ email: { $gt: '' }, password: { $gt: '' } });
+        expect(res.status).toBe(400);
+    });
+
+    it('rejects an operator object in email even with a valid password (400)', async () => {
+        const res = await request(app)
+            .post('/users/login')
+            .send({ email: { $gt: '' }, password: existingUser.password });
+        expect(res.status).toBe(400);
+    });
+
+    it('rejects a non-string (numeric) password with 400', async () => {
+        const res = await request(app)
+            .post('/users/login')
+            .send({ email: existingUser.email, password: 12345678 });
+        expect(res.status).toBe(400);
+    });
+
+    it('rejects a missing password with 400', async () => {
+        const res = await request(app)
+            .post('/users/login')
+            .send({ email: existingUser.email });
+        expect(res.status).toBe(400);
+    });
+});

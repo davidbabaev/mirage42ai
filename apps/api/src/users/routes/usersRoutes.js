@@ -17,6 +17,7 @@ const {
     promoteUserToAdmin,
 } = require('../service/usersSvc');
 const validateUser = require('../validation/joi/validateUserWithJoi');
+const validateLogin = require('../validation/joi/validateLoginWithJoi');
 const auth = require('../../auth/authService');
 const { authLimiter } = require('../../middlewares/rateLimit');
 const { uploadImageOnly } = require('../../middlewares/multer');
@@ -59,6 +60,9 @@ router.post('/users' , authLimiter, async (req, res) => {
 
 router.post('/users/login', authLimiter, async (req,res) => {
     try{
+        const {error} = validateLogin(req.body);
+        if(error) return res.status(400).send(error.details[0].message);
+
         const token = await loginUser(req.body);
         res.send(token);
     }
