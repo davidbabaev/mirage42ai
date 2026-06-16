@@ -2,6 +2,7 @@ const User = require('../models/User');
 const _ = require('lodash');
 const {generateUserPassword, comparePassword} = require('../helpers/bcrypt');
 const {signNewToken} = require('../../auth/providers/jwt');
+const {issueRefreshToken} = require('../../auth/refreshTokens');
 const { createError } = require('../../utils/handleErrors');
 const normalizeUser = require('../helpers/normalizeUser');
 const Card = require('../../cards/models/Card');
@@ -69,8 +70,9 @@ const createNewUser = async (user) => {
         newUser = await newUser.save();
 
         const token = signNewToken(newUser);
+        const refreshToken = await issueRefreshToken(newUser);
         const safeUser = pickSafeUserFields(newUser);
-        return{token, safeUser}
+        return{token, refreshToken, safeUser}
     }
     catch(err){
         throw err;        
@@ -89,12 +91,13 @@ const loginUser = async ({email, password}) => {
         if(!isMatch) throw createError(401, "Invalid email or password");
 
         user.lastLoginAt = Date.now()
-        user = await user.save()
 
-        // password correct --> generate JWT token
+        // password correct --> generate JWT access token + a rotating refresh token.
+        // issueRefreshToken persists the user (saving lastLoginAt too).
         const token = signNewToken(user);
+        const refreshToken = await issueRefreshToken(user);
         const safeUser = pickSafeUserFields(user);
-        return{token, safeUser}
+        return{token, refreshToken, safeUser}
     }
     catch(err){
         throw err;

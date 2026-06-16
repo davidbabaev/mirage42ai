@@ -19,6 +19,7 @@ const {
 const validateUser = require('../validation/joi/validateUserWithJoi');
 const validateLogin = require('../validation/joi/validateLoginWithJoi');
 const auth = require('../../auth/authService');
+const { setRefreshCookie } = require('../../auth/refreshTokens');
 const { authLimiter } = require('../../middlewares/rateLimit');
 const { uploadImageOnly } = require('../../middlewares/multer');
 const uploadToCloudinary = require('../../utils/cloudinary');
@@ -49,7 +50,8 @@ router.post('/users' , authLimiter, async (req, res) => {
             const {error} = validateUser(req.body)
             if(error) return res.status(400).send(error.details[0].message);
         
-            let newUser = await createNewUser(req.body);
+            const {refreshToken, ...newUser} = await createNewUser(req.body);
+            setRefreshCookie(res, refreshToken);
             res.send(newUser);
         }
         catch(err){
@@ -63,8 +65,9 @@ router.post('/users/login', authLimiter, async (req,res) => {
         const {error} = validateLogin(req.body);
         if(error) return res.status(400).send(error.details[0].message);
 
-        const token = await loginUser(req.body);
-        res.send(token);
+        const {refreshToken, ...payload} = await loginUser(req.body);
+        setRefreshCookie(res, refreshToken);
+        res.send(payload);
     }
     catch(err){
         handleError(res, err);

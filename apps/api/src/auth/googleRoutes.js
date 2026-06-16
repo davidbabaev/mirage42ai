@@ -1,6 +1,7 @@
 const express = require('express');
 const passport = require('passport');
 const { signNewToken } = require('./providers/jwt');
+const { issueRefreshToken, setRefreshCookie } = require('./refreshTokens');
 const { handleError } = require('../utils/handleErrors');
 const router = express.Router();
 
@@ -17,6 +18,10 @@ if (googleConfigured) {
         async (req,res) => {
         try{
             const token = signNewToken(req.user)
+            // Set the refresh cookie on this API-origin response, then hand the
+            // short-lived access token to the SPA via the redirect URL (as before).
+            const refreshToken = await issueRefreshToken(req.user)
+            setRefreshCookie(res, refreshToken)
             res.redirect(`${process.env.CLIENT_URL}?token=${token}`)
         }
         catch(err){

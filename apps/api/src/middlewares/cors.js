@@ -9,6 +9,9 @@ const corsPolicyMiddleware = (cors({
         "https://mirage42.com",
         "https://www.mirage42.com",
     ],
+    // Required so the browser sends/stores the httpOnly refresh-token cookie on
+    // cross-origin requests to /auth/refresh and /auth/logout.
+    credentials: true,
 }))
 
 module.exports = corsPolicyMiddleware;

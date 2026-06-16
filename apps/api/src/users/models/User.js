@@ -59,6 +59,16 @@ const UserSchema = new mongoose.Schema({
         }
     },
     following: [String],
+    // Active refresh tokens (one record per logged-in device/session). We store
+    // only a SHA-256 hash of each token plus its expiry, so a DB leak can't be
+    // replayed. Rotated/revoked tokens are pulled from this array.
+    refreshTokens: {
+        type: [{
+            tokenHash: { type: String, required: true },
+            expiresAt: { type: Date, required: true },
+        }],
+        default: [],
+    },
     isAdmin: {
         type: Boolean,
         default: false

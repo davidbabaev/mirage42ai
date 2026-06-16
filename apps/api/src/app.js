@@ -7,6 +7,7 @@ const morgan = require('morgan');
 const express = require('express');
 const passport = require('passport');
 const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 
 
 const corsPolicyMiddleware = require('./middlewares/cors');
@@ -29,6 +30,7 @@ app.use(passport.initialize());
 
 app.use(corsPolicyMiddleware)
 app.use(express.json());
+app.use(cookieParser());
 // app.use(express.static(__dirname + '/public'));
 app.use(morgan("dev"));
 
