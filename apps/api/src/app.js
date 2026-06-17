@@ -1,7 +1,13 @@
 require('dotenv').config();
 
-// Fail fast on missing critical config before anything else boots.
-require('./utils/validateEnv')();
+// Fail fast on missing critical config before anything else boots. validateEnv
+// throws on a missing required var; turn that into a loud non-zero exit here.
+try {
+    require('./utils/validateEnv')();
+} catch (err) {
+    console.error(`FATAL: ${err.message}`);
+    process.exit(1);
+}
 
 const morgan = require('morgan');
 const express = require('express');
