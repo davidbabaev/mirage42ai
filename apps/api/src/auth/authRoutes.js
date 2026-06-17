@@ -9,11 +9,13 @@ const {
     clearRefreshCookie,
 } = require('./refreshTokens');
 const { pickSafeUserFields } = require('../users/service/usersSvc');
+const { refreshLimiter } = require('../middlewares/rateLimit');
 
 // Exchange a valid refresh cookie for a fresh access token. Rotates the refresh
 // token on every call (the old cookie becomes invalid). No access token required
-// here — that's the whole point: the access token has expired.
-router.post('/auth/refresh', async (req, res) => {
+// here — that's the whole point: the access token has expired. Looser limit than
+// login/register so multi-tab silent refresh doesn't trip it.
+router.post('/auth/refresh', refreshLimiter, async (req, res) => {
     try {
         const presented = req.cookies?.[REFRESH_COOKIE];
         const rotated = await rotateRefreshToken(presented);
