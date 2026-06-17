@@ -72,8 +72,7 @@ const likeCard = async (cardById, userId) => {
     else{
         card.likes.push(userId);
         if(userId !== card.userId.toString()){
-            let notification = new Notification({actionType: 'like',fromUser: userId, toUser: card.userId, whichCard: card._id})
-            notification = await notification.save();
+            await new Notification({actionType: 'like',fromUser: userId, toUser: card.userId, whichCard: card._id}).save();
         }
     }
     // 3. save after changes
@@ -91,8 +90,7 @@ const addComment = async (cardId, userId, commentText) => {
     card.comments.push({userId, commentText})
 
     if(userId !== card.userId.toString()){
-        let notification = new Notification({actionType: 'comment',fromUser: userId, toUser: card.userId, whichCard: card._id})
-        notification = await notification.save()
+        await new Notification({actionType: 'comment',fromUser: userId, toUser: card.userId, whichCard: card._id}).save()
     }
 
     // save after changes

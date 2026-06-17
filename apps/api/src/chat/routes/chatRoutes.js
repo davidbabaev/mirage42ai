@@ -12,7 +12,6 @@ const auth = require('../../auth/authService');
 const { handleError } = require('../../utils/handleErrors');
 const {upload} = require('../../middlewares/multer');
 const uploadToCloudinary = require('../../utils/cloudinary');
-const Conversation = require('../models/Conversation');
 
 module.exports = (io) => {
     router.get('/chats', auth, async (req,res) => {

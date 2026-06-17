@@ -1,8 +1,6 @@
 const {
     getOrCreateConversation,
-    createNewMessage,
-    getMessages,
-    getChats
+    createNewMessage
 } = require('../service/chatSvc');
 
 const jwt = require('jsonwebtoken');
