@@ -203,9 +203,9 @@ TypeScript migration (valuable, but a horizontal cost across everything — sche
 7. **[🟡 partial]** Decide pilot persona concepts (3) on paper — names, faces-in-words, values, schedules. _(Pilot sizing/strategy is in §4, but the 3 concrete named personas with faces/values/schedules are not yet written down.)_
 
 **Phase C — Security & correctness hardening 🟡**
-8. **[—not started]** GitHub Actions CI (lint + both test suites) — *before* the bigger refactors. _(No `.github/workflows`.)_
-9. **[🟡 partial]** JWT expiry + refresh; read role/ban from DB per request (kills stale `isAdmin`, enables real bans). _(Role/ban already read from DB per request in `authService.js`; JWT has no `expiresIn` and no refresh flow yet.)_
-10. **[🟡 partial]** Joi validation on login & all query-touching inputs (NoSQL-injection surface). _(Joi on registration & cards; `POST /users/login` still unvalidated.)_
+8. **[✅ done]** GitHub Actions CI (lint + both test suites) — *before* the bigger refactors. _(`.github/workflows/ci.yml` runs web lint + web/api test suites on push/PR.)_
+9. **[✅ done]** JWT expiry + refresh; read role/ban from DB per request (kills stale `isAdmin`, enables real bans). _(Short-lived access token + rotating refresh token in an httpOnly cookie (`auth/refreshTokens.js`, `auth/authRoutes.js`); web transparently refreshes on 401 (`apiService.js`). Role/ban read from the DB per request in `authService.js`/`optionalAuth.js`/`chatSocket.js`. All test-backed.)_
+10. **[✅ done]** Joi validation on login & all query-touching inputs (NoSQL-injection surface). _(`POST /users/login` now validated via `validateLoginWithJoi.js`; test-backed. Joi already on registration & cards.)_
 11. **[—not started]** `helmet`, rate limiting on auth routes, env validation at boot, ESLint for api. _(None present in `apps/api`; ESLint exists only in `apps/web`.)_
 12. **[🟡 partial]** **Server-side admin gating**: `GET /users`, full `GET /cards` etc. require admin on the server (today it's UI-only — admin data is effectively public). _(`GET /cards` uses `optionalAuth` + server-side banned filter for non-admins; `GET /users` is still public/ungated.)_
 13. **[🟡 partial]** **Ban actually hides posts**: `Card.status` + public queries filter it (your "ban doesn't remove from public view" fix — done at the API, where it's real). _(Banned posts are filtered server-side via an `isBanned` boolean; the planned `Card.status` enum is not yet the mechanism.)_
