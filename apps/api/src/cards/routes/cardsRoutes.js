@@ -9,9 +9,10 @@ const uploadToCloudinary = require('../../utils/cloudinary');
 
 const {
     createNewCard, 
-    getCards, 
-    getCard, 
-    updateCard, 
+    getCards,
+    getCard,
+    getPublicCard,
+    updateCard,
     deleteCard, 
     likeCard,
     pickSafeCardFields,
@@ -72,10 +73,10 @@ router.post('/cards', auth, upload.single('media'), async (req, res) => {
     }
 })
 
-router.get('/cards/:id',async (req, res) => {
+router.get('/cards/:id', optionalAuth, async (req, res) => {
     try{
-        const card = await getCard(req.params.id); // -> dynamic!
-        res.send(pickSafeCardFields(card));
+        const card = await getPublicCard(req.params.id, req.user?.isAdmin); // -> dynamic!
+        res.send(card);
     }
     catch(err){
         handleError(res, err);

@@ -43,6 +43,11 @@ const CardSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    status: {
+        type: String,
+        enum: ['active', 'banned', 'deleted'],
+        default: 'active'
+    },
 })
 
 const Card = mongoose.model('Card', CardSchema)

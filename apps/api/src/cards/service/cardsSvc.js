@@ -19,7 +19,7 @@ const pickSafeCardFields = (card) => {
         "createdAt",
         "_id",
         "userId",
-        "isBanned"
+        "status"
     ])
 }
 
@@ -37,15 +37,26 @@ const createNewCard = async (card, userId) => {
 }
 
 const getCards = async (isAdmin) => {
-        const filter = isAdmin ? {} : {isBanned: false}
+        const filter = isAdmin ? {} : {status: 'active'}
         const cards = await Card.find(filter)
         return cards.map(card => pickSafeCardFields(card))
 }
 
+// Raw fetch for internal/owner operations (edit, delete, like, comment):
+// returns the Mongoose doc regardless of status.
 const getCard = async (cardId) => {
         const card = await Card.findById(cardId)
         if(!card) throw createError(404, "Card not found")
         return card;
+}
+
+// Public-facing single-card read: banned/deleted cards are invisible to
+// non-admins (server-side, where the ban is real). Admins see everything.
+const getPublicCard = async (cardId, isAdmin) => {
+        const card = await Card.findById(cardId)
+        if(!card) throw createError(404, "Card not found")
+        if(!isAdmin && card.status !== 'active') throw createError(404, "Card not found")
+        return pickSafeCardFields(card);
 }
 
 const updateCard = async (cardId, upCard) => {
@@ -115,7 +126,7 @@ const getFeedCards = async (userId, isAdmin) => {
     
     const filter = {userId: {$in: user.following}}
     if(!isAdmin){
-        filter.isBanned = false;
+        filter.status = 'active';
     }
 
     // find cards where userId is in this array
@@ -129,18 +140,19 @@ const getFeedCards = async (userId, isAdmin) => {
 const banCard = async (cardId) => {
     let card = await Card.findById(cardId);
     if(!card) throw createError(404, 'Card not found');
-    
-    card.isBanned = !card.isBanned;
+
+    card.status = card.status === 'banned' ? 'active' : 'banned';
 
     card = await card.save();
     return pickSafeCardFields(card);
 }
 
 module.exports = {
-    createNewCard, 
-    getCards, 
-    getCard, 
-    updateCard, 
+    createNewCard,
+    getCards,
+    getCard,
+    getPublicCard,
+    updateCard,
     deleteCard, 
     likeCard,
     pickSafeCardFields,

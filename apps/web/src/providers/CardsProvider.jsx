@@ -60,15 +60,15 @@ const removeAuthorFromFeed = (userId) => {
 }
 
 // Add a newly-followed author's posts to the feed in place. Their cards are
-// already loaded client-side in `registeredCards` (GET /cards returns all
-// non-banned cards), so we merge them in — deduped and date-sorted to match
+// already loaded client-side in `registeredCards` (GET /cards returns
+// active cards), so we merge them in — deduped and date-sorted to match
 // the feed's order — without a refetch or scroll reset.
 const addAuthorToFeed = (userId) => {
     if(!userId) return;
     setFeedCards(prev => {
         const present = new Set(prev.map(c => c._id));
         const additions = registeredCards.filter(c =>
-            String(c.userId) === String(userId) && !c.isBanned && !present.has(c._id)
+            String(c.userId) === String(userId) && c.status === 'active' && !present.has(c._id)
         );
         if(additions.length === 0) return prev;
         return [...prev, ...additions].sort(

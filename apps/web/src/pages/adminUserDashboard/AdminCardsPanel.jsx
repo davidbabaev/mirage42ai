@@ -386,7 +386,7 @@ export default function AdminCardsPanel() {
                                   </TableCell>
                                   <TableCell>
                                       {creator?._id !== user._id ? (
-                                          <Tooltip title={card.isBanned ? "Unban Post" : "Ban Post"}>
+                                          <Tooltip title={card.status === 'banned' ? "Unban Post" : "Ban Post"}>
                                               <IconButton size='small' color='warning' onClick={(e) => {
                                                   e.stopPropagation();
                                                   handleBanCard(card._id);
@@ -400,10 +400,10 @@ export default function AdminCardsPanel() {
                                   </TableCell>
                                   <TableCell>
                                       <Chip 
-                                          label={card.isBanned ? "Banned" : "Active"} 
+                                          label={card.status === 'banned' ? "Banned" : "Active"} 
                                           size='small'
                                           sx={{
-                                              bgcolor: card.isBanned ? 'error.main' : 'success.main',
+                                              bgcolor: card.status === 'banned' ? 'error.main' : 'success.main',
                                               color: 'white',
                                               fontWeight: 600,
                                               fontSize: 11
