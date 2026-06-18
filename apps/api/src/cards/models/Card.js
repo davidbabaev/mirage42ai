@@ -39,10 +39,6 @@ const CardSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         required: true,
     },
-    isBanned: {
-        type: Boolean,
-        default: false
-    },
     status: {
         type: String,
         enum: ['active', 'banned', 'deleted'],
