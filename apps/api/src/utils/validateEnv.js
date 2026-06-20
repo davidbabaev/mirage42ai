@@ -5,16 +5,21 @@
 
 const BASE_REQUIRED = ['DB_CONNECTION_STRING', 'JWT_SECRET'];
 const CLOUDINARY = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'];
+// Required only in production. In dev the CORS allowlist auto-includes the local
+// Vite origin, so ALLOWED_ORIGINS is optional there; in prod it's the ONLY source
+// of allowed origins, and leaving it empty silently blocks every browser.
+const PROD_REQUIRED = [...CLOUDINARY, 'ALLOWED_ORIGINS'];
 const OTHER_OPTIONAL = ['PORT', 'CLIENT_URL', 'SERVER_URL', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'];
 
 function validateEnv() {
     const isSet = (k) => typeof process.env[k] === 'string' && process.env[k].trim() !== '';
     const isProd = process.env.NODE_ENV === 'production';
 
-    // Cloudinary is required in production (uploads must work for real users),
-    // but only warned about in dev/test where uploads are often stubbed.
-    const required = isProd ? [...BASE_REQUIRED, ...CLOUDINARY] : BASE_REQUIRED;
-    const optional = isProd ? OTHER_OPTIONAL : [...OTHER_OPTIONAL, ...CLOUDINARY];
+    // Cloudinary + ALLOWED_ORIGINS are required in production (uploads and CORS
+    // must work for real users), but only warned about in dev/test where uploads
+    // are stubbed and the dev origin is added automatically.
+    const required = isProd ? [...BASE_REQUIRED, ...PROD_REQUIRED] : BASE_REQUIRED;
+    const optional = isProd ? OTHER_OPTIONAL : [...OTHER_OPTIONAL, ...PROD_REQUIRED];
 
     const missingRequired = required.filter((k) => !isSet(k));
     if (missingRequired.length) {

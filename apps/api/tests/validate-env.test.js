@@ -15,7 +15,20 @@ const KEYS = [
     'CLOUDINARY_CLOUD_NAME',
     'CLOUDINARY_API_KEY',
     'CLOUDINARY_API_SECRET',
+    'ALLOWED_ORIGINS',
 ];
+
+// Set every prod-required var EXCEPT the one under test, so a thrown error
+// pinpoints that one var rather than tripping on an earlier missing one.
+const setProdBaseline = () => {
+    process.env.NODE_ENV = 'production';
+    process.env.DB_CONNECTION_STRING = 'mongodb://localhost/test';
+    process.env.JWT_SECRET = 'secret';
+    process.env.CLOUDINARY_CLOUD_NAME = 'cloud';
+    process.env.CLOUDINARY_API_KEY = 'key';
+    process.env.CLOUDINARY_API_SECRET = 'shh';
+    process.env.ALLOWED_ORIGINS = 'https://app.example.com';
+};
 
 let snapshot;
 
@@ -80,13 +93,28 @@ describe('validateEnv', () => {
         expect(() => validateEnv()).toThrow(/CLOUDINARY_API_KEY/);
     });
 
-    it('passes in production when every required var (incl. Cloudinary) is set', () => {
-        process.env.NODE_ENV = 'production';
+    it('requires ALLOWED_ORIGINS in production', () => {
+        setProdBaseline();
+        delete process.env.ALLOWED_ORIGINS;
+        expect(() => validateEnv()).toThrow(/ALLOWED_ORIGINS/);
+    });
+
+    it('treats a whitespace-only ALLOWED_ORIGINS as missing in production', () => {
+        setProdBaseline();
+        process.env.ALLOWED_ORIGINS = '   ';
+        expect(() => validateEnv()).toThrow(/ALLOWED_ORIGINS/);
+    });
+
+    it('does not require ALLOWED_ORIGINS outside production, but warns', () => {
+        process.env.NODE_ENV = 'development';
         process.env.DB_CONNECTION_STRING = 'mongodb://localhost/test';
         process.env.JWT_SECRET = 'secret';
-        process.env.CLOUDINARY_CLOUD_NAME = 'cloud';
-        process.env.CLOUDINARY_API_KEY = 'key';
-        process.env.CLOUDINARY_API_SECRET = 'shh';
+        expect(() => validateEnv()).not.toThrow();
+        expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/ALLOWED_ORIGINS/));
+    });
+
+    it('passes in production when every required var (incl. Cloudinary + ALLOWED_ORIGINS) is set', () => {
+        setProdBaseline();
         expect(() => validateEnv()).not.toThrow();
     });
 });
