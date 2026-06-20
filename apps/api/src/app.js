@@ -17,6 +17,7 @@ const cookieParser = require('cookie-parser');
 
 
 const corsPolicyMiddleware = require('./middlewares/cors');
+const { getAllowedOrigins } = require('./config/allowedOrigins');
 const { generalLimiter } = require('./middlewares/rateLimit');
 const app = express();
 
@@ -61,15 +62,11 @@ const server = http.createServer(app);
 
 const {Server} = require('socket.io');
 const io = new Server(server, {
+    // Same allowlist as the HTTP CORS middleware (see config/allowedOrigins).
+    // No credentials here: the socket authenticates via a JWT in the handshake
+    // auth payload (chatSocket.js), not via the refresh cookie.
     cors: {
-        origin: [
-            "http://localhost:5173",
-            "http://localhost:8181",
-            "https://db-social-media-app.onrender.com",
-            "https://mirage-frontend-tfxf.onrender.com",
-            "https://mirage42.com",
-            "https://www.mirage42.com",
-        ]
+        origin: getAllowedOrigins(),
     }
 })
 
