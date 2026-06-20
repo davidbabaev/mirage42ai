@@ -453,7 +453,10 @@ return (
                     <Autocomplete
                         fullWidth
                         options={cities}
-                        value={editCity || null}
+                        // Only hand the value to Autocomplete once the lazy city
+                        // list has loaded and actually contains it; otherwise MUI
+                        // logs "value not in options" during the async load.
+                        value={cities.includes(editCity) ? editCity : null}
                         onChange={(e, newValue) => setEditCity(newValue || '')}
                         disabled={editCountry === ''}
                         loading={isCitiesLoading}
