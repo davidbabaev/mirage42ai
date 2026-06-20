@@ -157,7 +157,7 @@ export default function Features() {
   ];
 
   const privateDashboard = [
-    {label: 'Profile', text: 'view your own info; edit any field (name, last name, country, city, job, gender, birth date, phone, about me, profile picture, banner image). Country and city are cascading dropdowns powered by a country/cities API'},
+    {label: 'Profile', text: 'view your own info; edit any field (name, last name, country, city, job, gender, birth date, phone, about me, profile picture, banner image). Country is a dropdown and city is a searchable autocomplete (free-text), both from data bundled into the app'},
     {label: 'My posts', text: 'all your posts; edit any field on any post (title, category, text, URL, media), or delete the post'},
     {label: 'Favorite users', text: 'users you saved (private to you)'},
     {label: 'Favorite posts', text: 'posts you saved (private to you)'},

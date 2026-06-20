@@ -69,21 +69,6 @@ export default function Technologies() {
                 {/* <Typography fontSize={14} fontWeight={700}>{item.text}</Typography> */}
             </Box>
           ))}
-          <Typography fontSize={14} fontWeight={700} pb={0.5}>
-          Third-party APIs
-        </Typography>
-        <Box sx={{display: 'flex', pb: 0.5}}>
-            <ArrowRightIcon/>
-            <Typography sx={{fontSize: 14}}>
-              https://restcountries.com/v3.1
-            </Typography>
-        </Box>
-        <Box sx={{display: 'flex', pb: 0.5}}>
-            <ArrowRightIcon/>
-            <Typography sx={{fontSize: 14}}>
-              https://countriesnow.space/api
-            </Typography>
-        </Box>
       </Paper>
 
       <Paper 
