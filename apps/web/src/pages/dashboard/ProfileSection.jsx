@@ -451,11 +451,10 @@ return (
                     </TextField>
 
                     <Autocomplete
-                        freeSolo
                         fullWidth
                         options={cities}
-                        inputValue={editCity}
-                        onInputChange={(e, newValue) => setEditCity(newValue)}
+                        value={editCity || null}
+                        onChange={(e, newValue) => setEditCity(newValue || '')}
                         disabled={editCountry === ''}
                         loading={isCitiesLoading}
                         renderInput={(params) => (

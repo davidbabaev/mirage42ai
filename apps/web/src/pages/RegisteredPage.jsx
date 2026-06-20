@@ -242,11 +242,10 @@ export default function RegisteredPage() {
             </TextField>
 
             <Autocomplete
-                freeSolo
                 fullWidth
                 options={cities}
-                inputValue={city}
-                onInputChange={(e, newValue) => setCity(newValue)}
+                value={city || null}
+                onChange={(e, newValue) => setCity(newValue || '')}
                 disabled={country === ''}
                 loading={isCitiesLoading}
                 renderInput={(params) => (
