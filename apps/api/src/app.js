@@ -94,7 +94,11 @@ app.use((err, req, res, next ) => {
 
 // Start the server only when run directly (skipped when imported by tests)
 if (require.main === module) {
-    server.listen(PORT, () => {
+    // Bind IPv4 all-interfaces, not Node's default dual-stack (::). WSL2 NAT-mode
+    // localhost forwarding resets (rather than refuses) IPv6 ::1 connections to a
+    // dual-stack bind, so the browser never fails over to IPv4 -> ERR_CONNECTION_RESET.
+    // 0.0.0.0 is correct in dev and on the prod host alike.
+    server.listen(PORT, '0.0.0.0', () => {
         console.log(chalk.yellow('App is listening to port', PORT));
         connectToDB();
     });
