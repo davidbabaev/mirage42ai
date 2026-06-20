@@ -1,45 +1,12 @@
-import { useEffect, useState } from "react";
+import countries from "../data/countries";
 
+// Countries are now bundled as static data (apps/web/src/data/countries.js)
+// instead of fetched from restcountries.com, which CORS-blocks our production
+// origin. The list is tiny (~2 KB gzipped) so it ships in the main bundle.
+// Shape and field names are unchanged ({ name, code }) so callers are untouched;
+// apiCountriesListLoading stays for API compatibility but is always falsy now.
 function useCountries() {
-
-    const [apiCountriesList, setApiCountriesList] = useState([]);
-    const [apiCountriesListLoading, setApiCountriesListLoading] = useState('');
-
-    const fetchCountriesList = async () => {
-        setApiCountriesListLoading('loading')
-        try{
-            const response = await fetch('https://restcountries.com/v3.1/all?fields=name,cca2,flags')
-            const data = await response.json();
-
-            const countryName = data
-                .map(country => 
-                    ({
-                        name: country.name.common, 
-                        flag: country.flags.png, 
-                        code: country.cca2
-                    })
-                )
-                .sort((a,b) => a.name.localeCompare(b.name));
-
-            setApiCountriesList(countryName)
-            localStorage.setItem('apiCountriesListV2', JSON.stringify(countryName))
-        }
-        catch(err){
-            console.log(err.message);
-        }
-    }
-
-    useEffect(() => {
-        const saved = JSON.parse(localStorage.getItem('apiCountriesListV2'))
-
-        if(saved && saved.length > 0){
-            setApiCountriesList(saved)
-        } else{
-            fetchCountriesList();
-        }
-    }, [])
-
-  return {apiCountriesList, apiCountriesListLoading}
+    return { apiCountriesList: countries, apiCountriesListLoading: '' };
 }
 
 export default useCountries;
