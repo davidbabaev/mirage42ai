@@ -6,3 +6,7 @@ build
 *.log
 .DS_Store
 coverage
+
+# npm workspaces use a single root lockfile; nested per-app locks are stray
+# artifacts from running `npm install` inside a workspace and must not be tracked.
+apps/*/package-lock.json
