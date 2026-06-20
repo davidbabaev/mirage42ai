@@ -1,46 +1,33 @@
 import { useEffect, useState } from "react"
 
+// Cities are bundled (src/data/cities.json, ~31 KB gzipped) and lazy-loaded via
+// dynamic import() so the data stays OFF the initial bundle — its chunk is only
+// fetched when a component using this hook first mounts. Replaces the
+// countriesnow.space POST call that CORS-blocked our production origin. The map
+// is keyed by country NAME, matching the value stored from the Country dropdown.
+let citiesPromise;
+const loadCities = () => {
+    if (!citiesPromise) citiesPromise = import("../data/cities.json").then(m => m.default);
+    return citiesPromise;
+};
+
 export default function useCities(countryName) {
-    const citiesApiUrl = "https://countriesnow.space/api/v0.1/countries/cities";
-    const dataToSend = {
-        country: countryName
-    }
-    const [cities , setCities] = useState([]);
+    const [cities, setCities] = useState([]);
     const [isCitiesLoading, setIsCitiesLoading] = useState(false);
 
-    const fetchCitiesList = async () => {
-        setIsCitiesLoading(true);
-        try{
-            const response = await fetch(citiesApiUrl, {
-                method: 'POST',
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(dataToSend)
-            });
-            if(!response.ok){
-                throw new Error(`HTTP error! status: ${response.status}`)
-            }
-            
-            const result = await response.json()
-            setCities(result.data);
-        }
-        catch(err){
-            console.log(err.message);
-            setCities([]);
-        }
-        finally{
-            setIsCitiesLoading(false)
-        }
-    }
-
     useEffect(() => {
-        if(countryName === ''){
-            setCities([])
+        if (!countryName) {
+            setCities([]);
             return;
         }
-        fetchCitiesList()
-    }, [countryName])
+        let active = true;
+        setIsCitiesLoading(true);
+        loadCities()
+            .then(data => { if (active) setCities(data[countryName] || []); })
+            .catch(() => { if (active) setCities([]); })
+            .finally(() => { if (active) setIsCitiesLoading(false); });
+        return () => { active = false; };
+    }, [countryName]);
 
-  return {cities, isCitiesLoading}
+    return { cities, isCitiesLoading };
 }

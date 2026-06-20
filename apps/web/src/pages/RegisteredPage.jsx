@@ -5,7 +5,7 @@ import useCountries from '../hooks/useCountries';
 import { JOB_INDUSTRIES } from '../constants/usersJobIndustries';
 import useCities from '../hooks/useCities';
 import { getAgeByDate, getMaxBirthDate } from '../utils/getAgeByBirthDate';
-import { Alert, Box, Button, Divider, MenuItem, Stack, TextField, Typography, useTheme } from '@mui/material';
+import { Alert, Autocomplete, Box, Button, Divider, MenuItem, Stack, TextField, Typography, useTheme } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 import MirageLogo from '../assets/MirageLogo';
 import { DatePicker } from '@mui/x-date-pickers';
@@ -241,24 +241,22 @@ export default function RegisteredPage() {
                 ))}
             </TextField>
 
-            <TextField
+            <Autocomplete
+                freeSolo
                 fullWidth
-                select
-                variant='outlined'
-                label='City'
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                disabled={country === '' || isCitiesLoading}
-            >
-                {cities.map((cityApi) => (
-                    <MenuItem 
-                        key={cityApi} 
-                        value={cityApi}
-                    >
-                        {cityApi}
-                    </MenuItem>
-                ))}
-            </TextField>
+                options={cities}
+                inputValue={city}
+                onInputChange={(e, newValue) => setCity(newValue)}
+                disabled={country === ''}
+                loading={isCitiesLoading}
+                renderInput={(params) => (
+                    <TextField
+                        {...params}
+                        variant='outlined'
+                        label='City'
+                    />
+                )}
+            />
           </Stack>
 
           <Stack direction='row' spacing={2} sx={{mb:2}}>

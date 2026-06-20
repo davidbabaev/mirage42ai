@@ -5,7 +5,7 @@ import { JOB_INDUSTRIES } from '../../constants/usersJobIndustries';
 import useCities from '../../hooks/useCities';
 import { getMaxBirthDate, getAgeByDate } from '../../utils/getAgeByBirthDate';
 import { useLocation } from 'react-router-dom';
-import { Alert, Avatar, Box, Button, Container, Grid, IconButton, InputAdornment, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Autocomplete, Avatar, Box, Button, Container, Grid, IconButton, InputAdornment, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import { DatePicker } from '@mui/x-date-pickers';
 import dayjs from 'dayjs';
@@ -98,7 +98,7 @@ export default function ProfileSection({editMode ,onEditMode, onCloseEdit}) {
             setEditLastName(user.lastName);
             setEditEmail(user.email);
             setEditCountry(user.address?.country === 'Not Defined' ? '' : user.address?.country);
-            setEditCity(user.address?.city);
+            setEditCity(user.address?.city ?? '');
             setEditprofilePicture(user.profilePicture);
             setEditCoverImage(user.coverImage);
             setEditJob(user.job);
@@ -116,7 +116,7 @@ export default function ProfileSection({editMode ,onEditMode, onCloseEdit}) {
             setEditLastName(user.lastName);
             setEditEmail(user.email);
             setEditCountry(user.address?.country);
-            setEditCity(user.address?.city);
+            setEditCity(user.address?.city ?? '');
             setEditprofilePicture(user.profilePicture);
             setEditCoverImage(user.coverImage);
             setEditJob(user.job);
@@ -140,16 +140,6 @@ export default function ProfileSection({editMode ,onEditMode, onCloseEdit}) {
         ))
     }, [apiCountriesList])
 
-    const citiesMenuItems = useMemo(() => {
-        return cities.map((cityApi) => (
-            <MenuItem 
-                key={cityApi} 
-                value={cityApi}
-            >
-                {cityApi}
-            </MenuItem>
-        ))
-    }, [cities])
 
     const jobsMenuItems = useMemo(() => {
         return JOB_INDUSTRIES.map((job) => (
@@ -460,17 +450,22 @@ return (
                         {countryMenuItems}
                     </TextField>
 
-                    <TextField
+                    <Autocomplete
+                        freeSolo
                         fullWidth
-                        select
-                        variant='outlined'
-                        label='City'
-                        value={editCity}
-                        onChange={(e) => setEditCity(e.target.value)}
-                        disabled={editCountry === '' || isCitiesLoading}
-                    >
-                        {citiesMenuItems}
-                    </TextField>
+                        options={cities}
+                        inputValue={editCity}
+                        onInputChange={(e, newValue) => setEditCity(newValue)}
+                        disabled={editCountry === ''}
+                        loading={isCitiesLoading}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                variant='outlined'
+                                label='City'
+                            />
+                        )}
+                    />
                 </Stack>
 
                 <Stack direction={{xs: 'column',md:'row'}} spacing={2} sx={{mb:2}}>
