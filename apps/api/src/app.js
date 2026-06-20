@@ -30,6 +30,11 @@ require('./auth/googleStrategy');
 app.use(helmet({
     contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    // HSTS only in production (real HTTPS behind the proxy). In dev the API is
+    // plain HTTP on localhost; sending HSTS makes the browser force-upgrade all
+    // http://localhost:* requests to https, which the API can't serve, surfacing
+    // as ERR_CONNECTION_RESET in the SPA.
+    hsts: process.env.NODE_ENV === 'production',
 }));
 
 app.use(passport.initialize());
