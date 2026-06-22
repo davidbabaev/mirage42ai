@@ -25,6 +25,7 @@ import { VideoCoordinatorProvider } from './providers/VideoCoordinatorProvider'
 import { ChatProvider } from './providers/ChatProvider'
 import RotateOverlay from './components/style/RotateOverlay'
 import RequireAuth from './components/RequireAuth'
+import ScrollToTop from './components/ScrollToTop'
 import PageNotFound from './pages/PageNotFound'
 import LandingPage from './pages/landing/LandingPage'
 import DocsLayout from './pages/docs/DocsLayout'
@@ -41,6 +42,7 @@ export default function App(){
             <UIProvider>
               <VideoCoordinatorProvider>
               <ChatProvider>
+              <ScrollToTop/>
               <RotateOverlay/>
               <Box
                 sx={{

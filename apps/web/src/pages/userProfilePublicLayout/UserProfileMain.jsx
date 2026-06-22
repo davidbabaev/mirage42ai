@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCardsProvider } from '../../providers/CardsProvider';
 import { useAuth } from '../../providers/AuthProvider';
@@ -33,13 +33,7 @@ export default function UserProfileMain() {
     
     const [selectedCardId, setSelectedCardId] = useState(null);
     const [openCommentCardId, setOpenCommentCardId] = useState(null);
-    
-    
-    // adding window scroll 0
-    useEffect(() => {
-        window.scrollTo(0, 0)
-    }, [])
-    
+
     const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
     
     const userProfile = users.find(u => u._id === id);
