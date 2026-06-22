@@ -13,11 +13,22 @@ import CloseIcon from '@mui/icons-material/Close';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { useUsersProvider } from '../providers/UsersProvider';
+import { useAuth } from '../providers/AuthProvider';
 
 
 function UsersPage() {
 
     const {users, loading} = useUsersProvider();
+    const {user} = useAuth();
+
+    // Exclude the logged-in user from THIS page only (not the provider, whose
+    // full list backs follower counts and the own-profile route). Everything the
+    // page derives — country tallies, filters, results count, grid — uses this
+    // self-excluded base so all of them stay consistent. Guards anonymous users.
+    const usersList = useMemo(
+        () => users.filter(u => u._id !== user?._id),
+        [users, user?._id]
+    );
     const {selectedUsers ,selectHandleUser, handleRemoveUser} = useSelectedUsers();
     const [count, setCount] = useState(10);
     const [search, setSearch] = useState('')
@@ -54,7 +65,7 @@ function UsersPage() {
         {label: 'Female', value: 'Female'}
     ]
 
-    const countries = [...new Set(users.map(user => user.address?.country.toLowerCase()))]
+    const countries = [...new Set(usersList.map(user => user.address?.country.toLowerCase()))]
     // remove doplicates from array, and we get new array by name countries that without duplicates
 
     const handleCountryToggle = (country) => {
@@ -108,7 +119,7 @@ function UsersPage() {
     }
 
     const filtred = useMemo(() => {
-        let result = users;
+        let result = usersList;
 
         // country filter:
         if(countriesFilter.length > 0){
@@ -149,11 +160,11 @@ function UsersPage() {
         });
 
         return result;
-    }, [debounceSearch, users, ageSort, nameSort, genderFilter, countriesFilter])
+    }, [debounceSearch, usersList, ageSort, nameSort, genderFilter, countriesFilter])
 
 
-    const filteredWithoutCountry = useMemo(() => {    
-        let result = users;
+    const filteredWithoutCountry = useMemo(() => {
+        let result = usersList;
 
         // search by name;
         result = result.filter((user) => {
@@ -167,7 +178,7 @@ function UsersPage() {
 
         return result
 
-    }, [users, debounceSearch, genderFilter])
+    }, [usersList, debounceSearch, genderFilter])
     
     const visibleUsers = filtred.slice(0, count)
     

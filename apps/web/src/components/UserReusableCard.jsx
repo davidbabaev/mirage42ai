@@ -231,6 +231,8 @@ export default function UserReusableCard({
             </Box>
         </Box>
 
+        {/* No Follow button on your own card — same self-check as the save icon above. */}
+        {userObject._id !== user?._id && (
         <Box px={2}>
 
             <Button
@@ -246,10 +248,10 @@ export default function UserReusableCard({
                 }}
                 fullWidth
                 sx={{
-                    fontSize: 9, 
-                    borderRadius: 5, 
+                    fontSize: 9,
+                    borderRadius: 5,
                     py: 0.3,
-                    '& .MuiButton-startIcon' : {mb: 0.2}, 
+                    '& .MuiButton-startIcon' : {mb: 0.2},
                     lineHeight: 0,
                     mb:2,
                 }}
@@ -258,6 +260,7 @@ export default function UserReusableCard({
                 {isFollowByMe(userObject._id) ? 'Following' : 'Follow'}
             </Button>
         </Box>
+        )}
 
         {isLoginPopupOpen && (
             <LoginPopup
