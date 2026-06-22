@@ -1,4 +1,3 @@
-import { useThemeContext } from '../providers/ThemeProvider';
 import { useAuth } from '../providers/AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
@@ -12,8 +11,7 @@ import PeopleIcon from '@mui/icons-material/People'
 import AddBoxIcon from '@mui/icons-material/AddBox';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import ProfileSettingsPopup from './ProfileSettingsPopup';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
-import LightModeIcon from '@mui/icons-material/LightMode';
+import ThemeMenu from './ThemeMenu';
 import CreateCardModal from './CreateCardModal';
 import MirageLogo from '../assets/MirageLogo';
 import MessageIcon from '@mui/icons-material/Message';
@@ -23,7 +21,6 @@ export default function NavBar() {
 
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [isProfileAvaterOpen, setIsProfileAvaterOpen] = useState(false);
-    const {darkMode, handleToggle} = useThemeContext();
     const {isLoggedIn, user} = useAuth();
     const ref = useRef(null);
     const profileRef = useRef(null);
@@ -192,26 +189,8 @@ export default function NavBar() {
                     />
                 )}
 
-                <Box
-                    onClick={() => handleToggle()}
-                    sx={{
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        color: 'text.secondary',
-                        ml: 'auto',
-                        '&:hover': {
-                            color: 'text.primary'
-                        }
-                    }}
-                >
-                    {
-                        darkMode ? (
-                            <LightModeIcon/>
-                        ) : (
-                            <DarkModeIcon/>
-                        )
-                    }
+                <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
+                    <ThemeMenu/>
                 </Box>
 
                 {isLoggedIn ? (

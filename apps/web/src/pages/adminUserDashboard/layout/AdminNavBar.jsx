@@ -2,9 +2,7 @@ import { AppBar, Avatar, Badge, Box, Container, IconButton, Toolbar } from '@mui
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MirageLogo from '../../../assets/MirageLogo';
-import { useThemeContext } from '../../../providers/ThemeProvider';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
-import LightModeIcon from '@mui/icons-material/LightMode';
+import ThemeMenu from '../../../components/ThemeMenu';
 import { useAuth } from '../../../providers/AuthProvider';
 import Notifications from '../../../components/Notifications';
 import useNotifications from '../../../hooks/useNotifications';
@@ -15,7 +13,6 @@ import MenuIcon from '@mui/icons-material/Menu';
 export default function AdminNavBar({onToggle}) {
 
     const navigate = useNavigate();
-    const {darkMode, handleToggle} = useThemeContext();
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [isProfileAvaterOpen, setIsProfileAvaterOpen] = useState(false);
     const {user} = useAuth();
@@ -75,26 +72,7 @@ export default function AdminNavBar({onToggle}) {
 
                 {/* Right Features */}
                 <Box sx={{display: 'flex', gap: 1}}>
-                    <Box
-                        onClick={() => handleToggle()}
-                        sx={{
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            color: 'text.secondary',
-                            '&:hover': {
-                                color: 'text.primary'
-                            }
-                        }}
-                    >
-                        {
-                            darkMode ? (
-                                <LightModeIcon/>
-                            ) : (
-                                <DarkModeIcon/>
-                            )
-                        }
-                    </Box>
+                    <ThemeMenu/>
 
                     <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
                         <Box ref={ref} style={{position: 'relative'}}>
