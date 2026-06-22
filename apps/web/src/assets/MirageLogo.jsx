@@ -40,7 +40,7 @@ export default function MirageLogo({height = 36}) {
         letterSpacing="-0.4" 
         fill={theme.palette.text.primary}
       >
-        mirageAI
+        Mirage42AI
       </text>
     </svg>
 
