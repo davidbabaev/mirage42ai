@@ -122,7 +122,7 @@ return (
 
 
                 {userData.map((u) => (
-                    <Box mt={2} key={u._id}>
+                    <Box mt={2} key={u.label}>
                         <Box sx={{display: 'flex', justifyContent: 'space-between'}}>
                             <Typography fontSize={15} color='text.secondary'>{u.label}</Typography>
                             <Typography fontSize={15} fontWeight={700}>{u.value}</Typography>
