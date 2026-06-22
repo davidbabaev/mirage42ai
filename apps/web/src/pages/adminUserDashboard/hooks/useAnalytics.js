@@ -1,10 +1,8 @@
 import { useCardsProvider } from '../../../providers/CardsProvider';
-import useCountries from '../../../hooks/useCountries';
 import { useUsersProvider } from '../../../providers/UsersProvider';
 
 function useAnalytics() {
 
-  const {apiCountriesList} = useCountries(); 
   const {registeredCards} = useCardsProvider();
   const {users} = useUsersProvider();
 
@@ -171,14 +169,12 @@ const avgEngagement = ((commentsCount + likesCount) / registeredCards.length).to
     return acc;
   },{})
 
-  const group_countCountriesPerUsers = 
+  const group_countCountriesPerUsers =
   Object.entries(countCountriesPerUsers).map((item) => {
-    const foundCountry = apiCountriesList.find(f => f.name === item[0])
     return {
-      country: item[0], 
+      country: item[0],
       count: item[1],
       percent: (item[1] / filteredUsers.length * 100).toFixed(0),
-      flag: foundCountry?.flag || "https://developers.elementor.com/docs/assets/img/elementor-placeholder-image.png"
     }
   }).sort((a,b) => b.count - a.count)
 

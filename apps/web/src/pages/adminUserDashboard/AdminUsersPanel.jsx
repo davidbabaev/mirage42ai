@@ -4,7 +4,7 @@ import useDebounce from '../../hooks/useDebounce';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../providers/AuthProvider';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
-import useCountries from '../../hooks/useCountries';
+import CountryFlag from '../../components/CountryFlag';
 import { Box, InputAdornment, MenuItem, TextField } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { Avatar, Button, Chip, IconButton, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography } from '@mui/material';
@@ -20,7 +20,6 @@ export default function AdminUsersPanel() {
 
   const {users, handleDeleteUser, loading, handleBanUser, handlePromoteUser, getUsers} = useUsersProvider();
   const {registeredCards, refreshFeed, fetchCards} = useCardsProvider();
-  const {apiCountriesList} = useCountries(); 
   const [search, setSearch] = useState('');
   const debounceSearch = useDebounce(search, 2000);
   const {user} = useAuth();
@@ -398,7 +397,6 @@ export default function AdminUsersPanel() {
                       {sliced.map((userM, indexM) => {
                           const userCardsCount = registeredCards.filter((card) => card.userId === userM._id).length;
                           const userFollowersCount = users.filter((userF) => userF.following.includes(userM._id)).length;
-                          const userFlag = apiCountriesList.find(f => f.name === userM.address?.country);
 
                           return (
                               <TableRow 
@@ -415,11 +413,10 @@ export default function AdminUsersPanel() {
                                   <TableCell sx={{color: 'text.secondary', fontSize: 12}}>{userM.email}</TableCell>
                                   <TableCell sx={{color: 'text.secondary', fontSize: 12}}>{userM.lastLoginAt.split("T")[0]}</TableCell>
                                   <TableCell>
-                                      <Box
-                                          component='img'
-                                          src={userFlag?.flag || "https://developers.elementor.com/docs/assets/img/elementor-placeholder-image.png"}
-                                          onError={(e) => e.target.src = "https://developers.elementor.com/docs/assets/img/elementor-placeholder-image.png"}
-                                          sx={{width: 30, height: 20, borderRadius: 0.5, objectFit: 'cover'}}
+                                      <CountryFlag
+                                          country={userM.address?.country}
+                                          width={30}
+                                          sx={{height: 20}}
                                       />
                                   </TableCell>
                                   <TableCell sx={{fontSize: 12}}>{userM.createdAt.split("T")[0]}</TableCell>

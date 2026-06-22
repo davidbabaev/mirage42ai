@@ -1,6 +1,7 @@
 import React from 'react'
 import useAnalytics from '../hooks/useAnalytics'
 import { Box, LinearProgress, Typography } from '@mui/material';
+import CountryFlag from '../../../components/CountryFlag';
 
 export default function CountriesAnalytics() {
 
@@ -23,9 +24,9 @@ export default function CountriesAnalytics() {
           Users by Country
         </Typography>
 
-        {group_countCountriesPerUsers.map((item, index) => (
-          <Box 
-            key={index}
+        {group_countCountriesPerUsers.map((item) => (
+          <Box
+            key={item.country}
             sx={{
               display: 'flex',
               alignItems: 'center',
@@ -33,17 +34,10 @@ export default function CountriesAnalytics() {
               mb:1.5
             }}
           >
-            <Box
-              component={'img'} 
-              src={item.flag} 
-              onError= {(e) => e.target.src = "https://developers.elementor.com/docs/assets/img/elementor-placeholder-image.png"}
-              sx={{
-                width: 35,
-                height: 20,
-                borderRadius: 1,
-                objectFit: 'cover',
-                flexShrink: 0
-              }}
+            <CountryFlag
+              country={item.country}
+              width={35}
+              sx={{ height: 20, borderRadius: 1 }}
             />
             <Typography fontSize={14} lineHeight={1}>
               {item.country}
