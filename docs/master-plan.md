@@ -202,7 +202,7 @@ TypeScript migration (valuable, but a horizontal cost across everything — sche
 6. **[✅ done]** Create the separate **mirage42ai Cloudinary account**, wire keys into `.env` (uploads finally work in dev). _(`CLOUDINARY_*` keys in `apps/api/.env.example`; uploads wired in `cardsRoutes.js`.)_
 7. **[🟡 partial]** Decide pilot persona concepts (3) on paper — names, faces-in-words, values, schedules. _(Pilot sizing/strategy is in §4, but the 3 concrete named personas with faces/values/schedules are not yet written down.)_
 
-**Phase C — Security & correctness hardening 🟡**
+**Phase C — Security & correctness hardening ✅**
 8. **[✅ done]** GitHub Actions CI (lint + both test suites) — *before* the bigger refactors. _(`.github/workflows/ci.yml` runs web lint + web/api test suites on push/PR.)_
 9. **[✅ done]** JWT expiry + refresh; read role/ban from DB per request (kills stale `isAdmin`, enables real bans). _(Short-lived access token + rotating refresh token in an httpOnly cookie (`auth/refreshTokens.js`, `auth/authRoutes.js`); web transparently refreshes on 401 (`apiService.js`). Role/ban read from the DB per request in `authService.js`/`optionalAuth.js`/`chatSocket.js`. All test-backed.)_
 10. **[✅ done]** Joi validation on login & all query-touching inputs (NoSQL-injection surface). _(`POST /users/login` now validated via `validateLoginWithJoi.js`; test-backed. Joi already on registration & cards.)_
