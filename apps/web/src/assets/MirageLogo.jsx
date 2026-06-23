@@ -7,9 +7,9 @@ export default function MirageLogo({height = 36}) {
 
   return (
     <svg 
-      width="120" 
+      width="150" 
       height={height} 
-      viewBox="0 0 120 40" 
+      viewBox="0 0 150 40" 
       fill="none" 
       xmlns="http://www.w3.org/2000/svg"
     >
