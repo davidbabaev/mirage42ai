@@ -18,3 +18,10 @@ Always-on rules. Follow these on every turn.
 - All UI must work well on both mobile and desktop. Build mobile-first, use the existing MUI breakpoint system (xs/sm/md/lg) and useMediaQuery rather than ad-hoc media queries, and keep touch targets comfortable on mobile.
 - When a layout genuinely differs between screen sizes (e.g. chat: two-pane on desktop, full-screen navigation on mobile), design and build both deliberately — don't just shrink the desktop layout.
 - Verify UI changes in a real browser at BOTH a mobile viewport (~390px) and a desktop viewport (~1280px) before claiming done.
+
+## Token discipline
+
+- Delegate exploration. When locating code, tracing how something works, or reading more than ~3 files to answer a question, launch a search/Explore subagent and work from its summary. Do not read many files directly in the main thread.
+- Delegate test and build runs to a subagent; report back only pass/fail and the failing cases, not the full log.
+- Keep the main session for decisions, design, and writing code — the work that needs full reasoning.
+- When a subagent reports back, keep the conclusion, drop the raw file dumps.
