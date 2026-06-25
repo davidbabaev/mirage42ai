@@ -174,7 +174,7 @@ export default function FeedPage() {
                                     fontWeight={600}
                                     fontSize={14}
                                 >
-                                    {(user?.following || []).length}
+                                    {new Set(user?.following || []).size}
                                 </Typography>
 
                                 <Typography 

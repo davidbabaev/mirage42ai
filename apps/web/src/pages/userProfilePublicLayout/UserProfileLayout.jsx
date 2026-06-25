@@ -165,7 +165,7 @@ export default function UserProfileLayout() {
                             fontWeight={600}
                             fontSize={{xs: 13, md:16}}
                         >
-                            {(userProfile?.following || []).length}
+                            {new Set(userProfile?.following || []).size}
                         </Typography>
 
                         <Typography 
@@ -252,7 +252,7 @@ export default function UserProfileLayout() {
                             fontWeight={600}
                             fontSize={{xs: 13, md:16}}
                         >
-                            {(userProfile?.following || []).length}
+                            {new Set(userProfile?.following || []).size}
                         </Typography>
 
                         <Typography 

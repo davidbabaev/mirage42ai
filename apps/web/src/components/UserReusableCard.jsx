@@ -199,7 +199,7 @@ export default function UserReusableCard({
                     fontWeight={600}
                     fontSize={14}
                 >
-                    {(userObject?.following || []).length}
+                    {new Set(userObject?.following || []).size}
                 </Typography>
 
                 <Typography 

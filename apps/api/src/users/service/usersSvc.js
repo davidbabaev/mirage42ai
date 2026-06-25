@@ -128,18 +128,27 @@ const followUser = async (userId, followingUserId) => {
     const user = await User.findById(userId);
     if(!user) throw createError(404, 'User didnt found')
 
-    // if user.following have and id if not put this id in this array
-    if(user.following.includes(followingUserId)){
-        user.following = user.following.filter(id => id !== followingUserId);
+    // Decide follow vs unfollow from current membership, then issue a SINGLE
+    // atomic update. We never read-modify-.save() the array: $addToSet refuses
+    // duplicates by definition and $pull removes every occurrence, so concurrent
+    // or repeated follows can't inflate the count with duplicate ids.
+    const alreadyFollowing = user.following.includes(followingUserId);
+
+    if(alreadyFollowing){
+        await User.updateOne({ _id: userId }, { $pull: { following: followingUserId } });
     }
     else{
-        user.following.push(followingUserId)
-        await new Notification({actionType: 'follow', fromUser: userId, toUser: followingUserId}).save()
+        const res = await User.updateOne({ _id: userId }, { $addToSet: { following: followingUserId } });
+        // Only notify on a REAL new follow — i.e. the id was actually added.
+        // A no-op $addToSet (already present) reports modifiedCount 0 and stays silent.
+        if(res.modifiedCount > 0){
+            await new Notification({actionType: 'follow', fromUser: userId, toUser: followingUserId}).save()
+        }
     }
 
-    const saveFollow = await user.save()
+    const saveFollow = await User.findById(userId);
     return pickSafeUserFields(saveFollow);
-}   
+}
 
 const deleteUser = async (deletedUserId) => {
     const deleted = await User.findByIdAndDelete(deletedUserId);
@@ -175,6 +184,18 @@ const banUser = async(bannedUserId) => {
     bannedUser.isBanned = !bannedUser.isBanned
 
     const updatedBannedUser = await bannedUser.save();
+
+    // When a user is banned, clean up follow references the same way deleteUser
+    // does — pull their id out of everyone's `following` array so a banned user
+    // stops inflating follower/following counts. (No-op on unban: by then their
+    // id has already been pulled, so there is nothing to remove.)
+    if(updatedBannedUser.isBanned){
+        await User.updateMany(
+            {following: bannedUserId},
+            {$pull: {following: bannedUserId}}
+        )
+    }
+
     return pickSafeUserFields(updatedBannedUser)
 }
 

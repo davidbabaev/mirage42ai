@@ -257,3 +257,112 @@ describe('chat unread + last-message preview + mark-read', () => {
         expect(asB.body.find(c => c._id === conversationId).unreadCount).toBe(0);
     });
 });
+
+// ---------------------------------------------------------------------------
+// Follow/unfollow data integrity. The "Following = 10 but follows 4" bug came
+// from a stored `following` array inflated by duplicate/stale ids. These tests
+// pin the write-path fix: atomic $addToSet (no duplicates), $pull on unfollow,
+// notification-only-on-a-real-follow, and ban cleanup that pulls the banned id
+// out of every follower's `following`.
+// ---------------------------------------------------------------------------
+describe('follow/unfollow integrity + ban cleanup', () => {
+    const User = () => mongoose.model('User');
+    const Notification = () => mongoose.model('Notification');
+
+    const register = async (slug) => {
+        const res = await request(app).post('/users').send({
+            name: 'Test', lastName: 'User',
+            email: `${slug}.integrity@example.com`,
+            password: 'Password1!',
+            phone: '0501112233',
+            age: 25, birthDate: '1999-01-01', address: {},
+        });
+        expect(res.status).toBe(200);
+        return res.body.safeUser._id;
+    };
+    const login = async (slug) => {
+        const res = await request(app).post('/users/login')
+            .send({ email: `${slug}.integrity@example.com`, password: 'Password1!' });
+        expect(res.status).toBe(200);
+        return res.body.token;
+    };
+    const follow = (token, targetId) =>
+        request(app).patch(`/users/${targetId}/follow`).set('auth-token', token);
+
+    let frankId, tinaId, frankToken;
+
+    beforeAll(async () => {
+        frankId = await register('frank');
+        tinaId = await register('tina');
+        frankToken = await login('frank');
+    });
+
+    it('a real new follow stores the id exactly once and fires exactly one notification', async () => {
+        await User().updateOne({ _id: frankId }, { $set: { following: [] } });
+        await Notification().deleteMany({ fromUser: frankId, toUser: tinaId });
+
+        const res = await follow(frankToken, tinaId);
+        expect(res.status).toBe(200);
+        expect((res.body.following || []).filter(id => id === tinaId).length).toBe(1);
+
+        const notifs = await Notification().countDocuments({
+            actionType: 'follow', fromUser: frankId, toUser: tinaId,
+        });
+        expect(notifs).toBe(1);
+    });
+
+    it('unfollow removes the id via $pull and creates no new notification', async () => {
+        await User().updateOne({ _id: frankId }, { $set: { following: [tinaId] } });
+        await Notification().deleteMany({ fromUser: frankId, toUser: tinaId });
+
+        const res = await follow(frankToken, tinaId); // already-following -> unfollow
+        expect(res.status).toBe(200);
+        expect(res.body.following).not.toContain(tinaId);
+
+        const notifs = await Notification().countDocuments({
+            actionType: 'follow', fromUser: frankId, toUser: tinaId,
+        });
+        expect(notifs).toBe(0);
+    });
+
+    it('$pull on unfollow removes EVERY copy of a pre-existing duplicate, and re-follow re-adds exactly one', async () => {
+        // Simulate a legacy-corrupted array with duplicate ids.
+        await User().updateOne({ _id: frankId }, { $set: { following: [tinaId, tinaId, tinaId] } });
+
+        const off = await follow(frankToken, tinaId); // includes -> $pull all copies
+        expect(off.body.following.filter(id => id === tinaId).length).toBe(0);
+
+        const on = await follow(frankToken, tinaId); // $addToSet -> exactly one
+        expect(on.body.following.filter(id => id === tinaId).length).toBe(1);
+    });
+
+    it('concurrent follows never produce duplicate ids ($addToSet invariant)', async () => {
+        await User().updateOne({ _id: frankId }, { $set: { following: [] } });
+
+        await Promise.all(Array.from({ length: 5 }, () => follow(frankToken, tinaId)));
+
+        const frank = await User().findById(frankId).lean();
+        // Net toggle parity may leave Tina followed or not, but there must NEVER
+        // be a duplicate id — that is exactly what $addToSet guarantees and the
+        // old read-modify-.save()/push() path did not.
+        expect(frank.following.filter(id => id === tinaId).length).toBeLessThanOrEqual(1);
+        expect(new Set(frank.following).size).toBe(frank.following.length);
+    });
+
+    it('banning a user pulls their id out of every follower\'s following array', async () => {
+        // Bootstrap an admin: promote in the DB, then log in so the JWT carries isAdmin.
+        const adminId = await register('admin');
+        await User().updateOne({ _id: adminId }, { $set: { isAdmin: true } });
+        const adminToken = await login('admin');
+
+        // Frank follows Tina so there is a reference to clean up.
+        await User().updateOne({ _id: frankId }, { $set: { following: [tinaId] } });
+
+        const ban = await request(app).patch(`/users/${tinaId}/ban`).set('auth-token', adminToken);
+        expect(ban.status).toBe(200);
+        expect(ban.body.isBanned).toBe(true);
+
+        const frank = await User().findById(frankId).lean();
+        expect(frank.following).not.toContain(tinaId);
+    });
+});

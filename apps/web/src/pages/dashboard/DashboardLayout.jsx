@@ -99,7 +99,7 @@ export default function DashboardLayout() {
 
                             <Box sx={{display: 'flex', gap: 1}}>
                                 <Typography fontSize={13}><b>{getFollowersCount(user?._id)}</b> <Typography component="span" color="text.secondary" fontSize={13}>followers</Typography></Typography>
-                                <Typography fontSize={13}><b>{(user?.following || []).length}</b> <Typography component="span" color="text.secondary" fontSize={13}>following</Typography></Typography>
+                                <Typography fontSize={13}><b>{new Set(user?.following || []).size}</b> <Typography component="span" color="text.secondary" fontSize={13}>following</Typography></Typography>
                                 <Typography fontSize={13}><b>{postsAmount}</b> <Typography component="span" color="text.secondary" fontSize={13}>posts</Typography></Typography>
                             </Box>
                     </Box>
@@ -155,7 +155,7 @@ export default function DashboardLayout() {
                                 fontWeight={600}
                                 fontSize={16}
                             >
-                                {(user?.following || []).length}
+                                {new Set(user?.following || []).size}
                             </Typography>
 
                             <Typography 
