@@ -4,5 +4,11 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "scripts": {
+    "dev": "concurrently --names api,web --prefix-colors cyan,magenta \"npm run dev --workspace apps/api\" \"npm run dev --workspace apps/web\""
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3"
+  }
 }
