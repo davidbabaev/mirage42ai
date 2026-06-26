@@ -31,23 +31,15 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-### Mobile video posts won't open as modal
-- What: On mobile, a post containing a video does not open into the full-screen modal the way image posts do.
-- Type: bug (visual, mobile)
-- Reference: docs/autopilot/refs/mobile-post-videonotopen.png
-- Notes: combines two doc entries describing the same issue.
-- Built on branch autopilot/2026-06-26, commit a0ae628 — awaiting review/merge.
-
-### Video/media in public profile + rename to "media"
-- What: Videos don't appear in the public profile's photos section; also rename that section label from "photos" to "media" since it holds both.
-- Type: bug (visual + small logic)
-- Reference: docs/autopilot/refs/video-visualphoto.png, docs/autopilot/refs/public-profile-photos.png
-- Notes: two parts — (1) make video display, (2) rename label.
-- Built on branch autopilot/2026-06-26, commit 798e439 — awaiting review/merge.
-
 ## Done
 
 (finished items move here, newest on top)
+
+### Video/media in public profile + rename to "media" — DONE
+- Merged to main as 798e439 (videos render in the profile media grid; "Photos" → "Media").
+
+### Mobile video posts won't open as modal — DONE
+- Merged to main as a0ae628 (transparent tap overlay over feed videos opens the modal on mobile).
 
 ### Posts uniform height in feed — DONE
 - Shipped: feed media keeps natural aspect ratio with a max-height 600px cap; over-tall media cropped from the top. In CardItem.
