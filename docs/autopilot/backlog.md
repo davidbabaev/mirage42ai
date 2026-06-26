@@ -11,12 +11,6 @@ Mark items [done] when finished so they drop out of the active list.
 - Reference: none
 - Notes: app-level defenses (rate limiting, validation, helmet headers, XSS/CSRF) live in CLAUDE.md standards; THIS item is the network/infra layer that sits outside the app code.
 
-### Mobile video posts won't open as modal
-- What: On mobile, a post containing a video does not open into the full-screen modal the way image posts do.
-- Type: bug (visual, mobile)
-- Reference: docs/autopilot/refs/mobile-post-videonotopen.png
-- Notes: combines two doc entries describing the same issue.
-
 ### Video/media in public profile + rename to "media"
 - What: Videos don't appear in the public profile's photos section; also rename that section label from "photos" to "media" since it holds both.
 - Type: bug (visual + small logic)
@@ -42,6 +36,13 @@ Mark items [done] when finished so they drop out of the active list.
 - Notes: DO NOT build ad-hoc. This is the same work as Phase D cursor pagination — belongs there to avoid building it twice.
 
 ## Awaiting review
+
+### Mobile video posts won't open as modal
+- What: On mobile, a post containing a video does not open into the full-screen modal the way image posts do.
+- Type: bug (visual, mobile)
+- Reference: docs/autopilot/refs/mobile-post-videonotopen.png
+- Notes: combines two doc entries describing the same issue.
+- Built on branch autopilot/2026-06-26, commit a0ae628 — awaiting review/merge.
 
 ## Done
 
