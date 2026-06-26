@@ -3,10 +3,10 @@ const Joi = require('joi');
 const validateUser = (user) => {
     const validated = Joi.object({
         name: Joi.string().min(2).max(20).required(),
-        lastName: Joi.string().min(2).max(20).required(),
+        lastName: Joi.string().min(2).max(20).optional(),
         email: Joi.string().regex(RegExp(/^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})$/)).required(),
         password: Joi.string().regex(RegExp(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/)).required(),
-        phone: Joi.string().regex(RegExp(/0[0-9]{1,2}\-?\s?[0-9]{3}\s?[0-9]{4}/)).required(),
+        phone: Joi.string().regex(RegExp(/0[0-9]{1,2}\-?\s?[0-9]{3}\s?[0-9]{4}/)).allow('').optional(),
         age: Joi.number().integer().required(),
         job: Joi.string().max(50),
         gender: Joi.string().max(10),

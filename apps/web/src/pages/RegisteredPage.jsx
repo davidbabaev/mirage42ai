@@ -2,10 +2,9 @@ import React, { useMemo, useState } from 'react'
 import { useAuth } from '../providers/AuthProvider'
 import { useNavigate } from 'react-router-dom';
 import useCountries from '../hooks/useCountries';
-import { JOB_INDUSTRIES } from '../constants/usersJobIndustries';
 import useCities from '../hooks/useCities';
 import { getAgeByDate, getMaxBirthDate } from '../utils/getAgeByBirthDate';
-import { Alert, Autocomplete, Box, Button, Divider, MenuItem, Stack, TextField, Typography, useTheme } from '@mui/material';
+import { Alert, Autocomplete, Box, Button, Divider, Fade, MenuItem, Stack, Step, StepLabel, Stepper, TextField, Typography, useTheme } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';
 import MirageLogo from '../assets/MirageLogo';
 import { DatePicker } from '@mui/x-date-pickers';
@@ -14,10 +13,13 @@ import bgImg from '../assets/Gemini_Generated_Image_ssn5lpssn5lpssn5.png'
 import bgImgMobile from '../assets/Gemini_Generated_Image_78keg978keg978ke.png'
 
 
+const STEPS = ['Account', 'About you', 'Location'];
+
 export default function RegisteredPage() {
 
     const theme = useTheme();
 
+    const [activeStep, setActiveStep] = useState(0);
     const [error, setError] = useState('');
     const [name, setName] = useState('');
     const [lastName, setLastName] = useState('');
@@ -25,12 +27,9 @@ export default function RegisteredPage() {
     const [password, setPassword] = useState('');
     const [country, setCountry] = useState('');
     const [city, setCity] = useState('');
-    const [job, setJob] = useState('');
     const [gender, setGender] = useState('');
     const [birthDate, setBirthDate] = useState('');
-    const [phone, setPhone] = useState('');
-    const [aboutMe, setAboutMe] = useState('');
-    
+
     const {cities, isCitiesLoading} = useCities(country);
 
     const handleCountryChange = (e) => {
@@ -47,72 +46,96 @@ export default function RegisteredPage() {
     // BirthDate function, handling
     const maxDate = useMemo(() => getMaxBirthDate(13), []);
 
-    
-    // handle form submit
+    // Validate one step's fields, reusing the original rules/messages.
+    // Returns an error string, or null when the step is valid.
+    const validateStep = (step) => {
+        if(step === 0){
+            if(!email.trim().includes('@')){
+                return 'email must includes @';
+            }
+            // Mirror the API's password rule so the form never accepts a
+            // password the server will reject: 8+ chars with at least one
+            // lowercase, uppercase, digit, and special character.
+            if(!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(password)){
+                return 'Password must be at least 8 characters and include upper & lower case, a number, and a special character';
+            }
+        }
+        if(step === 1){
+            if(name.trim() === ''){
+                return 'Name is required';
+            }
+            if(gender === ''){
+                return 'Gender is Required';
+            }
+            if(birthDate === ''){
+                return 'Birth date required';
+            }
+            if(getAgeByDate(birthDate) < 13){
+                return 'Age required and must be 13 or older';
+            }
+        }
+        if(step === 2){
+            if(country === ''){
+                return 'Country is Required';
+            }
+            if(city === ''){
+                return 'City is Required';
+            }
+        }
+        return null;
+    }
+
+    const handleNext = () => {
+        const stepError = validateStep(activeStep);
+        if(stepError){
+            setError(stepError);
+            return;
+        }
+        setError('');
+        setActiveStep((s) => s + 1);
+    }
+
+    const handleBack = () => {
+        setError('');
+        setActiveStep((s) => s - 1);
+    }
+
+    // handle form submit (final step)
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        if(name.trim() === ''){
-            setError('Name is required');
-            return;
-        }
-        
-        if(password.trim().length < 6){
-            setError('Password must be at least 6 characters');
-            return;
-        }
-        
-        if(!email.trim().includes('@')){
-            setError('email must includes @');
-            return;
-        }
 
-        if(country === ''){
-            setError('Country is Required');
-            return;
-        }
-
-        if(city === ''){
-            setError('City is Required');
-            return;
-        }
-
-        if(gender === ''){
-            setError('Gender is Required');
-            return;
-        }
-
-        if(birthDate === ''){
-            setError('Birth date required')
-            return;
+        // Re-validate every step; jump to the first one that fails.
+        for(let s = 0; s < STEPS.length; s++){
+            const stepError = validateStep(s);
+            if(stepError){
+                setActiveStep(s);
+                setError(stepError);
+                return;
+            }
         }
 
         const calculatedAge = getAgeByDate(birthDate);
 
-        if(calculatedAge < 13){
-            setError("Age required and must be 13 or older")
-            return;
+        const payload = {
+            email: email,
+            password: password,
+            name: name,
+            address: {
+                country: country,
+                city: city,
+            },
+            age: calculatedAge,
+            gender: gender,
+            birthDate: birthDate,
+        };
+        // Last name is optional; only send it when provided so the API/DB never
+        // sees an empty string (the User schema requires min length 2).
+        if(lastName.trim()){
+            payload.lastName = lastName.trim();
         }
 
-        const result = await handleRegister(
-            {
-                email: email, 
-                password: password, 
-                name: name, 
-                address: {
-                    country: country, 
-                    city: city,
-                },
-                age: calculatedAge, 
-                gender: gender, 
-                phone: phone, 
-                lastName: lastName, 
-                job: job,
-                birthDate: birthDate,
-                aboutMe: aboutMe,
-            }
-        );
-        
+        const result = await handleRegister(payload);
+
         if(!result.success) {
             setError(result.message);
             return;
@@ -153,8 +176,9 @@ export default function RegisteredPage() {
       }}>
         {/* Form Card */}
         <Box sx={{
-            width: 400,
-            p: 4,
+            width: '100%',
+            maxWidth: 400,
+            p: {xs: 3, md: 4},
             bgcolor: 'background.paper',
             '& input:-webkit-autofill': {
                 // theme.palette.background.paper
@@ -175,204 +199,215 @@ export default function RegisteredPage() {
           >
             Create Account
           </Typography>
-          <Typography 
-            fontSize={16} 
+          <Typography
+            fontSize={16}
             color='text.secondary'>
               Join Mirage today
           </Typography>
 
-          {/* Name Row */}
-          <Stack direction='row' spacing={2} sx={{ mt: 3, mb: 2}}>
-            <TextField
-                fullWidth
-                variant='outlined'
-                label='First Name'
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-            />
-            
-            <TextField
-                fullWidth
-                variant='outlined'
-                label='Last Name'
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-            />
-          </Stack>
+          <Stepper activeStep={activeStep} alternativeLabel sx={{mt: 3}}>
+            {STEPS.map((label) => (
+                <Step key={label}>
+                    <StepLabel>{label}</StepLabel>
+                </Step>
+            ))}
+          </Stepper>
 
-        <TextField
-            fullWidth
-            variant='outlined'
-            label='Email'
-            type='email'
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete='off'
-            sx={{mb: 2}}
-          />
+          {/* Step content */}
+          <Box sx={{minHeight: 240, mt: 3}}>
+            {activeStep === 0 && (
+                <Fade in timeout={250}>
+                    <Box>
+                        <TextField
+                            fullWidth
+                            variant='outlined'
+                            label='Email'
+                            type='email'
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            autoComplete='off'
+                            sx={{mb: 2}}
+                        />
 
-          <TextField
-            fullWidth
-            label='Password'
-            type='password'
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete='new-password'
-            sx={{mb: 2}}
-            variant='outlined'
-          />
+                        <TextField
+                            fullWidth
+                            label='Password'
+                            type='password'
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            autoComplete='new-password'
+                            variant='outlined'
+                        />
+                    </Box>
+                </Fade>
+            )}
 
-          <Stack direction='row' spacing={2} sx={{mb: 2}}>
-            <TextField
-                fullWidth
-                select
-                variant='outlined'
-                label='Country'
-                value={country}
-                onChange={handleCountryChange}
-            >
-                {apiCountriesList.map((country) => (
-                    <MenuItem 
-                        key={country.code} 
-                        value={country.name}
-                    >
-                        {country.name}
-                    </MenuItem>
-                ))}
-            </TextField>
+            {activeStep === 1 && (
+                <Fade in timeout={250}>
+                    <Box>
+                        <Stack direction='row' spacing={2} sx={{mb: 2}}>
+                            <TextField
+                                fullWidth
+                                variant='outlined'
+                                label='First Name'
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                            />
 
-            <Autocomplete
-                fullWidth
-                options={cities}
-                value={city || null}
-                onChange={(e, newValue) => setCity(newValue || '')}
-                disabled={country === ''}
-                loading={isCitiesLoading}
-                renderInput={(params) => (
-                    <TextField
-                        {...params}
-                        variant='outlined'
-                        label='City'
-                    />
-                )}
-            />
-          </Stack>
+                            <TextField
+                                fullWidth
+                                variant='outlined'
+                                label='Last Name'
+                                value={lastName}
+                                onChange={(e) => setLastName(e.target.value)}
+                            />
+                        </Stack>
 
-          <Stack direction='row' spacing={2} sx={{mb:2}}>
-            <TextField
-                fullWidth
-                select
-                variant='outlined'
-                label='Job Industry'
-                value={job}
-                onChange={(e) => setJob(e.target.value)}
-            >
-                {JOB_INDUSTRIES.map((job) => (
-                    <MenuItem 
-                        key={job} 
-                        value={job}
-                    >
-                        {job}
-                    </MenuItem>
-                ))}
-            </TextField>
+                        <TextField
+                            fullWidth
+                            select
+                            variant='outlined'
+                            label='Gender'
+                            value={gender}
+                            onChange={(e) => setGender(e.target.value)}
+                            sx={{mb: 2}}
+                        >
+                            <MenuItem value='Male'>Male</MenuItem>
+                            <MenuItem value='Female'>Female</MenuItem>
+                        </TextField>
 
-            <TextField
-                fullWidth
-                select
-                variant='outlined'
-                label='Gender'
-                value={gender}
-                onChange={(e) => setGender(e.target.value)}
-            >
-                <MenuItem value='Male'>Male</MenuItem>
-                <MenuItem value='Female'>Female</MenuItem>
-            </TextField>
-          </Stack>
+                        <DatePicker
+                            label='Birth Date'
+                            value={birthDate ? dayjs(birthDate) : null}
+                            onChange={(newValue) => setBirthDate(newValue ? newValue.format('YYYY-MM-DD') : '')}
+                            maxDate={dayjs(maxDate)}
+                            slotProps={{
+                                textField:{
+                                    fullWidth: true,
+                                    variant: 'outlined'
+                                }
+                            }}
+                        />
+                    </Box>
+                </Fade>
+            )}
 
-          <Stack direction='row' spacing={2} sx={{mb:2}}>
-            <DatePicker
-                label='Birth Date'
-                value={birthDate ? dayjs(birthDate) : null}
-                onChange={(newValue) => setBirthDate(newValue ? newValue.format('YYYY-MM-DD') : '')}
-                maxDate={dayjs(maxDate)}
-                slotProps={{
-                    textField:{
-                        fullWidth: true,
-                        variant: 'outlined'
-                    }
-                }}
-            />
+            {activeStep === 2 && (
+                <Fade in timeout={250}>
+                    <Box>
+                        <TextField
+                            fullWidth
+                            select
+                            variant='outlined'
+                            label='Country'
+                            value={country}
+                            onChange={handleCountryChange}
+                            sx={{mb: 2}}
+                        >
+                            {apiCountriesList.map((country) => (
+                                <MenuItem
+                                    key={country.code}
+                                    value={country.name}
+                                >
+                                    {country.name}
+                                </MenuItem>
+                            ))}
+                        </TextField>
 
-            <TextField
-                fullWidth
-                variant='outlined'
-                label="Phone"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                slotProps={{
-                    htmlInput: {maxLength: 10}
-                }}
-            />
-          </Stack>
-
-          <TextField
-            fullWidth
-            label='About Me'
-            value={aboutMe}
-            onChange={(e) => setAboutMe(e.target.value)}
-            multiline
-            sx={{mb: 2}}
-            rows={3}
-            variant='outlined'
-          />
+                        <Autocomplete
+                            fullWidth
+                            options={cities}
+                            value={city || null}
+                            onChange={(e, newValue) => setCity(newValue || '')}
+                            disabled={country === ''}
+                            loading={isCitiesLoading}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    variant='outlined'
+                                    label='City'
+                                />
+                            )}
+                        />
+                    </Box>
+                </Fade>
+            )}
+          </Box>
 
           {error && (
             <Alert severity='error' sx={{mb: 2}}>
               {error}
             </Alert>
           )}
-          
-          {/* Login Button */}
-          <Button
-            fullWidth
-            variant='contained'
-            size='large'
-            onClick={handleSubmit}
-          >
-            Sign Up
-          </Button>
 
-          {/* Divider */}
-          <Divider sx={{my: 2}}>
-            <Typography fontSize={12} color='text.secondary'>or continue with</Typography>
-          </Divider>
+          {/* Step navigation */}
+          <Stack direction='row' spacing={2}>
+            {activeStep > 0 && (
+                <Button
+                    fullWidth
+                    variant='outlined'
+                    size='large'
+                    onClick={handleBack}
+                >
+                    Back
+                </Button>
+            )}
 
-          {/* Google button */}
-          <Button
-            fullWidth
-            variant='outlined'
-            startIcon={<GoogleIcon/>}
-            href={`${import.meta.env.VITE_API_URL}/auth/google`}
-            sx={{mb: 3}}
-          >
-            Continue with Google
-          </Button>
+            {activeStep < STEPS.length - 1 ? (
+                <Button
+                    fullWidth
+                    variant='contained'
+                    size='large'
+                    onClick={handleNext}
+                >
+                    Next
+                </Button>
+            ) : (
+                <Button
+                    fullWidth
+                    variant='contained'
+                    size='large'
+                    onClick={handleSubmit}
+                >
+                    Sign Up
+                </Button>
+            )}
+          </Stack>
 
-          {/* rgistered link */}
-          <Typography fontSize={13} color='text.secondary' textAlign='center'>
-              Already have an account?{' '}
-              <span
-                style={{color: '#7F77DD', cursor: 'pointer', fontWeight: 600}}
-                onClick={() => navigate('/login')}
+          {/* OAuth + login link stay on the first step */}
+          {activeStep === 0 && (
+            <>
+              {/* Divider */}
+              <Divider sx={{my: 2}}>
+                <Typography fontSize={12} color='text.secondary'>or continue with</Typography>
+              </Divider>
+
+              {/* Google button */}
+              <Button
+                fullWidth
+                variant='outlined'
+                startIcon={<GoogleIcon/>}
+                href={`${import.meta.env.VITE_API_URL}/auth/google`}
+                sx={{mb: 3}}
               >
-                Login
-              </span>
-          </Typography>
+                Continue with Google
+              </Button>
+
+              {/* registered link */}
+              <Typography fontSize={13} color='text.secondary' textAlign='center'>
+                  Already have an account?{' '}
+                  <span
+                    style={{color: '#7F77DD', cursor: 'pointer', fontWeight: 600}}
+                    onClick={() => navigate('/login')}
+                  >
+                    Login
+                  </span>
+              </Typography>
+            </>
+          )}
 
         </Box>
       </Box>
     </Box>
   )
 }
-
