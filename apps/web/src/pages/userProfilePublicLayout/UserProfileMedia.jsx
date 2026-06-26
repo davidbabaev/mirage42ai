@@ -53,14 +53,27 @@ export default function UserProfileMedia() {
                     sx={{
                         aspectRatio: '1',
                         borderRadius: 2,
-                        backgroundImage: `url(${image.mediaUrl})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
+                        overflow: 'hidden',
                         cursor: 'pointer',
-                        '&:hover': {opacity: 0.85}
+                        '&:hover': {opacity: 0.85},
+                        ...(image.mediaType !== 'video' && {
+                            backgroundImage: `url(${image.mediaUrl})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                        }),
                     }}
                     onClick = {() => isLoggedIn ? setSelectedCardId(image._id): setIsLoginPopupOpen(true)}
-                />
+                >
+                    {image.mediaType === 'video' && (
+                        <video
+                            src={`${image.mediaUrl}#t=0.1`}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            style={{width: '100%', height: '100%', objectFit: 'cover', display: 'block', pointerEvents: 'none'}}
+                        />
+                    )}
+                </Box>
             ))}
             {selectedCardId && (
                 <CardPopupModal
