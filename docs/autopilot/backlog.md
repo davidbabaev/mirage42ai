@@ -5,23 +5,11 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Active
 
-### Fix broken flag images in admin dashboard
-- What: Country flags show as broken-image placeholders in the Users by Country panel and Users Management table.
-- Type: visual
-- Reference: none
-- Notes: approved fix is a bundled SVG flag set with a CountryFlag component keyed to ISO codes. (no screenshot; bug is well-described in text)
-
 ### Infrastructure hardening (deployment task — do with Render staging/production)
 - What: Add network-level protection at the host: firewall rules, DDoS/WAF protection (e.g. Cloudflare in front), restrict inbound to required ports, lock down Atlas network access to known IPs.
 - Type: infrastructure (not a code task — done at deploy time, verified in the host dashboards)
 - Reference: none
 - Notes: app-level defenses (rate limiting, validation, helmet headers, XSS/CSRF) live in CLAUDE.md standards; THIS item is the network/infra layer that sits outside the app code.
-
-### Posts uniform height in feed
-- What: Posts in the feed must render at a consistent height even when media (image/video) dimensions differ. Currently uneven.
-- Type: bug (visual)
-- Reference: docs/autopilot/refs/post-sizes.png, docs/autopilot/refs/post-sizes2.png
-- Notes: layout/CSS. Verify at 390px and 1280px.
 
 ### Mobile video posts won't open as modal
 - What: On mobile, a post containing a video does not open into the full-screen modal the way image posts do.
@@ -53,6 +41,12 @@ Mark items [done] when finished so they drop out of the active list.
 - Reference: none
 - Notes: DO NOT build ad-hoc. This is the same work as Phase D cursor pagination — belongs there to avoid building it twice.
 
+## Awaiting review
+
 ## Done
 
 (finished items move here, newest on top)
+
+### Posts uniform height in feed — DONE
+- Shipped: feed media keeps natural aspect ratio with a max-height 600px cap; over-tall media cropped from the top. In CardItem.
+- Merged to main as b63773e.

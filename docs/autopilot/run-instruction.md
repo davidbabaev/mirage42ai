@@ -19,12 +19,16 @@ Then work the tasks under "## Tasks" in order, top to bottom. For each task:
      c. The task passes only if the screenshots show the "Done when" is actually met.
      d. If you started the dev server yourself in step a, stop it once the screenshots are taken.
 3. If the check passes → commit just that task's changes with a clear message, then move to the next task.
+3b. After committing a passing task, update the tracking files:
+    - Remove that task's block from docs/autopilot/today.md (it's finished).
+    - In docs/autopilot/backlog.md, find the matching item under "## Active" and move it to the "## Awaiting review" section, adding a line: "Built on branch <branch-name>, commit <short-sha> — awaiting review/merge."
+    - These tracking-file edits are bookkeeping; include them in the same task commit or a follow-up commit, but never skip them.
 4. If the check fails → make ONE fix attempt, then re-check. If it still fails, STOP. Do not start the next task. Leave a short note of what failed and what you tried.
 
 Hard rules:
 - Work only on the autopilot branch you created in step 0. Never commit to main.
 - Never edit docs/master-plan.md.
-- Commit after each passing task. Do not batch multiple tasks into one commit.
+- Each commit contains one task's code changes plus the bookkeeping edits to docs/autopilot/today.md and docs/autopilot/backlog.md for that same task. Never combine TWO tasks' code changes into one commit.
 - Do not push; leave the branch local for me to review.
 - If anything is ambiguous or a task is unclear, STOP and leave a note rather than guessing.
 
