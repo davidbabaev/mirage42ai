@@ -17,12 +17,6 @@ Mark items [done] when finished so they drop out of the active list.
 - Reference: docs/autopilot/refs/linkdin-referance-suggested-list.png, docs/autopilot/refs/suggestion-users-publicuserpage.png, docs/autopilot/refs/firends-suggest-feed.png, docs/autopilot/refs/linkdin2-friendssuggest.png
 - Notes: NOT a quick bug. Needs its own planning session before it runs.
 
-### Multi-step register form
-- What: Remove "about me" from registration; split the form into 2–3 steps with a clean stepper UX for quick registration.
-- Type: feature (UX redesign)
-- Reference: none
-- Notes: form redesign, not a bug fix.
-
 ### Infinite scroll across list pages
 - What: Replace "load more" buttons with auto-loading infinite scroll (e.g. 30 posts, then 30 more on scroll) with a loading spinner, on all list pages — feed, profiles, all users, all posts.
 - Type: phase-d (collides with planned cursor pagination)
@@ -30,6 +24,13 @@ Mark items [done] when finished so they drop out of the active list.
 - Notes: DO NOT build ad-hoc. This is the same work as Phase D cursor pagination — belongs there to avoid building it twice.
 
 ## Awaiting review
+
+### Multi-step register form
+- What: Remove "about me" from registration; split the form into 2–3 steps with a clean stepper UX for quick registration.
+- Type: feature (UX redesign)
+- Reference: none
+- Notes: form redesign, not a bug fix. Shipped as a 3-step MUI Stepper (Account / About you / Location); also removed phone + job, made phone/lastName optional in the shared user-validation API, and aligned the form's password rule to the API's strong rule.
+- Built on branch autopilot/2026-06-26, commit 1d0d45b — awaiting review/merge.
 
 ## Done
 
