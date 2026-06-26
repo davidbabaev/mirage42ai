@@ -11,12 +11,6 @@ Mark items [done] when finished so they drop out of the active list.
 - Reference: none
 - Notes: app-level defenses (rate limiting, validation, helmet headers, XSS/CSRF) live in CLAUDE.md standards; THIS item is the network/infra layer that sits outside the app code.
 
-### Video/media in public profile + rename to "media"
-- What: Videos don't appear in the public profile's photos section; also rename that section label from "photos" to "media" since it holds both.
-- Type: bug (visual + small logic)
-- Reference: docs/autopilot/refs/video-visualphoto.png, docs/autopilot/refs/public-profile-photos.png
-- Notes: two parts — (1) make video display, (2) rename label.
-
 ### LinkedIn-style suggested/mutual friends modals
 - What: "Load more" friends/suggestions opens a popup modal; separate modals for mutual vs suggested; scrollable with scroll-pagination (show more on scroll); users clickable through to their profile; matches LinkedIn-style design; a followed user stays visible ~5 seconds before leaving the list (debounce).
 - Type: feature (multi-part — modal + pagination + navigation + debounce + design)
@@ -43,6 +37,13 @@ Mark items [done] when finished so they drop out of the active list.
 - Reference: docs/autopilot/refs/mobile-post-videonotopen.png
 - Notes: combines two doc entries describing the same issue.
 - Built on branch autopilot/2026-06-26, commit a0ae628 — awaiting review/merge.
+
+### Video/media in public profile + rename to "media"
+- What: Videos don't appear in the public profile's photos section; also rename that section label from "photos" to "media" since it holds both.
+- Type: bug (visual + small logic)
+- Reference: docs/autopilot/refs/video-visualphoto.png, docs/autopilot/refs/public-profile-photos.png
+- Notes: two parts — (1) make video display, (2) rename label.
+- Built on branch autopilot/2026-06-26, commit 798e439 — awaiting review/merge.
 
 ## Done
 
