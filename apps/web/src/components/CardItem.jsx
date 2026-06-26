@@ -210,15 +210,18 @@ export default function CardItem({
 
             {/* Media display */}
 
-            <Box ref={cardRef} onClick={handleCardClick} sx={{cursor: 'pointer'}}>
+            <Box ref={cardRef} onClick={handleCardClick} sx={{cursor: 'pointer', overflow: 'hidden'}}>
                 <MediaDisplay
                     mediaUrl={card.mediaUrl}
                     mediaType={card.mediaType}
                     videoMode="feed"
                     style={{
                         width: '100%',
-                        // height: '100%',
-                        objectFit: 'cover'
+                        height: 'auto',
+                        maxHeight: '600px',
+                        objectFit: 'cover',
+                        objectPosition: 'top',
+                        display: 'block',
                     }}
                 />
             </Box>
@@ -227,7 +230,8 @@ export default function CardItem({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                px: 1
+                px: 1,
+                pt: 1
             }}>
                 {/* left: ovelapping avatars */}
                 <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
