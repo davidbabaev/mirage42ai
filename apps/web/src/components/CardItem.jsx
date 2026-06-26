@@ -210,7 +210,7 @@ export default function CardItem({
 
             {/* Media display */}
 
-            <Box ref={cardRef} onClick={handleCardClick} sx={{cursor: 'pointer', overflow: 'hidden'}}>
+            <Box ref={cardRef} onClick={handleCardClick} sx={{cursor: 'pointer', overflow: 'hidden', position: 'relative'}}>
                 <MediaDisplay
                     mediaUrl={card.mediaUrl}
                     mediaType={card.mediaType}
@@ -224,6 +224,14 @@ export default function CardItem({
                         display: 'block',
                     }}
                 />
+                {/* Video posts render native <video controls>, whose controls
+                    swallow the tap on mobile so it never bubbles to this Box's
+                    onClick. A transparent overlay above the video catches the
+                    tap and lets it bubble to handleCardClick, so video posts
+                    open the modal just like image posts do. */}
+                {card.mediaType === 'video' && (
+                    <Box sx={{position: 'absolute', inset: 0, zIndex: 1}} />
+                )}
             </Box>
 
             <Box sx={{
