@@ -63,3 +63,11 @@ Apply these to every task — features and bug fixes alike. They are not optiona
 - Every visual change is verified at mobile width (~390px) AND desktop width (~1280px) before it's done.
 - Nothing should overflow, overlap, or become unreachable on small screens.
 - Touch targets large enough for fingers; no hover-only interactions on mobile.
+
+### UX / UI & styling
+- This project uses Material UI (MUI). Build with MUI components and the theme — do not hand-roll styling that duplicates what MUI provides. Consistency comes from using one system everywhere.
+- Use the theme for colors, spacing, and typography — never hardcode values that the theme already defines. One source of truth.
+- Transitions and hovers: subtle and fast (~150–250ms). Use MUI's built-in transitions rather than custom ones. No slow or flashy animations.
+- Any action that waits on the network (buttons, submits, data loads) must show a loading state — a spinner, disabled button, or skeleton. Never leave the user staring at a frozen screen.
+- Match the interaction patterns already used elsewhere in the app. A new button should look and behave like existing buttons. Before adding a new pattern, reuse an existing one.
+- Keep it clean and uncluttered — generous spacing, clear hierarchy, no visual noise.
