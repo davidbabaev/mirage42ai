@@ -18,7 +18,8 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### Dry-run smoke task (throwaway)
-- What: Create a new file apps/api/src/_autopilot_smoke.js exporting a function add(a, b) that returns a + b. Create a new test file apps/api/tests/_autopilot_smoke.test.js that imports add and asserts add(2, 3) === 5.
-- Done when: `npm run test -w apps/api` runs and the new test passes (green).
-- Type: logic (tests)
+### Feed post media height — natural shape with a max cap
+- What: Feed post media currently has no height handling. Fix it the way LinkedIn/Twitter feeds work: let each post's media keep its NATURAL aspect ratio (do not force a fixed box, do not stretch). Apply a maximum height cap (use max-height: 600px) to the media container. If media is taller than the cap, crop the overflow anchored to the TOP of the media (object-fit: cover, object-position: top) so the start of the image is visible. Media shorter than the cap displays fully at its natural size. Applies to images and videos, in the shared CardItem component.
+- Done when: Normal landscape/square media displays fully at natural shape; only very tall media is capped at 600px and cropped from the top; nothing is stretched or distorted. Confirmed on screen at 390px and 1280px width.
+- Reference: docs/autopilot/refs/post-sizes.png, docs/autopilot/refs/post-sizes2.png
+- Type: visual (screenshot)
