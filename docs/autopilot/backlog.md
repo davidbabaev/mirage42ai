@@ -11,12 +11,6 @@ Mark items [done] when finished so they drop out of the active list.
 - Reference: none
 - Notes: app-level defenses (rate limiting, validation, helmet headers, XSS/CSRF) live in CLAUDE.md standards; THIS item is the network/infra layer that sits outside the app code.
 
-### LinkedIn-style suggested/mutual friends modals
-- What: "Load more" friends/suggestions opens a popup modal; separate modals for mutual vs suggested; scrollable with scroll-pagination (show more on scroll); users clickable through to their profile; matches LinkedIn-style design; a followed user stays visible ~5 seconds before leaving the list (debounce).
-- Type: feature (multi-part — modal + pagination + navigation + debounce + design)
-- Reference: docs/autopilot/refs/linkdin-referance-suggested-list.png, docs/autopilot/refs/suggestion-users-publicuserpage.png, docs/autopilot/refs/firends-suggest-feed.png, docs/autopilot/refs/linkdin2-friendssuggest.png
-- Notes: NOT a quick bug. Needs its own planning session before it runs.
-
 ### Infinite scroll across list pages
 - What: Replace "load more" buttons with auto-loading infinite scroll (e.g. 30 posts, then 30 more on scroll) with a loading spinner, on all list pages — feed, profiles, all users, all posts.
 - Type: phase-d (collides with planned cursor pagination)
@@ -39,6 +33,12 @@ Mark items [done] when finished so they drop out of the active list.
 - Type: feature
 
 ## Awaiting review
+
+### LinkedIn-style suggested/mutual friends modals
+- What: "Load more" friends/suggestions opens a modal; separate mutual vs suggested; scroll-pagination; users clickable to profile; a followed user lingers ~5s before leaving (debounce).
+- Type: feature
+- Shipped: reusable PeopleModal (grid cards, scroll-pagination PAGE=8 + Load more, dismiss, click-through) opened from the feed sidebar "See all" (suggested) and the profile Mutual friends / Make New Friends panels (mutual + suggested). Suggested mode lingers a just-followed person ~5s; mutual mode never removes. Browser-verified: suggested at 390px + 1280px, mutual at desktop.
+- Built on branch autopilot/2026-06-27, commit 7d558a0 — awaiting review/merge.
 
 ### Mobile friends-suggestions between posts + show-more modals
 - What: On mobile, interleave friends-suggestion cards between feed posts, with "show more" opening suggestion modals.
