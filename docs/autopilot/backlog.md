@@ -29,10 +29,6 @@ Mark items [done] when finished so they drop out of the active list.
 - Reference: none
 - Notes: needs the API CORS origin check to also allow Vercel preview hostnames (e.g. match the `*.vercel.app` preview pattern / per-branch URLs) instead of only the fixed production origin. Keep on Active.
 
-### Share a post
-- What: Share an existing post (repost / share to feed or external share).
-- Type: feature
-
 ### Block user
 - What: Block a user so their content is hidden and they can't interact with you.
 - Type: feature
@@ -46,6 +42,12 @@ Mark items [done] when finished so they drop out of the active list.
 - Type: feature
 
 ## Awaiting review
+
+### Share a post
+- What: Share an existing post (repost / share to feed or external share).
+- Type: feature
+- Shipped: ShareDialog from the post action row — in-app share sends the post to a chosen user via the chat socket (caption + deep link); external share uses Web Share API with a copy-link fallback. Deep link /allcards?card=<id> opens the post modal. Browser-verified at 390px and 1280px (recipient receives it in chat; clipboard + deep link work).
+- Built on branch autopilot/2026-06-27, commit c549524 — awaiting review/merge.
 
 ### Comment-on-comment / subcomments
 - What: Reply to a comment to create nested/threaded subcomments under it.
