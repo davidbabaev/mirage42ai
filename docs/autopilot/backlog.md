@@ -29,6 +29,34 @@ Mark items [done] when finished so they drop out of the active list.
 - Reference: none
 - Notes: needs the API CORS origin check to also allow Vercel preview hostnames (e.g. match the `*.vercel.app` preview pattern / per-branch URLs) instead of only the fixed production origin. Keep on Active.
 
+### Image zoom in post modal
+- What: Click/tap a post image inside the post modal to zoom it (full-size lightbox view).
+- Type: feature
+
+### "Add post" on own profile
+- What: Add-post entry point on the user's own public profile page so they can post directly from there.
+- Type: feature
+
+### Comment-on-comment / subcomments
+- What: Reply to a comment to create nested/threaded subcomments under it.
+- Type: feature
+
+### Share a post
+- What: Share an existing post (repost / share to feed or external share).
+- Type: feature
+
+### Block user
+- What: Block a user so their content is hidden and they can't interact with you.
+- Type: feature
+
+### Mobile friends-suggestions between posts + show-more modals
+- What: On mobile, interleave friends-suggestion cards between feed posts, with "show more" opening suggestion modals.
+- Type: feature
+
+### Chat-popup docked windows system
+- What: Facebook-style docked chat-popup windows (multiple open chats anchored to the bottom of the screen).
+- Type: feature
+
 ## Awaiting review
 
 (none)
