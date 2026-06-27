@@ -1,6 +1,20 @@
 const mongoose = require('mongoose');
 const {URL} = require('../helpers/validators')
 
+// A single-level reply to a comment (Instagram/YouTube style — replies are not
+// themselves repliable). MongoDB auto-creates an _id on each subdocument.
+const Reply = new mongoose.Schema({
+    userId: mongoose.Schema.Types.ObjectId,
+    replyText: {
+        type: String,
+        maxLength: 1024
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+})
+
 const Comments = new mongoose.Schema({
     // commentId: '', <- mongoDb automatically created this
     userId: mongoose.Schema.Types.ObjectId,
@@ -10,6 +24,8 @@ const Comments = new mongoose.Schema({
     },
     // userIds who liked this comment — same shape as Card.likes ([String]).
     likes: [String],
+    // single-level replies under this comment
+    replies: [Reply],
     createdAt: {
         type: Date,
         default: Date.now

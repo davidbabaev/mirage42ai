@@ -72,6 +72,8 @@ export default function Notifications({
           ? 'followed you'
           : notification.actionType === 'comment-like'
           ? 'liked your comment'
+          : notification.actionType === 'comment-reply'
+          ? 'replied to your comment'
           : isSystem
           ? 'Your post was removed for violating community guidelines.'
           : `${notification.actionType}d your post: ${notificationOnCard?.content.slice(0,40)}...`

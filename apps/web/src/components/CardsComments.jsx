@@ -4,6 +4,7 @@ import { Avatar, Box, Button, IconButton, TextField, Tooltip, Typography } from 
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import useFollowUser from '../hooks/useFollowUser';
 import useLikedComments from '../hooks/useLikedComments';
+import useReplyComments from '../hooks/useReplyComments';
 import getTimeAgo from '../utils/getTimeAgo';
 import { useNavigate } from 'react-router-dom';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -17,8 +18,13 @@ export default function CardsComments({card, users, addComment, removeComment, f
     const [commentsCount, setCommentsCount] = useState(5);
     const [isLoading, setIsLoading] = useState(false)
     const navigate = useNavigate();
-    
-    
+
+    // Reply state: only one reply box is open at a time (replyingTo = commentId).
+    const [replyingTo, setReplyingTo] = useState(null);
+    const [replyText, setReplyText] = useState('');
+    const [isReplyLoading, setIsReplyLoading] = useState(false);
+
+
     const handleSubmit = async (e) => {
         try{
             setIsLoading(true)
@@ -33,6 +39,21 @@ export default function CardsComments({card, users, addComment, removeComment, f
 
     const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
     const {toggleCommentLike, isCommentLikedByMe, getCommentLikeCount} = useLikedComments();
+    const {addReply} = useReplyComments();
+
+    const handleReplySubmit = async (commentId, e) => {
+        e?.preventDefault?.();
+        if(!replyText.trim()) return;
+        try{
+            setIsReplyLoading(true)
+            await addReply(card._id, commentId, replyText)
+            setReplyText('');
+            setReplyingTo(null);
+        }
+        finally{
+            setIsReplyLoading(false)
+        }
+    }
 
 
     const countedComments = (card?.comments || []).sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0, commentsCount)
@@ -202,6 +223,79 @@ export default function CardsComments({card, users, addComment, removeComment, f
                             <Typography sx={{fontSize: 14, lineHeight: 1.2, whiteSpace: 'pre-wrap'}}>
                                 {comment.commentText}
                             </Typography>
+
+                            {/* Reply action */}
+                            {loggedInUser && (
+                                <Button
+                                    size='small'
+                                    onClick={() => {
+                                        setReplyingTo(replyingTo === comment._id ? null : comment._id)
+                                        setReplyText('')
+                                    }}
+                                    sx={{fontSize: 11, textTransform: 'none', minWidth: 0, p: 0, mt: 0.5, color: 'text.secondary'}}
+                                >
+                                    Reply
+                                </Button>
+                            )}
+
+                            {/* Replies (single-level, oldest first) */}
+                            {(comment.replies || [])
+                                .slice()
+                                .sort((a,b) => a.createdAt.localeCompare(b.createdAt))
+                                .map((reply) => {
+                                    const replyUser = users.find(u => u._id === reply.userId);
+                                    return (
+                                        <Box key={reply._id} sx={{display: 'flex', gap: 1, mt: 1.5}}>
+                                            <Avatar
+                                                src={replyUser?.profilePicture}
+                                                sx={{width: 28, height: 28, cursor: 'pointer'}}
+                                                onClick={() => {
+                                                    navigate(`/profiledashboard/${replyUser?._id}/profilemain`)
+                                                    closeOnNav()
+                                                }}
+                                            />
+                                            <Box>
+                                                <Typography component='div' fontWeight={600} fontSize={12} lineHeight={1.2}>
+                                                    {replyUser?.name} {replyUser?.lastName}
+                                                    <Typography component='span' color='text.secondary' fontSize={10} fontWeight={400} sx={{ml: 0.5}}>
+                                                        {getTimeAgo(reply.createdAt)}
+                                                    </Typography>
+                                                </Typography>
+                                                <Typography sx={{fontSize: 13, lineHeight: 1.2, whiteSpace: 'pre-wrap'}}>
+                                                    {reply.replyText}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                    )
+                                })}
+
+                            {/* Reply input */}
+                            {loggedInUser && replyingTo === comment._id && (
+                                <Box sx={{display: 'flex', gap: 1, alignItems: 'center', mt: 1.5}}>
+                                    <Avatar src={loggedInUser.profilePicture} sx={{width: 28, height: 28}}/>
+                                    <TextField
+                                        fullWidth
+                                        autoFocus
+                                        size='small'
+                                        multiline
+                                        placeholder={`Reply to ${userComment?.name || ''}...`}
+                                        value={replyText}
+                                        onChange={(e) => setReplyText(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && replyText.trim() && handleReplySubmit(comment._id, e)}
+                                        sx={{'& .MuiOutlinedInput-root': {borderRadius: 5, fontSize: 13}}}
+                                    />
+                                    <Button
+                                        variant='contained'
+                                        size='small'
+                                        loading={isReplyLoading}
+                                        disabled={!replyText.trim()}
+                                        onClick={(e) => handleReplySubmit(comment._id, e)}
+                                        sx={{borderRadius: 5, minWidth: 70, fontSize: 11}}
+                                    >
+                                        Reply
+                                    </Button>
+                                </Box>
+                            )}
                         </Box>
 
                     </Box>

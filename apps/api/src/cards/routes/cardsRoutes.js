@@ -18,6 +18,7 @@ const {
     likeComment,
     pickSafeCardFields,
     addComment,
+    addReply,
     removeComment,
     getFeedCards,
     banCard,
@@ -177,6 +178,17 @@ router.patch('/cards/:id/comments/:commentId/like', auth, async (req, res) => {
     try{
         let liked = await likeComment(req.params.id, req.params.commentId, req.user.userId)
         res.send(liked)
+    }
+    catch(err){
+        handleError(res, err);
+    }
+})
+
+// PATCH /cards/:id/comments/:commentId/replies  ← add a reply to a comment
+router.patch('/cards/:id/comments/:commentId/replies', auth, async (req, res) => {
+    try{
+        let replied = await addReply(req.params.id, req.params.commentId, req.user.userId, req.body.replyText)
+        res.send(replied)
     }
     catch(err){
         handleError(res, err);

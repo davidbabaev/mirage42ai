@@ -134,6 +134,28 @@ const addComment = async (cardId, userId, commentText) => {
     return pickSafeCardFields(saveComment)
 }
 
+// Add a single-level reply to an embedded comment. Mirrors addComment, but the
+// reply lives under the parent comment and the notification (comment-reply)
+// goes to the COMMENT author, not the card owner. Self-replies don't notify.
+const addReply = async (cardId, commentId, userId, replyText) => {
+    if(!replyText || !replyText.trim()) throw createError(400, "Reply text is required")
+
+    const card = await Card.findById(cardId);
+    if(!card) throw createError(404, "Card not found")
+
+    const comment = card.comments.id(commentId);
+    if(!comment) throw createError(404, "Comment not found")
+
+    comment.replies.push({userId, replyText: replyText.trim()})
+
+    if(userId !== comment.userId.toString()){
+        await new Notification({actionType: 'comment-reply', fromUser: userId, toUser: comment.userId, whichCard: card._id}).save()
+    }
+
+    const savedCard = await card.save();
+    return pickSafeCardFields(savedCard);
+}
+
 const removeComment = async (cardId, commentId) => {
     const card = await Card.findById(cardId);
     if(!card) throw createError(404, "Card not found")
@@ -191,6 +213,7 @@ module.exports = {
     likeComment,
     pickSafeCardFields,
     addComment,
+    addReply,
     removeComment,
     getFeedCards,
     banCard,

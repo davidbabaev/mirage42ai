@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { getAllCards, createCard, deleteCard, updateCard, likeUnlikeCard, addComment, removeComment, likeUnlikeComment, getFeedCards, banCard} from '../services/apiService';
+import { getAllCards, createCard, deleteCard, updateCard, likeUnlikeCard, addComment, removeComment, likeUnlikeComment, addReply, getFeedCards, banCard} from '../services/apiService';
 import { useAuth } from './AuthProvider';
 
 const CardsContext = createContext();
@@ -207,6 +207,33 @@ const handleCardRegister = async (cardData) => {
         }
     }
 
+    // Add a reply to a comment. Same await-then-replace-card pattern as
+    // handleAddComment: the server returns the full updated card (with the
+    // new reply nested under its comment), which we swap into both state arrays.
+    const handleAddReply = async (cardId, commentId, replyText) => {
+        try{
+            const response = await addReply(cardId, commentId, {replyText});
+            setRegisteredCards(prev => prev.map((card) => {
+                return card._id === cardId ? response : card
+            }))
+
+            setFeedCards(prev => prev.map((card) => {
+                return card._id === cardId ? response : card
+            }))
+
+            return{
+                success: true,
+                message: 'Reply added successfully'
+            }
+        }
+        catch(err){
+            return{
+                success: false,
+                message: err.message,
+            }
+        }
+    }
+
     const handleRemoveComment = async (cardId, commentId) => {
         try{
             const response = await removeComment(cardId, commentId)
@@ -261,6 +288,7 @@ const handleCardRegister = async (cardData) => {
         handleAddComment,
         handleRemoveComment,
         handleToggleCommentLike,
+        handleAddReply,
         refreshFeed,
         removeAuthorFromFeed,
         addAuthorToFeed,
