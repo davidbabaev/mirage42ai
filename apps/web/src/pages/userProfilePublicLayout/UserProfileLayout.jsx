@@ -1,6 +1,7 @@
 import { Link, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import useFollowUser from '../../hooks/useFollowUser';
 import useBlockUser from '../../hooks/useBlockUser';
+import { useChatDock } from '../../providers/ChatDockProvider';
 import UserProfileAbout from './UserProfileAbout';
 import UserProfileMain from './UserProfileMain';
 import { useAuth } from '../../providers/AuthProvider';
@@ -36,6 +37,7 @@ export default function UserProfileLayout() {
     
     const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
     const {toggleBlock, isBlockedByMe} = useBlockUser();
+    const {openDock} = useChatDock();
     const {selectedUsers ,selectHandleUser} = useSelectedUsers();
     const [messageOpen, setMessageOpen] = useState(false)
 
@@ -340,12 +342,12 @@ export default function UserProfileLayout() {
                         {isFollowByMe(userProfile._id) ? "Following" : "Follow"}
                       </Button>
 
-                      <Button 
+                      <Button
                         variant='outlined'
                         sx={{borderRadius: 5, px: 2, py:1, fontSize: 12}}
-                        // onClick={() => navigate(`/dashboard/myprofile`)}
                         startIcon={<ChatIcon/>}
-                        onClick={() => navigate(`/chat?to=${userProfile._id}`)}
+                        // Desktop: open a docked chat window without leaving the page.
+                        onClick={() => openDock(userProfile)}
                       >
                           Message
                       </Button>
