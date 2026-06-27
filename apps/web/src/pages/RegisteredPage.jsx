@@ -213,8 +213,9 @@ export default function RegisteredPage() {
             ))}
           </Stepper>
 
-          {/* Step content */}
-          <Box sx={{minHeight: 240, mt: 3}}>
+          {/* Step content — height follows the fields so the nav buttons
+              sit directly beneath them on every step (no fixed minHeight gap) */}
+          <Box sx={{mt: 3, mb: 3}}>
             {activeStep === 0 && (
                 <Fade in timeout={250}>
                     <Box>
