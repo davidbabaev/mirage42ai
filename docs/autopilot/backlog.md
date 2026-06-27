@@ -47,6 +47,10 @@ Mark items [done] when finished so they drop out of the active list.
 - What: Banning a post (admin) creates a 'post-removed' notification to the author with a fixed moderation message and gavel icon; moderator identity is not exposed. Triggers in banCard on active->banned only.
 - Built on branch autopilot/2026-06-27, commit a80708e — awaiting review/merge.
 
+### Auto-play video on scroll into view
+- What: Feed videos auto-play muted when ≥60% visible and pause when scrolled away (IntersectionObserver in useManagedVideo, driving the existing VideoCoordinator so only one plays at a time). Mobile tap-to-open-modal overlay unaffected.
+- Built on branch autopilot/2026-06-27, commit c3034da — awaiting review/merge.
+
 ## Done
 
 (finished items move here, newest on top)
