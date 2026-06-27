@@ -29,10 +29,6 @@ Mark items [done] when finished so they drop out of the active list.
 - Reference: none
 - Notes: needs the API CORS origin check to also allow Vercel preview hostnames (e.g. match the `*.vercel.app` preview pattern / per-branch URLs) instead of only the fixed production origin. Keep on Active.
 
-### Comment-on-comment / subcomments
-- What: Reply to a comment to create nested/threaded subcomments under it.
-- Type: feature
-
 ### Share a post
 - What: Share an existing post (repost / share to feed or external share).
 - Type: feature
@@ -50,6 +46,12 @@ Mark items [done] when finished so they drop out of the active list.
 - Type: feature
 
 ## Awaiting review
+
+### Comment-on-comment / subcomments
+- What: Reply to a comment to create nested/threaded subcomments under it.
+- Type: feature
+- Shipped: single-level replies (Instagram/YouTube-style). API adds a `replies` subdocument + PATCH .../replies that notifies the comment author ('comment-reply'); web adds a per-comment Reply toggle, nested reply list, and the notification text. Browser-verified end-to-end at 390px and 1280px (sarah comments -> david replies nested -> sarah notified).
+- Built on branch autopilot/2026-06-27, commit 5e18438 — awaiting review/merge.
 
 ### "Add post" on own profile
 - What: Add-post entry point on the user's own public profile page so they can post directly from there.
