@@ -31,7 +31,9 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-(none)
+### Online/offline status dot on users
+- What: Small green(online)/grey(offline) presence dot on the bottom-right of user avatars, on the users list and the chat conversation list. Minimal Socket.io presence layer added (presenceService + user-online/user-offline + snapshot); web PresenceProvider + reusable OnlineBadge.
+- Built on branch autopilot/2026-06-27, commit 7173d5e — awaiting review/merge.
 
 ## Done
 
