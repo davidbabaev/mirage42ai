@@ -10,7 +10,7 @@ Before starting any task, set up a safe workspace:
 
 Then work the tasks under "## Tasks" in order, top to bottom. For each task:
 
-1. Diagnose first (read-only). Before changing anything, investigate the root cause of the task using search/explore subagents: find the relevant file(s) and WHY the current behavior is wrong. Do not edit during this step. If after investigating, the task is ambiguous or the root cause is unclear, STOP and leave a note rather than guessing. Otherwise proceed to implement the fix based on what you found.
+1. Diagnose first (read-only). Before changing anything, investigate the root cause of the task using search/explore subagents: find the relevant file(s) and WHY the current behavior is wrong. Do not edit during this step. If the root cause or approach is unclear, choose the most reasonable option that fits CLAUDE.md and the existing codebase patterns, record that choice in the final report, and proceed — do not stop to ask. Otherwise proceed to implement the fix based on what you found.
 2. Do the work described in "What".
 3. Check the "Done when" line:
    - If Type is logic → run the test suite. The task passes only if tests are green, including a test that covers this change.
@@ -31,6 +31,7 @@ Hard rules:
 - Never edit docs/master-plan.md.
 - Each commit contains one task's code changes plus the bookkeeping edits to docs/autopilot/today.md and docs/autopilot/backlog.md for that same task. Never combine TWO tasks' code changes into one commit.
 - Do not push; leave the branch local for me to review.
-- If anything is ambiguous or a task is unclear, STOP and leave a note rather than guessing.
+- When a decision is ambiguous, decide it yourself using CLAUDE.md and existing codebase conventions as your guide, log the decision and your reasoning in the report, and continue. Only STOP for: a failing check you cannot fix in one attempt, a destructive/irreversible action, or a task that is technically impossible as written. Never stop merely because a choice is open — make it and record it.
+- Maintain a DECISIONS LOG in the final report: every judgment call made during the run, with one line of reasoning each, so the human can review all choices at merge time.
 
 When the run ends (list finished, or stopped on a failure), report: which branch you worked on, which tasks passed and committed, and anything that stopped you.

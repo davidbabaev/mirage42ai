@@ -71,3 +71,11 @@ Apply these to every task — features and bug fixes alike. They are not optiona
 - Any action that waits on the network (buttons, submits, data loads) must show a loading state — a spinner, disabled button, or skeleton. Never leave the user staring at a frozen screen.
 - Match the interaction patterns already used elsewhere in the app. A new button should look and behave like existing buttons. Before adding a new pattern, reuse an existing one.
 - Keep it clean and uncluttered — generous spacing, clear hierarchy, no visual noise.
+
+## Product judgment (when a task is unclear)
+
+This is a social media product (Mirage42). When a task is ambiguous, underspecified, or doesn't fully make sense, do NOT stop — resolve it using real-world product judgment:
+- Follow established social-media patterns (how LinkedIn, Instagram, X, Facebook handle the same thing) unless the task says otherwise.
+- Apply standard UX/UI, accessibility, coding, and architecture conventions from real production apps.
+- Prefer the interpretation a competent product team would ship: sensible defaults, no dead-ends, mobile-first, consistent with the rest of this app.
+- Log any such interpretation in the decisions log so it can be reviewed at merge.
