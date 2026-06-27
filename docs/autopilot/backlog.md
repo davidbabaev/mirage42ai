@@ -29,10 +29,6 @@ Mark items [done] when finished so they drop out of the active list.
 - Reference: none
 - Notes: needs the API CORS origin check to also allow Vercel preview hostnames (e.g. match the `*.vercel.app` preview pattern / per-branch URLs) instead of only the fixed production origin. Keep on Active.
 
-### Image zoom in post modal
-- What: Click/tap a post image inside the post modal to zoom it (full-size lightbox view).
-- Type: feature
-
 ### "Add post" on own profile
 - What: Add-post entry point on the user's own public profile page so they can post directly from there.
 - Type: feature
@@ -59,7 +55,11 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-(none)
+### Image zoom in post modal
+- What: Click/tap a post image inside the post modal to zoom it (full-size lightbox view).
+- Type: feature
+- Shipped: pinch (mobile) + scroll/double-click (desktop) zoom with drag-to-pan in the post-details modal, via a new ZoomableImage component (react-zoom-pan-pinch); feed images unchanged. Browser-verified at 390px and 1280px.
+- Built on branch autopilot/2026-06-27, commit fa4ef71 — awaiting review/merge.
 
 ## Done
 
