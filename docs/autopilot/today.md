@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 - Type: logic | visual | feature
 -->
 
-### Mobile friends-suggestions between posts + show-more modals
-- What: On mobile, insert a friends-suggestions block between feed posts, with a "show more" that opens a modal.
-- Decisions: Agent decides frequency/layout/modal UX using real-app conventions (Instagram/LinkedIn inject suggestion cards in mobile feeds). Reuse existing suggestion data + modal pattern. Mobile-focused. Follow CLAUDE.md.
-- Done when: mobile feed shows a suggestions block between posts with a working show-more modal; verified at 390px; desktop unaffected.
-- Type: feature
-
 ### LinkedIn-style suggested/mutual friends modals
 - What: "Load more" on suggestions/friends opens a modal; separate modals for mutual vs suggested; scrollable with scroll-pagination; users clickable to their profile; a followed user stays ~5s before leaving the list (debounce).
 - Decisions: Agent decides design/pagination using real-app conventions and the reference images in docs/autopilot/refs/ (linkdin-referance-suggested-list.png, suggestion-users-publicuserpage.png, firends-suggest-feed.png, linkdin2-friendssuggest.png). Reuse existing suggestion data + modal pattern. Follow CLAUDE.md.

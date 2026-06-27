@@ -12,6 +12,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import CreateCardModal from '../components/CreateCardModal';
 import CreateCardTrigger from '../components/CreateCardTrigger';
 import CardPopupModal from '../components/card/CardPopupModal';
+import MobileSuggestions from '../components/MobileSuggestions';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import useFavoriteCards from '../hooks/useFavoriteCards';
 import { useUsersProvider } from '../providers/UsersProvider';
@@ -335,17 +336,26 @@ export default function FeedPage() {
                     )}
 
                     {/* Card Item */}
-                    {countedRegisterCards.map((card) => (
-                        <CardItem 
-                            key={card._id}
-                            card={card}
-                            onOpenCard={() => setSelectedCardId(card._id)}
-                            openCommentCardId={openCommentCardId}
-                            setOpenCommentCardId = {setOpenCommentCardId}
-                            onRemoveSavedCard = {() => handleRemoveCard(card)}
-                            onSaveCard = {() => handleFavoriteCards(card)}
-                            isSavedCard = {favoriteCards.some(c => c._id === card._id)}
-                        />
+                    {countedRegisterCards.map((card, index) => (
+                        <React.Fragment key={card._id}>
+                            <CardItem
+                                card={card}
+                                onOpenCard={() => setSelectedCardId(card._id)}
+                                openCommentCardId={openCommentCardId}
+                                setOpenCommentCardId = {setOpenCommentCardId}
+                                onRemoveSavedCard = {() => handleRemoveCard(card)}
+                                onSaveCard = {() => handleFavoriteCards(card)}
+                                isSavedCard = {favoriteCards.some(c => c._id === card._id)}
+                            />
+
+                            {/* Mobile-only: inject a "People you may know" strip between
+                                posts. Desktop already shows the right-column sidebar. */}
+                            {index === 2 && uniqueFriendsOfFriends.length > 0 && (
+                                <Box display={{xs: 'block', md: 'none'}}>
+                                    <MobileSuggestions suggestions={uniqueFriendsOfFriends} />
+                                </Box>
+                            )}
+                        </React.Fragment>
                     ))}
 
                     {selectedCardId && (
