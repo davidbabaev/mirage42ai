@@ -43,6 +43,10 @@ Mark items [done] when finished so they drop out of the active list.
 - What: Feed left column (profile + favourites) is position:sticky on desktop (top 24px), staying in view as the feed scrolls; mobile unchanged (column hidden on xs). One-line sx change on FeedPage's left Grid item.
 - Built on branch autopilot/2026-06-27, commit 13d9e9c — awaiting review/merge.
 
+### Notify author when their post is removed/banned
+- What: Banning a post (admin) creates a 'post-removed' notification to the author with a fixed moderation message and gavel icon; moderator identity is not exposed. Triggers in banCard on active->banned only.
+- Built on branch autopilot/2026-06-27, commit a80708e — awaiting review/merge.
+
 ## Done
 
 (finished items move here, newest on top)
