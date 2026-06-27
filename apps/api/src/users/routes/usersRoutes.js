@@ -12,8 +12,9 @@ const {
     deleteUser,
     loginUser,
     followUser,
+    blockUser,
     // cardsFeed,
-    banUser, 
+    banUser,
     promoteUserToAdmin,
 } = require('../service/usersSvc');
 const validateUser = require('../validation/joi/validateUserWithJoi');
@@ -130,6 +131,17 @@ router.patch('/users/:id/follow', auth, async (req, res) => {
     catch(err){
         handleError(res, err)
         console.log(err.message);
+    }
+})
+
+// PATCH /users/:id/block ← toggle block/unblock on another user
+router.patch('/users/:id/block', auth, async (req, res) => {
+    try{
+        let blocked = await blockUser(req.user.userId, req.params.id);
+        res.send(blocked);
+    }
+    catch(err){
+        handleError(res, err)
     }
 })
 

@@ -1,5 +1,6 @@
 import { Link, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import useFollowUser from '../../hooks/useFollowUser';
+import useBlockUser from '../../hooks/useBlockUser';
 import UserProfileAbout from './UserProfileAbout';
 import UserProfileMain from './UserProfileMain';
 import { useAuth } from '../../providers/AuthProvider';
@@ -8,6 +9,7 @@ import UserProfileFollowers from './UserProfileFollowers';
 import { useCardsProvider } from '../../providers/CardsProvider';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import CheckIcon from '@mui/icons-material/Check';
+import BlockIcon from '@mui/icons-material/Block';
 import { Avatar, Box, Button, Container, IconButton, Paper, Tab, Tabs, Tooltip, Typography } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
@@ -33,6 +35,7 @@ export default function UserProfileLayout() {
     }
     
     const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
+    const {toggleBlock, isBlockedByMe} = useBlockUser();
     const {selectedUsers ,selectHandleUser} = useSelectedUsers();
     const [messageOpen, setMessageOpen] = useState(false)
 
@@ -346,7 +349,21 @@ export default function UserProfileLayout() {
                       >
                           Message
                       </Button>
-                      
+
+                      <Button
+                        variant='outlined'
+                        color={isBlockedByMe(userProfile._id) ? 'inherit' : 'error'}
+                        startIcon={<BlockIcon/>}
+                        size='small'
+                        sx={{borderRadius: 5, px: 2, py:1, fontSize: 12}}
+                        onClick={async () => {
+                            if(!isLoggedIn){ setIsLoginPopupOpen(true); return; }
+                            await toggleBlock(userProfile._id)
+                        }}
+                      >
+                          {isBlockedByMe(userProfile._id) ? "Unblock" : "Block"}
+                      </Button>
+
                       {messageOpen && (
                         <Box
                           sx={{
@@ -492,13 +509,28 @@ export default function UserProfileLayout() {
                 }}
                 // onClick={() => navigate(`/dashboard/myprofile`)}
                 startIcon={<ChatIcon/>}
-                onClick={() => isLoggedIn 
-                    ? (setMessageOpen(!messageOpen), navigate(`/chat?to=${userProfile._id}`))  
+                onClick={() => isLoggedIn
+                    ? (setMessageOpen(!messageOpen), navigate(`/chat?to=${userProfile._id}`))
                     : setIsLoginPopupOpen(true)}
                 >
                     Message
                 </Button>
-                
+
+                <Button
+                variant='outlined'
+                color={isBlockedByMe(userProfile._id) ? 'inherit' : 'error'}
+                startIcon={<BlockIcon/>}
+                sx={{
+                    borderRadius: 5,
+                    px: {xs: 2, md:2},
+                    py: {xs: 0.5,md:1},
+                    fontSize: {xs: 10, md: 12}
+                }}
+                onClick={async () => isLoggedIn ? await toggleBlock(userProfile._id) : setIsLoginPopupOpen(true)}
+                >
+                    {isBlockedByMe(userProfile._id) ? "Unblock" : "Block"}
+                </Button>
+
                 {messageOpen && (
                 <Box
                     sx={{

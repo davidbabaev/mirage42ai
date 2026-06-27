@@ -59,6 +59,10 @@ const UserSchema = new mongoose.Schema({
         }
     },
     following: [String],
+    // userIds this user has blocked. Stored one-directionally but enforced both
+    // ways (neither party sees/messages the other). Never exposed in the public
+    // projection — only in the owner's own (safe) projection.
+    blocked: [String],
     // Active refresh tokens (one record per logged-in device/session). We store
     // only a SHA-256 hash of each token plus its expiry, so a DB leak can't be
     // replayed. Rotated/revoked tokens are pulled from this array.

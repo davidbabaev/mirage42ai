@@ -1,5 +1,6 @@
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
+const User = require('../../users/models/User');
 const {createError} = require('../../utils/handleErrors');
 const { default: mongoose } = require('mongoose');
 
@@ -7,6 +8,17 @@ const getOrCreateConversation = async (fromUserId, toUserId) => {
 
     if(fromUserId.toString() === toUserId.toString()){
         throw createError(400, 'cannot start a conversation with yourself');
+    }
+
+    // No messaging across a block (either direction).
+    const [fromUser, toUser] = await Promise.all([
+        User.findById(fromUserId),
+        User.findById(toUserId),
+    ]);
+    if(!fromUser || !toUser) throw createError(404, 'User not found');
+    if((fromUser.blocked || []).map(String).includes(String(toUserId)) ||
+       (toUser.blocked || []).map(String).includes(String(fromUserId))){
+        throw createError(403, 'Cannot message a blocked user');
     }
 
     const conversation = await Conversation.findOne({

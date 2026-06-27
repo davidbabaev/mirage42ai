@@ -25,6 +25,7 @@ const pickSafeUserFields = (user) => {
         "createdAt",
         "_id",
         "following",
+        "blocked",
         "isAdmin",
         "isBanned",
         "lastLoginAt"
@@ -104,13 +105,32 @@ const loginUser = async ({email, password}) => {
 }
 
 const getUsers = async (requesterId, isAdmin) => {
-        const users = await User.find();
+        // A block is a personal preference and applies to the requester's own
+        // view even if they're an admin: never list users they blocked, or users
+        // who blocked them. (Admin field-level visibility is unchanged below.)
+        let users;
+        if(requesterId){
+            const requester = await User.findById(requesterId);
+            const blockedByMe = requester?.blocked || [];
+            users = await User.find({ _id: { $nin: blockedByMe }, blocked: { $ne: requesterId } });
+        } else {
+            users = await User.find();
+        }
         return users.map(user => projectUser(user, requesterId, isAdmin))
 }
 
 const getUser = async (userId, requesterId, isAdmin) => {
         const user = await User.findById(userId);
         if(!user) throw createError(401, "User not found")
+        // A blocked relationship (either direction) hides the profile — return
+        // 404 so it's indistinguishable from "no such user". Applies to admins
+        // too (their own block), but never to viewing your own profile.
+        if(requesterId && String(userId) !== String(requesterId)){
+            const requester = await User.findById(requesterId);
+            const iBlocked = (requester?.blocked || []).map(String).includes(String(userId));
+            const theyBlocked = (user.blocked || []).map(String).includes(String(requesterId));
+            if(iBlocked || theyBlocked) throw createError(404, "User not found")
+        }
         return projectUser(user, requesterId, isAdmin)
 }
 
@@ -127,6 +147,13 @@ const followUser = async (userId, followingUserId) => {
 
     const user = await User.findById(userId);
     if(!user) throw createError(404, 'User didnt found')
+
+    // Cannot follow across a block (either direction).
+    const target = await User.findById(followingUserId);
+    if(!target) throw createError(404, 'User didnt found')
+    if((user.blocked || []).includes(followingUserId) || (target.blocked || []).includes(userId)){
+        throw createError(403, "Cannot follow a user involved in a block")
+    }
 
     // Decide follow vs unfollow from current membership, then issue a SINGLE
     // atomic update. We never read-modify-.save() the array: $addToSet refuses
@@ -148,6 +175,33 @@ const followUser = async (userId, followingUserId) => {
 
     const saveFollow = await User.findById(userId);
     return pickSafeUserFields(saveFollow);
+}
+
+// Toggle a block on another user. Blocking also tears down any follow
+// relationship in BOTH directions so neither user follows the other afterwards.
+// Enforcement of the block (hidden lists/profile, no messaging, no follow) lives
+// in getUsers / getUser / followUser / chat getOrCreateConversation.
+const blockUser = async (blockerId, targetId) => {
+    if(blockerId === targetId) throw createError(400, "Cannot block yourself")
+
+    const blocker = await User.findById(blockerId);
+    if(!blocker) throw createError(404, "User not found")
+    const target = await User.findById(targetId);
+    if(!target) throw createError(404, "User not found")
+
+    const alreadyBlocked = (blocker.blocked || []).includes(targetId);
+    if(alreadyBlocked){
+        await User.updateOne({ _id: blockerId }, { $pull: { blocked: targetId } });
+    } else {
+        await User.updateOne(
+            { _id: blockerId },
+            { $addToSet: { blocked: targetId }, $pull: { following: targetId } }
+        );
+        await User.updateOne({ _id: targetId }, { $pull: { following: blockerId } });
+    }
+
+    const updated = await User.findById(blockerId);
+    return pickSafeUserFields(updated);
 }
 
 const deleteUser = async (deletedUserId) => {
@@ -216,9 +270,10 @@ module.exports = {
     updateUser, 
     deleteUser, 
     loginUser, 
-    pickSafeUserFields, 
-    followUser, 
-    // cardsFeed, 
-    banUser, 
+    pickSafeUserFields,
+    followUser,
+    blockUser,
+    // cardsFeed,
+    banUser,
     promoteUserToAdmin
 };

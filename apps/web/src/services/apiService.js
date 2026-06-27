@@ -93,6 +93,7 @@ export const getSingleUser = (id) => httpRequest(`/users/${id}`, 'GET');
 export const updateUser = (id, userData) => httpRequestFormData(`/users/${id}`, 'PUT', userData);
 export const deleteUser = (id) => httpRequest(`/users/${id}`, 'DELETE');
 export const followUnfollowUser = (id) => httpRequest(`/users/${id}/follow`, 'PATCH');
+export const blockUnblockUser = (id) => httpRequest(`/users/${id}/block`, 'PATCH');
 export const banUser = (id) => httpRequest(`/users/${id}/ban`, 'PATCH');
 export const promoteUser = (id) => httpRequest(`/users/${id}/promote`, 'PATCH');
 

@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 - Type: logic | visual | feature
 -->
 
-### Block user
-- What: Let a user block another user, applying privacy effects across the app.
-- Decisions: Agent decides full behavior using real-app conventions (blocked users can't see/interact: hidden from feeds, profiles, suggestions, messaging; existing follows removed). Enforce server-side, not just UI hiding. Reuse existing patterns. Follow CLAUDE.md security standards.
-- Done when: blocking removes mutual visibility/interaction across feed, profile, suggestions, and messaging, enforced server-side; verified end-to-end.
-- Type: feature
-
 ### Mobile friends-suggestions between posts + show-more modals
 - What: On mobile, insert a friends-suggestions block between feed posts, with a "show more" that opens a modal.
 - Decisions: Agent decides frequency/layout/modal UX using real-app conventions (Instagram/LinkedIn inject suggestion cards in mobile feeds). Reuse existing suggestion data + modal pattern. Mobile-focused. Follow CLAUDE.md.

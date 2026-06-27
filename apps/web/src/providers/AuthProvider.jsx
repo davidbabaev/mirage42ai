@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { followUnfollowUser, loginUser, registerUser, updateUser, getSingleUser, logout, FORCE_LOGOUT_EVENT } from '../services/apiService';
+import { followUnfollowUser, blockUnblockUser, loginUser, registerUser, updateUser, getSingleUser, logout, FORCE_LOGOUT_EVENT } from '../services/apiService';
 import { jwtDecode } from 'jwt-decode';
 import { connectSocket, disconnectSocket } from '../services/socketService';
 import { useNavigate } from 'react-router-dom';
@@ -110,6 +110,21 @@ export function AuthProvider({children}) {
         }
     }
 
+    // Toggle block/unblock. The server returns the updated current user (incl.
+    // the refreshed `blocked` + `following`), which we store so the Block/Unblock
+    // button and follow state reflect immediately.
+    const handleToggleBlock = async (userId) => {
+        try{
+            const response = await blockUnblockUser(userId);
+            setUser(response)
+            return response
+        }
+        catch(err){
+            console.log(err.message);
+            return null
+        }
+    }
+
     const handleLogout = () => {
         // Best-effort: revoke the refresh token + clear its cookie server-side.
         logout().catch(() => {});
@@ -152,7 +167,7 @@ export function AuthProvider({children}) {
     
   return (
     <UseAuthCheck.Provider 
-        value={{isLoggedIn, user, handleLogin, handleLogout, handleRegister, editUser, setUser, handleToggleFollow, isUserLoaded}}>
+        value={{isLoggedIn, user, handleLogin, handleLogout, handleRegister, editUser, setUser, handleToggleFollow, handleToggleBlock, isUserLoaded}}>
             {children}
     </UseAuthCheck.Provider>
   )
