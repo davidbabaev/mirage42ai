@@ -70,6 +70,7 @@ export default function CardDetailsModal({cardId, onClose}) {
                 mediaUrl={currentCard.mediaUrl}
                 mediaType={currentCard.mediaType}
                 videoMode="modal"
+                zoomable
                 style={{
                     width: '100%',
                     height: '100%',

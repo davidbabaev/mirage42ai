@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 - Type: logic | visual | feature
 -->
 
-### Image zoom in post modal
-- What: Allow zooming into an image inside the post modal, on mobile and desktop.
-- Decisions: Agent decides full UX using real production-app conventions (Instagram/standard image viewers — pinch-to-zoom mobile, click/scroll-zoom desktop, pan when zoomed). Match the app's existing modal. Follow CLAUDE.md.
-- Done when: a user can zoom an image in the post modal at 390px and 1280px; verified in browser.
-- Type: feature
-
 ### "Add post" component on own profile
 - What: Add a post-creation entry point on the user's own profile page (like the feed's "Start a post").
 - Decisions: Agent reuses the existing feed post-creation component/flow — don't reinvent. Show only on the user's OWN profile. Follow CLAUDE.md.
