@@ -28,11 +28,13 @@ Mark items [done] when finished so they drop out of the active list.
 - Type: feature (UX completion)
 - Reference: none
 
+## Awaiting review
+
 ### Chat-popup docked windows system
 - What: Facebook-style docked chat-popup windows (multiple open chats anchored to the bottom of the screen).
 - Type: feature
-
-## Awaiting review
+- Shipped: ChatDockProvider (global, above the router; open/close/minimize, cap 3) + ChatDock (desktop-only bottom-right row) + DockedChatWindow/useConversationThread reusing the existing useChat + chat components. Profile "Message" opens a dock on desktop (no navigation), navigates to /chat on mobile. Browser-verified: desktop open/send/receive/minimize/close without leaving the page; mobile full-screen fallback.
+- Built on branch autopilot/2026-06-27, commit 9f54ba8 — awaiting review/merge.
 
 ### LinkedIn-style suggested/mutual friends modals
 - What: "Load more" friends/suggestions opens a modal; separate mutual vs suggested; scroll-pagination; users clickable to profile; a followed user lingers ~5s before leaving (debounce).
