@@ -35,6 +35,10 @@ Mark items [done] when finished so they drop out of the active list.
 - What: Small green(online)/grey(offline) presence dot on the bottom-right of user avatars, on the users list and the chat conversation list. Minimal Socket.io presence layer added (presenceService + user-online/user-offline + snapshot); web PresenceProvider + reusable OnlineBadge.
 - Built on branch autopilot/2026-06-27, commit 7173d5e — awaiting review/merge.
 
+### Like a comment
+- What: Heart like toggle + like count on each comment, mirroring the post-like flow; notifies the comment author via a new 'comment-like' notification type ("liked your comment"). Backend likeComment + PATCH /cards/:id/comments/:commentId/like; web useLikedComments hook + heart control in CardsComments.
+- Built on branch autopilot/2026-06-27, commit 53a7cb8 — awaiting review/merge.
+
 ## Done
 
 (finished items move here, newest on top)
