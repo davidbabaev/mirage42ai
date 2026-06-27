@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 - Type: logic | visual | feature
 -->
 
-### Online/offline status dot on users
-- What: Show a small status dot indicating whether a user is currently online or offline, on user list items and in the chat/messages list.
-- Decisions: green dot = online, grey = offline. Small dot on the bottom-right of the avatar. "Online" = has an active socket connection (reuse the existing Socket.io connection state; do not build new presence infrastructure if a simple connected/disconnected signal already exists). If determining real presence requires backend work beyond what exists, implement the minimal server signal needed.
-- Done when: online users show a green dot and offline users show grey (or no dot), on the users list and chat list, confirmed at 390px and 1280px.
-- Type: feature
-
 ### Like a comment
 - What: Let users like a comment (not just posts). Show a heart/like control on each comment with a like count, and notify the comment's author when their comment is liked.
 - Decisions: mirror the existing POST like implementation as closely as possible (same toggle behavior, same notification pattern) — do not invent a new pattern. Heart icon + count next to each comment. Liking is a toggle (like/unlike). Notification to the comment author reuses the existing notifications system.

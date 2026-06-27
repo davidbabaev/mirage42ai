@@ -23,6 +23,7 @@ import { UsersProvider } from './providers/UsersProvider'
 import { UIProvider } from './providers/UIProvider'
 import { VideoCoordinatorProvider } from './providers/VideoCoordinatorProvider'
 import { ChatProvider } from './providers/ChatProvider'
+import { PresenceProvider } from './providers/PresenceProvider'
 import RotateOverlay from './components/style/RotateOverlay'
 import RequireAuth from './components/RequireAuth'
 import ScrollToTop from './components/ScrollToTop'
@@ -41,6 +42,7 @@ export default function App(){
           <UsersProvider>
             <UIProvider>
               <VideoCoordinatorProvider>
+              <PresenceProvider>
               <ChatProvider>
               <ScrollToTop/>
               <RotateOverlay/>
@@ -131,6 +133,7 @@ export default function App(){
 
               </Box>
               </ChatProvider>
+              </PresenceProvider>
               </VideoCoordinatorProvider>
             </UIProvider>
           </UsersProvider>

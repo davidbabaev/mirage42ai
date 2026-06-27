@@ -8,6 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import { useAuth } from '../providers/AuthProvider';
+import { usePresence } from '../providers/PresenceProvider';
+import OnlineBadge from './OnlineBadge';
 import LoginPopup from './LoginPopup';
 
 
@@ -24,6 +26,7 @@ export default function UserReusableCard({
     const{getFollowersCount, toggleFollow, isFollowByMe} = useFollowUser();
     const navigate = useNavigate();
     const {user, isLoggedIn} = useAuth();
+    const {isOnline} = usePresence();
 
     const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
     function onCloseLoginPopup(){
@@ -119,17 +122,21 @@ export default function UserReusableCard({
             sx={{mt: '-40px', mb:1}} 
             onClick={() => navigate(`/profiledashboard/${userObject?._id}/profilemain`)}
         >
-            <Avatar
-                src={userObject?.profilePicture}
-                sx={{
-                    width: 80,
-                    height: 80,
-                    border: '2px solid',
-                    borderColor: 'background.paper',
-                    margin: '0 auto',
-                    cursor: 'pointer'
-                }}
-            />
+            <OnlineBadge
+                online={isOnline(userObject?._id)}
+                sx={{ display: 'block', width: 80, margin: '0 auto' }}
+            >
+                <Avatar
+                    src={userObject?.profilePicture}
+                    sx={{
+                        width: 80,
+                        height: 80,
+                        border: '2px solid',
+                        borderColor: 'background.paper',
+                        cursor: 'pointer'
+                    }}
+                />
+            </OnlineBadge>
         </Box>
         
         {/* Name, Job, Location */}

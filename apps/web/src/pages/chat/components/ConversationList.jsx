@@ -1,5 +1,7 @@
 import { Avatar, Badge, Box, Paper, Typography } from '@mui/material';
 import getTimeAgo from '../../../utils/getTimeAgo';
+import { usePresence } from '../../../providers/PresenceProvider';
+import OnlineBadge from '../../../components/OnlineBadge';
 
 // Build the list preview from the denormalized lastMessage: media gets an icon,
 // and your own last message is prefixed with "You:".
@@ -21,6 +23,7 @@ export default function ConversationList({
     selectedConversationId,
     onSelectChat,
 }) {
+    const { isOnline } = usePresence();
     return (
         <Paper
             elevation={0}
@@ -74,13 +77,15 @@ export default function ConversationList({
                                 '&:hover': {bgcolor : isActive ? 'action.selected' : 'action.hover'}
                             }}
                         >
-                            <Avatar
-                                src={otherUser?.profilePicture}
-                                sx={{
-                                    width: 44,
-                                    height: 44,
-                                }}
-                            />
+                            <OnlineBadge online={isOnline(otherUser?._id)}>
+                                <Avatar
+                                    src={otherUser?.profilePicture}
+                                    sx={{
+                                        width: 44,
+                                        height: 44,
+                                    }}
+                                />
+                            </OnlineBadge>
 
                             <Box sx={{flex: 1, minWidth: 0}}>
                                 <Typography noWrap fontWeight={hasUnread ? 700 : 400}>
