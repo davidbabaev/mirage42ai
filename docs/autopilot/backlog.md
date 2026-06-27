@@ -34,15 +34,17 @@ Mark items [done] when finished so they drop out of the active list.
 - Type: feature (UX completion)
 - Reference: none
 
-### Mobile friends-suggestions between posts + show-more modals
-- What: On mobile, interleave friends-suggestion cards between feed posts, with "show more" opening suggestion modals.
-- Type: feature
-
 ### Chat-popup docked windows system
 - What: Facebook-style docked chat-popup windows (multiple open chats anchored to the bottom of the screen).
 - Type: feature
 
 ## Awaiting review
+
+### Mobile friends-suggestions between posts + show-more modals
+- What: On mobile, interleave friends-suggestion cards between feed posts, with "show more" opening suggestion modals.
+- Type: feature
+- Shipped: mobile-only "People you may know" horizontal carousel inserted after the 3rd feed post (compact cards: avatar/name/job/Follow/dismiss), with a "See all" modal listing all suggestions; users clickable to profile. Desktop keeps its existing sidebar (strip hidden at md+). Browser-verified at 390px (strip + modal) and 1280px (hidden).
+- Built on branch autopilot/2026-06-27, commit 1ad3aa8 — awaiting review/merge.
 
 ### Block user
 - What: Block a user so their content is hidden and they can't interact with you.
