@@ -13,9 +13,3 @@ Clear and rewrite it each day. Git keeps the history.
 - Done when: how to verify it's actually working.
 - Type: logic | visual | feature
 -->
-
-### Auto-play video on scroll into view, pause on scroll away
-- What: In the feed, a post's video should auto-play (muted) when it scrolls into view and pause when it scrolls out of view — like Instagram/TikTok feeds.
-- Decisions: muted autoplay (browsers require muted for autoplay). Use IntersectionObserver; play when ~60% visible, pause otherwise. Only one video plays at a time ideally, but if that's complex, per-video in/out is acceptable. Respect existing video controls.
-- Done when: scrolling a video into view auto-plays it muted, scrolling away pauses it, confirmed at 390px and 1280px.
-- Type: visual

@@ -121,6 +121,35 @@ export function useManagedVideo({ videoRef, mediaUrl, mode }) {
         }
     }, [api, activeId, instanceId, reducedMotion, videoRef]);
 
+    // Scroll-based autoplay (feed only): play when the video is ≥60% visible in
+    // the scroll container, pause when it falls below. This only drives the
+    // coordinator (requestActive/release) — the enforcement effect above does the
+    // actual play/pause, so "only one plays at a time" and the reduced-motion
+    // guard are inherited for free. Muted + playsInline (set in MediaDisplay)
+    // satisfy the browser autoplay policy.
+    useEffect(() => {
+        if (!api || mode !== 'feed') return undefined;
+        // Feature-detect (same defensive style as prefersReducedMotion): jsdom/SSR
+        // don't implement IntersectionObserver, so skip scroll-autoplay there.
+        if (typeof IntersectionObserver === 'undefined') return undefined;
+        const v = videoRef.current;
+        if (!v) return undefined;
+
+        const root = document.getElementById('app-scroll-container');
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.intersectionRatio >= 0.6) {
+                    if (!reducedMotion) api.requestActive(instanceId);
+                } else {
+                    api.release(instanceId);
+                }
+            },
+            { root: root || null, threshold: [0.6] }
+        );
+        observer.observe(v);
+        return () => observer.disconnect();
+    }, [api, mode, instanceId, reducedMotion, videoRef]);
+
     // Mount-time setup: modal hand-off, or feed black-box first-frame paint.
     useEffect(() => {
         if (!api) return undefined;
