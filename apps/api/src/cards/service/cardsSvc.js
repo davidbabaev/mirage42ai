@@ -165,9 +165,18 @@ const banCard = async (cardId) => {
     let card = await Card.findById(cardId);
     if(!card) throw createError(404, 'Card not found');
 
-    card.status = card.status === 'banned' ? 'active' : 'banned';
+    const willBeBanned = card.status !== 'banned';
+    card.status = willBeBanned ? 'banned' : 'active';
 
     card = await card.save();
+
+    // Notify the author their post was removed — only on the active->banned
+    // transition (not on un-ban). No fromUser: the moderator's identity is
+    // deliberately not exposed.
+    if(willBeBanned){
+        await new Notification({actionType: 'post-removed', toUser: card.userId, whichCard: card._id}).save();
+    }
+
     return pickSafeCardFields(card);
 }
 

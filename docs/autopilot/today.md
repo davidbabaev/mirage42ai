@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 - Type: logic | visual | feature
 -->
 
-### Notify author when their post is removed/banned
-- What: When a post is banned/removed (by admin/moderation), send a notification to the post's author telling them their post was removed.
-- Decisions: reuse the existing notifications system. Message like "Your post was removed for violating community guidelines." Trigger at the existing ban/remove action in the API. Do not expose moderator identity.
-- Done when: banning a post creates a notification to that post's author, verified end-to-end.
-- Type: logic
-
 ### Auto-play video on scroll into view, pause on scroll away
 - What: In the feed, a post's video should auto-play (muted) when it scrolls into view and pause when it scrolls out of view — like Instagram/TikTok feeds.
 - Decisions: muted autoplay (browsers require muted for autoplay). Use IntersectionObserver; play when ~60% visible, pause otherwise. Only one video plays at a time ideally, but if that's complex, per-video in/out is acceptable. Respect existing video controls.

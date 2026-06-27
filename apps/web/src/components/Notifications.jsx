@@ -5,6 +5,7 @@ import getTimeAgo from '../utils/getTimeAgo';
 import { Avatar, Box, Button, IconButton, List, ListItem, ListItemAvatar, ListItemText, Typography } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import GavelIcon from '@mui/icons-material/Gavel';
 import { useUsersProvider } from '../providers/UsersProvider';
 
 
@@ -63,40 +64,53 @@ export default function Notifications({
           const notificationSenderUser = users.find(u => u._id === notification.fromUser)
           const notificationOnCard = registeredCards.find(c => c._id === notification.whichCard)
 
+          // Moderation notice: no actor (the moderator is intentionally hidden),
+          // so it renders as a system message with a gavel icon and no profile link.
+          const isSystem = notification.actionType === 'post-removed'
+
           const actionText = notification.actionType === 'follow'
           ? 'followed you'
           : notification.actionType === 'comment-like'
           ? 'liked your comment'
+          : isSystem
+          ? 'Your post was removed for violating community guidelines.'
           : `${notification.actionType}d your post: ${notificationOnCard?.content.slice(0,40)}...`
 
+          const primaryText = isSystem
+          ? actionText
+          : `${notificationSenderUser?.name} ${notificationSenderUser?.lastName} ${actionText}`
+
           return(
-            <ListItem 
+            <ListItem
               key={notification._id}
               sx={{
                 px: 2,
                 py: 1.5,
-                cursor: 'pointer',
+                cursor: isSystem ? 'default' : 'pointer',
                 borderBottom: '0.5px solid',
                 borderColor: 'divider',
                 '&:last-child': {borderBottom: 'none'},
                 '&:hover': {bgcolor: 'action.hover'}
               }}
               onClick={() => {
+                if(isSystem) return // no moderator profile to open
                 navigate(`/profiledashboard/${notificationSenderUser?._id}/profilemain`)
                 onClose()
               }}
             >
               <ListItemAvatar sx={{maxWidth: 44}}
-                onClick={() => navigate(`/profiledashboard/${notificationSenderUser?._id}/profilemain`)}
+                onClick={() => { if(!isSystem) navigate(`/profiledashboard/${notificationSenderUser?._id}/profilemain`) }}
               >
-                <Avatar 
-                  sx={{width: 36, height: 36, cursor: 'pointer'}}
-                  src={notificationSenderUser?.profilePicture}
-                />
+                <Avatar
+                  sx={{width: 36, height: 36, cursor: isSystem ? 'default' : 'pointer', bgcolor: isSystem ? 'error.main' : undefined}}
+                  src={isSystem ? undefined : notificationSenderUser?.profilePicture}
+                >
+                  {isSystem && <GavelIcon sx={{fontSize: 18}}/>}
+                </Avatar>
               </ListItemAvatar>
 
               <ListItemText
-                primary={`${notificationSenderUser?.name} ${notificationSenderUser?.lastName} ${actionText}`}
+                primary={primaryText}
                 secondary={getTimeAgo(notification.createdAt)}
                 slotProps={{
                   primary:{
