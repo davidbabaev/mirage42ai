@@ -29,9 +29,10 @@ Mark items [done] when finished so they drop out of the active list.
 - Reference: none
 - Notes: needs the API CORS origin check to also allow Vercel preview hostnames (e.g. match the `*.vercel.app` preview pattern / per-branch URLs) instead of only the fixed production origin. Keep on Active.
 
-### Block user
-- What: Block a user so their content is hidden and they can't interact with you.
-- Type: feature
+### Blocked accounts management screen (follow-up to Block user)
+- What: A "Blocked accounts" settings list where you can see everyone you've blocked and unblock them. Needed because blocked users are server-excluded from the user lists the profile page reads from, so after a reload there's no discoverable way to reach a blocked user's profile to unblock. Currently unblock works only in-session right after blocking.
+- Type: feature (UX completion)
+- Reference: none
 
 ### Mobile friends-suggestions between posts + show-more modals
 - What: On mobile, interleave friends-suggestion cards between feed posts, with "show more" opening suggestion modals.
@@ -42,6 +43,13 @@ Mark items [done] when finished so they drop out of the active list.
 - Type: feature
 
 ## Awaiting review
+
+### Block user
+- What: Block a user so their content is hidden and they can't interact with you.
+- Type: feature
+- Shipped: PATCH /users/:id/block toggle; blocked users hidden from lists/suggestions (getUsers) and profile (getUser 404), mutual follows removed (clears feed both ways), messaging rejected (chat getOrCreateConversation), follow rejected — all enforced server-side; `blocked` exposed only to the owner. Block/Unblock button on the profile (desktop + mobile). Browser-verified end-to-end at 390px and 1280px.
+- Follow-up: discoverable post-reload unblock needs a Blocked-accounts settings screen (see Active).
+- Built on branch autopilot/2026-06-27, commit 53b7138 — awaiting review/merge.
 
 ### Share a post
 - What: Share an existing post (repost / share to feed or external share).
