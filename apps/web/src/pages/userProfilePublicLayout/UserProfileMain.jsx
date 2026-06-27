@@ -6,6 +6,7 @@ import CardItem from '../../components/CardItem';
 import CardPopupModal from '../../components/card/CardPopupModal';
 import CreateCardTrigger from '../../components/CreateCardTrigger';
 import CreateCardModal from '../../components/CreateCardModal';
+import PeopleModal from '../../components/PeopleModal';
 import { Avatar, Box, Button, Divider, Grid, Paper, Typography } from '@mui/material';
 import ExpandCircleDownIcon from '@mui/icons-material/ExpandCircleDown';
 import useFollowUser from '../../hooks/useFollowUser';
@@ -40,6 +41,8 @@ export default function UserProfileMain() {
     // CreateCardModal flow. New cards push into registeredCards, so the list
     // below re-derives and shows the new post without a manual refetch.
     const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [mutualModalOpen, setMutualModalOpen] = useState(false);
+    const [suggestModalOpen, setSuggestModalOpen] = useState(false);
     const [createMediaType, setCreateMediaType] = useState(undefined);
 
     const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
@@ -242,12 +245,14 @@ return (
                             Mutual friends
                         </Typography>
 
-                        {/* <Typography 
-                            fontSize={14} color='primary.main' sx={{cursor: 'pointer'}}
-                            onClick = {() => navigate(`/profiledashboard/${userProfile?._id}/media`)}
-                        >
-                            See all
-                        </Typography> */}
+                        {mutualPeople.length > 0 && (
+                            <Typography
+                                fontSize={14} color='primary.main' sx={{cursor: 'pointer'}}
+                                onClick={() => setMutualModalOpen(true)}
+                            >
+                                See all
+                            </Typography>
+                        )}
                     </Box>
 
                     <Box>
@@ -303,6 +308,14 @@ return (
                         <Typography fontWeight={600} fontSize={18}>
                             Make New Friends
                         </Typography>
+                        {suggestionsPeople.length > 0 && (
+                            <Typography
+                                fontSize={14} color='primary.main' sx={{cursor: 'pointer'}}
+                                onClick={() => setSuggestModalOpen(true)}
+                            >
+                                See all
+                            </Typography>
+                        )}
                     </Box>
 
                     <Box>
@@ -394,6 +407,21 @@ return (
                 onCloseLoginPopup={onCloseLoginPopup}
             />
         )}
+
+        <PeopleModal
+            open={mutualModalOpen}
+            onClose={() => setMutualModalOpen(false)}
+            title='Mutual friends'
+            users={mutualPeople}
+            mode='mutual'
+        />
+        <PeopleModal
+            open={suggestModalOpen}
+            onClose={() => setSuggestModalOpen(false)}
+            title='Make New Friends'
+            users={suggestionsPeople}
+            mode='suggested'
+        />
     </Grid>
 )
 }

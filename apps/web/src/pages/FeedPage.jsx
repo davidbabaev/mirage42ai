@@ -13,6 +13,7 @@ import CreateCardModal from '../components/CreateCardModal';
 import CreateCardTrigger from '../components/CreateCardTrigger';
 import CardPopupModal from '../components/card/CardPopupModal';
 import MobileSuggestions from '../components/MobileSuggestions';
+import PeopleModal from '../components/PeopleModal';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import useFavoriteCards from '../hooks/useFavoriteCards';
 import { useUsersProvider } from '../providers/UsersProvider';
@@ -46,6 +47,7 @@ export default function FeedPage() {
     }, [])
 
     const [openCommentCardId, setOpenCommentCardId] = useState(null);
+    const [suggestModalOpen, setSuggestModalOpen] = useState(false);
     
     // ----------------------------------------------------
 
@@ -406,8 +408,8 @@ export default function FeedPage() {
                             )}
                         </Box>
 
-                        {/* Users Suggestions List */}
-                        {uniqueFriendsOfFriends.map((userF) => (
+                        {/* Users Suggestions List (first few; "See all" opens the modal) */}
+                        {uniqueFriendsOfFriends.slice(0, 5).map((userF) => (
                             <Box
                                 key={userF._id}
                                 sx={{
@@ -511,9 +513,30 @@ export default function FeedPage() {
                                     {isFollowByMe(userF._id) ? 'Unfollow' : 'Follow'}
                                 </Button> */}
 
+                        {uniqueFriendsOfFriends.length > 0 && (
+                            <Box sx={{px: 2, pb: 2, pt: 1, borderTop: '0.5px solid', borderColor: 'divider'}}>
+                                <Button
+                                    fullWidth
+                                    size='small'
+                                    onClick={() => setSuggestModalOpen(true)}
+                                    sx={{textTransform: 'none'}}
+                                >
+                                    See all
+                                </Button>
+                            </Box>
+                        )}
+
                     </Paper>
                 </Grid>
             </Grid>
+
+            <PeopleModal
+                open={suggestModalOpen}
+                onClose={() => setSuggestModalOpen(false)}
+                title='People you may know'
+                users={uniqueFriendsOfFriends}
+                mode='suggested'
+            />
 
         </Container>
     )
