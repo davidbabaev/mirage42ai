@@ -39,6 +39,10 @@ Mark items [done] when finished so they drop out of the active list.
 - What: Heart like toggle + like count on each comment, mirroring the post-like flow; notifies the comment author via a new 'comment-like' notification type ("liked your comment"). Backend likeComment + PATCH /cards/:id/comments/:commentId/like; web useLikedComments hook + heart control in CardsComments.
 - Built on branch autopilot/2026-06-27, commit 53a7cb8 — awaiting review/merge.
 
+### Sticky left sidebar on scroll (desktop)
+- What: Feed left column (profile + favourites) is position:sticky on desktop (top 24px), staying in view as the feed scrolls; mobile unchanged (column hidden on xs). One-line sx change on FeedPage's left Grid item.
+- Built on branch autopilot/2026-06-27, commit 13d9e9c — awaiting review/merge.
+
 ## Done
 
 (finished items move here, newest on top)
