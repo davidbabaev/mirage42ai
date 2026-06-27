@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useCardsProvider } from '../providers/CardsProvider'
 
 import useDebounce from '../hooks/useDebounce';
@@ -38,6 +39,13 @@ export default function AllCardsPage() {
     
     const [openCommentCardId, setOpenCommentCardId] = useState(null);
     const [selectedCardId, setSelectedCardId] = useState(null);
+
+    // Deep link from a shared post (/allcards?card=<id>) opens that post's modal.
+    const [searchParams] = useSearchParams();
+    useEffect(() => {
+        const cardParam = searchParams.get('card');
+        if (cardParam) setSelectedCardId(cardParam);
+    }, [searchParams]);
 
     // Mobile:
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);

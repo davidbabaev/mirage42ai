@@ -19,6 +19,8 @@ import BookmarkAddedIcon from '@mui/icons-material/BookmarkAdded';
 import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
+import ShareDialog from '../ShareDialog';
 import OnLoadingSkeletonBox from '../OnLoadingSkeletonBox';
 import { useUsersProvider } from '../../providers/UsersProvider';
 
@@ -30,6 +32,7 @@ export default function CardDetailsModal({cardId, onClose}) {
         const {user} = useAuth();
         const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
         const [isExpanded, setIsExpanded] = useState(false)
+        const [isShareOpen, setIsShareOpen] = useState(false)
         const theme = useTheme();
 
 
@@ -283,9 +286,22 @@ export default function CardDetailsModal({cardId, onClose}) {
                         startIcon={<ChatBubbleOutlineIcon/>}
                         onClick={() => inputRef.current && inputRef.current.focus()}
                     >
-                        comment 
+                        comment
+                    </Button>
+
+                    {/* Share */}
+                    <Button
+                        size='small'
+                        startIcon={<ShareOutlinedIcon/>}
+                        onClick={() => setIsShareOpen(true)}
+                    >
+                        share
                     </Button>
                 </Box>
+
+                {isShareOpen && (
+                    <ShareDialog card={currentCard} open={isShareOpen} onClose={() => setIsShareOpen(false)}/>
+                )}
 
 
                 {/* Comment input */}

@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 - Type: logic | visual | feature
 -->
 
-### Share a post
-- What: Let users share a post — to other users inside the app, and to external platforms.
-- Decisions: Agent decides full implementation using real-app conventions: in-app share (send to another user via messaging/notification system) and external share (Web Share API where available, copy-link fallback, sensible external targets). Follow CLAUDE.md.
-- Done when: a user can share a post to another user in-app AND share/copy-link externally; verified at both widths.
-- Type: feature
-
 ### Block user
 - What: Let a user block another user, applying privacy effects across the app.
 - Decisions: Agent decides full behavior using real-app conventions (blocked users can't see/interact: hidden from feeds, profiles, suggestions, messaging; existing follows removed). Enforce server-side, not just UI hiding. Reuse existing patterns. Follow CLAUDE.md security standards.

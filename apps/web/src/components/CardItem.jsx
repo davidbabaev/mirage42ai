@@ -16,6 +16,8 @@ import BookmarkAddedIcon from '@mui/icons-material/BookmarkAdded';
 import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
+import ShareDialog from './ShareDialog';
 import { useUsersProvider } from '../providers/UsersProvider';
 
 export default function CardItem({
@@ -29,6 +31,7 @@ export default function CardItem({
 }) {
 
     const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
+    const [isShareOpen, setIsShareOpen] = useState(false);
     function onCloseLoginPopup(){
         setIsLoginPopupOpen(false)
     }
@@ -315,14 +318,27 @@ export default function CardItem({
                 <Button
                     size='small'
                     startIcon={<ChatBubbleOutlineIcon/>}
-                    onClick={() => { 
+                    onClick={() => {
                         isLoggedIn ? setOpenCommentCardId(openCommentCardId === card._id ? null : card._id) &&
                         inputRef.current && inputRef.current.focus() : setIsLoginPopupOpen(true)
-                    }}   
+                    }}
                 >
                     comment
                 </Button>
+
+                {/* Share */}
+                <Button
+                    size='small'
+                    startIcon={<ShareOutlinedIcon/>}
+                    onClick={() => isLoggedIn ? setIsShareOpen(true) : setIsLoginPopupOpen(true)}
+                >
+                    share
+                </Button>
             </Box>
+
+            {isShareOpen && (
+                <ShareDialog card={card} open={isShareOpen} onClose={() => setIsShareOpen(false)}/>
+            )}
             
             {openCommentCardId === card._id && (
                 <CardsComments
