@@ -29,10 +29,6 @@ Mark items [done] when finished so they drop out of the active list.
 - Reference: none
 - Notes: needs the API CORS origin check to also allow Vercel preview hostnames (e.g. match the `*.vercel.app` preview pattern / per-branch URLs) instead of only the fixed production origin. Keep on Active.
 
-### "Add post" on own profile
-- What: Add-post entry point on the user's own public profile page so they can post directly from there.
-- Type: feature
-
 ### Comment-on-comment / subcomments
 - What: Reply to a comment to create nested/threaded subcomments under it.
 - Type: feature
@@ -54,6 +50,12 @@ Mark items [done] when finished so they drop out of the active list.
 - Type: feature
 
 ## Awaiting review
+
+### "Add post" on own profile
+- What: Add-post entry point on the user's own public profile page so they can post directly from there.
+- Type: feature
+- Shipped: reuses the feed's CreateCardTrigger -> CreateCardModal composer on the PROFILE tab, owner-gated (never on others' profiles), shown at all widths. Browser-verified at 390px and 1280px (real post created + appears; absent on another user's profile).
+- Built on branch autopilot/2026-06-27, commit 80a156c — awaiting review/merge.
 
 ### Image zoom in post modal
 - What: Click/tap a post image inside the post modal to zoom it (full-size lightbox view).
