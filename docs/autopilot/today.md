@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 - Type: logic | visual | feature
 -->
 
-### Sticky left sidebar on scroll (desktop)
-- What: On desktop, the left sidebar (profile card / nav) should stay fixed in view as the feed scrolls, instead of scrolling away.
-- Decisions: desktop only (position sticky). On mobile, leave current behavior unchanged. Sidebar sticks below the top navbar with a small gap.
-- Done when: on desktop (1280px) the left sidebar stays visible while the feed scrolls; mobile (390px) behavior is unchanged.
-- Type: visual
-
 ### Notify author when their post is removed/banned
 - What: When a post is banned/removed (by admin/moderation), send a notification to the post's author telling them their post was removed.
 - Decisions: reuse the existing notifications system. Message like "Your post was removed for violating community guidelines." Trigger at the existing ban/remove action in the API. Do not expose moderator identity.

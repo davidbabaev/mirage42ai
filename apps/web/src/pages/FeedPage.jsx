@@ -69,8 +69,18 @@ export default function FeedPage() {
     return(
         <Container maxWidth='lg' sx={{py:{xs: 0, md:3}}}>
             <Grid container spacing={3}>
-                {/* Left column */}
-                <Grid size={{xs:12, md:3}} display={{xs: 'none', md: 'block'}}>
+                {/* Left column — sticky on desktop so it stays in view while the
+                    feed scrolls; hidden on mobile, so no mobile change. alignSelf
+                    'start' stops the CSS-grid item stretching (which breaks sticky). */}
+                <Grid
+                    size={{xs:12, md:3}}
+                    display={{xs: 'none', md: 'block'}}
+                    sx={{
+                        position: { md: 'sticky' },
+                        top: { md: '24px' },
+                        alignSelf: { md: 'start' },
+                    }}
+                >
                     <Paper
                         elevation={0}
                         sx={{
