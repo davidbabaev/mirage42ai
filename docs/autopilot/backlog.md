@@ -31,29 +31,26 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-### Online/offline status dot on users
-- What: Small green(online)/grey(offline) presence dot on the bottom-right of user avatars, on the users list and the chat conversation list. Minimal Socket.io presence layer added (presenceService + user-online/user-offline + snapshot); web PresenceProvider + reusable OnlineBadge.
-- Built on branch autopilot/2026-06-27, commit 7173d5e — awaiting review/merge.
-
-### Like a comment
-- What: Heart like toggle + like count on each comment, mirroring the post-like flow; notifies the comment author via a new 'comment-like' notification type ("liked your comment"). Backend likeComment + PATCH /cards/:id/comments/:commentId/like; web useLikedComments hook + heart control in CardsComments.
-- Built on branch autopilot/2026-06-27, commit 53a7cb8 — awaiting review/merge.
-
-### Sticky left sidebar on scroll (desktop)
-- What: Feed left column (profile + favourites) is position:sticky on desktop (top 24px), staying in view as the feed scrolls; mobile unchanged (column hidden on xs). One-line sx change on FeedPage's left Grid item.
-- Built on branch autopilot/2026-06-27, commit 13d9e9c — awaiting review/merge.
-
-### Notify author when their post is removed/banned
-- What: Banning a post (admin) creates a 'post-removed' notification to the author with a fixed moderation message and gavel icon; moderator identity is not exposed. Triggers in banCard on active->banned only.
-- Built on branch autopilot/2026-06-27, commit a80708e — awaiting review/merge.
-
-### Auto-play video on scroll into view
-- What: Feed videos auto-play muted when ≥60% visible and pause when scrolled away (IntersectionObserver in useManagedVideo, driving the existing VideoCoordinator so only one plays at a time). Mobile tap-to-open-modal overlay unaffected.
-- Built on branch autopilot/2026-06-27, commit c3034da — awaiting review/merge.
+(none)
 
 ## Done
 
 (finished items move here, newest on top)
+
+### Auto-play video on scroll into view — DONE
+- Merged to main as c3034da (feed videos auto-play muted when ≥60% visible, pause on scroll away, via the existing VideoCoordinator).
+
+### Notify author when their post is removed/banned — DONE
+- Merged to main as a80708e ('post-removed' notification to the author on ban, gavel icon, moderator identity hidden).
+
+### Sticky left sidebar on scroll (desktop) — DONE
+- Merged to main as 13d9e9c (feed left column position:sticky on desktop; mobile unchanged).
+
+### Like a comment — DONE
+- Merged to main as 53a7cb8 (heart like toggle + count per comment; 'comment-like' notification to the comment author).
+
+### Online/offline status dot on users — DONE
+- Merged to main as 7173d5e (green/grey presence dot on user + chat avatars via a minimal Socket.io presence layer).
 
 ### Multi-step register form — DONE
 - Merged to main via PR #1 (3-step MUI Stepper: Account / About you / Location; dropped phone/job/about-me; phone+lastName optional in the shared user-validation API; form password rule aligned to the API's strong rule; button-gap below step fields fixed).
