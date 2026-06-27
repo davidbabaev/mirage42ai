@@ -4,6 +4,8 @@ import { useCardsProvider } from '../../providers/CardsProvider';
 import { useAuth } from '../../providers/AuthProvider';
 import CardItem from '../../components/CardItem';
 import CardPopupModal from '../../components/card/CardPopupModal';
+import CreateCardTrigger from '../../components/CreateCardTrigger';
+import CreateCardModal from '../../components/CreateCardModal';
 import { Avatar, Box, Button, Divider, Grid, Paper, Typography } from '@mui/material';
 import ExpandCircleDownIcon from '@mui/icons-material/ExpandCircleDown';
 import useFollowUser from '../../hooks/useFollowUser';
@@ -33,6 +35,12 @@ export default function UserProfileMain() {
     
     const [selectedCardId, setSelectedCardId] = useState(null);
     const [openCommentCardId, setOpenCommentCardId] = useState(null);
+
+    // Post-composer (own profile only): mirrors the feed's CreateCardTrigger ->
+    // CreateCardModal flow. New cards push into registeredCards, so the list
+    // below re-derives and shows the new post without a manual refetch.
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [createMediaType, setCreateMediaType] = useState(undefined);
 
     const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
     
@@ -64,11 +72,32 @@ export default function UserProfileMain() {
     
     const userCards = registeredCards.filter(uCard => uCard.userId === userProfile._id).sort((a,b) => b.createdAt.localeCompare(a.createdAt))
 
-    const countedRegisterCards = userCards.slice(0, count)    
+    const countedRegisterCards = userCards.slice(0, count)
+
+    // Only the owner can post from their own profile.
+    const isOwnProfile = user?._id === userProfile?._id;
 
 return (
     <Grid container spacing={2}>
         <Grid size={{xs: 12, md:7}}>
+            {isOwnProfile && (
+                <Box sx={{mb: 2}}>
+                    <CreateCardTrigger
+                        onOpen={(type) => {
+                            setCreateMediaType(type);
+                            setIsCreateOpen(true);
+                        }}
+                    />
+                </Box>
+            )}
+
+            {isOwnProfile && isCreateOpen && (
+                <CreateCardModal
+                    mediaButton={createMediaType}
+                    onClose={() => setIsCreateOpen(false)}
+                />
+            )}
+
             {countedRegisterCards.map((card) => (
                 <CardItem
                     key={card._id}

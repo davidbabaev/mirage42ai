@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 - Type: logic | visual | feature
 -->
 
-### "Add post" component on own profile
-- What: Add a post-creation entry point on the user's own profile page (like the feed's "Start a post").
-- Decisions: Agent reuses the existing feed post-creation component/flow — don't reinvent. Show only on the user's OWN profile. Follow CLAUDE.md.
-- Done when: on your own profile you can create a post and it appears; not shown on other users' profiles; verified at both widths.
-- Type: feature
-
 ### Comment-on-comment (subcomments / replies)
 - What: Let users reply to a comment, creating nested replies under it.
 - Decisions: Agent decides depth/indentation/UX using real-app conventions (Instagram/YouTube single-level replies acceptable if full nesting is complex). Reuse existing comment + notification systems. Notify the parent comment's author. Follow CLAUDE.md.
