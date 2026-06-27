@@ -23,18 +23,22 @@ Mark items [done] when finished so they drop out of the active list.
 - Reference: none
 - Notes: DO NOT build ad-hoc. This is the same work as Phase D cursor pagination — belongs there to avoid building it twice.
 
+### Vercel preview URLs blocked by backend CORS
+- What: Vercel preview deployments get a unique, per-deploy hostname that isn't in the API's CORS allowlist, so the preview frontend can't call the backend (requests fail CORS).
+- Type: infrastructure / config
+- Reference: none
+- Notes: needs the API CORS origin check to also allow Vercel preview hostnames (e.g. match the `*.vercel.app` preview pattern / per-branch URLs) instead of only the fixed production origin. Keep on Active.
+
 ## Awaiting review
 
-### Multi-step register form
-- What: Remove "about me" from registration; split the form into 2–3 steps with a clean stepper UX for quick registration.
-- Type: feature (UX redesign)
-- Reference: none
-- Notes: form redesign, not a bug fix. Shipped as a 3-step MUI Stepper (Account / About you / Location); also removed phone + job, made phone/lastName optional in the shared user-validation API, and aligned the form's password rule to the API's strong rule.
-- Built on branch autopilot/2026-06-26, commit 1d0d45b — awaiting review/merge.
+(none)
 
 ## Done
 
 (finished items move here, newest on top)
+
+### Multi-step register form — DONE
+- Merged to main via PR #1 (3-step MUI Stepper: Account / About you / Location; dropped phone/job/about-me; phone+lastName optional in the shared user-validation API; form password rule aligned to the API's strong rule; button-gap below step fields fixed).
 
 ### Video/media in public profile + rename to "media" — DONE
 - Merged to main as 798e439 (videos render in the profile media grid; "Photos" → "Media").
