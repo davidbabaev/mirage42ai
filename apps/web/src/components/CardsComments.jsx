@@ -3,9 +3,12 @@ import { useAuth } from '../providers/AuthProvider';
 import { Avatar, Box, Button, IconButton, TextField, Tooltip, Typography } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import useFollowUser from '../hooks/useFollowUser';
+import useLikedComments from '../hooks/useLikedComments';
 import getTimeAgo from '../utils/getTimeAgo';
 import { useNavigate } from 'react-router-dom';
 import DeleteIcon from '@mui/icons-material/Delete';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 
 export default function CardsComments({card, users, addComment, removeComment, focusRef, closeOnNav}) {
 
@@ -29,6 +32,7 @@ export default function CardsComments({card, users, addComment, removeComment, f
     }
 
     const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
+    const {toggleCommentLike, isCommentLikedByMe, getCommentLikeCount} = useLikedComments();
 
 
     const countedComments = (card?.comments || []).sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0, commentsCount)
@@ -135,6 +139,28 @@ export default function CardsComments({card, users, addComment, removeComment, f
             
             
                          <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
+                            {/* Right: like heart + count, then Follow / Delete */}
+                            {loggedInUser && (
+                                <Box sx={{display: 'flex', alignItems: 'center'}}>
+                                    <Tooltip title={isCommentLikedByMe(comment) ? 'Unlike' : 'Like'}>
+                                        <IconButton
+                                            size='small'
+                                            onClick={() => toggleCommentLike(card._id, comment._id)}
+                                            sx={{color: isCommentLikedByMe(comment) ? 'error.main' : 'text.secondary'}}
+                                        >
+                                            {isCommentLikedByMe(comment)
+                                                ? <FavoriteIcon sx={{fontSize: 16}}/>
+                                                : <FavoriteBorderIcon sx={{fontSize: 16}}/>}
+                                        </IconButton>
+                                    </Tooltip>
+                                    {getCommentLikeCount(comment) > 0 && (
+                                        <Typography fontSize={12} color='text.secondary'>
+                                            {getCommentLikeCount(comment)}
+                                        </Typography>
+                                    )}
+                                </Box>
+                            )}
+
                             {/* Right: Follow button */}
 
                             {loggedInUser && loggedInUser._id !== userComment?._id && !isFollowByMe(userComment?._id) &&(

@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 - Type: logic | visual | feature
 -->
 
-### Like a comment
-- What: Let users like a comment (not just posts). Show a heart/like control on each comment with a like count, and notify the comment's author when their comment is liked.
-- Decisions: mirror the existing POST like implementation as closely as possible (same toggle behavior, same notification pattern) — do not invent a new pattern. Heart icon + count next to each comment. Liking is a toggle (like/unlike). Notification to the comment author reuses the existing notifications system.
-- Done when: a user can like/unlike a comment, the count updates, and the author receives a notification — verified end-to-end. Confirmed at 390px and 1280px.
-- Type: feature
-
 ### Sticky left sidebar on scroll (desktop)
 - What: On desktop, the left sidebar (profile card / nav) should stay fixed in view as the feed scrolls, instead of scrolling away.
 - Decisions: desktop only (position sticky). On mobile, leave current behavior unchanged. Sidebar sticks below the top navbar with a small gap.

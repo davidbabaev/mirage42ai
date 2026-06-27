@@ -15,6 +15,7 @@ const {
     updateCard,
     deleteCard, 
     likeCard,
+    likeComment,
     pickSafeCardFields,
     addComment,
     removeComment,
@@ -165,6 +166,17 @@ router.patch('/cards/:id/comments/:commentId', auth, async (req, res) => {
     try{
         let deleteComment = await removeComment(req.params.id, req.params.commentId)
         res.send(deleteComment)
+    }
+    catch(err){
+        handleError(res, err);
+    }
+})
+
+// PATCH /cards/:id/comments/:commentId/like  ← toggle like on a comment
+router.patch('/cards/:id/comments/:commentId/like', auth, async (req, res) => {
+    try{
+        let liked = await likeComment(req.params.id, req.params.commentId, req.user.userId)
+        res.send(liked)
     }
     catch(err){
         handleError(res, err);

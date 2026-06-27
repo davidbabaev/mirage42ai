@@ -105,6 +105,7 @@ export const deleteCard = (id) => httpRequest(`/cards/${id}`, 'DELETE');
 export const likeUnlikeCard = (id) => httpRequest(`/cards/${id}`, 'PATCH');
 export const addComment = (id, cardData) => httpRequest(`/cards/${id}/comments`, 'PATCH', cardData);
 export const removeComment = (id, commentId) => httpRequest(`/cards/${id}/comments/${commentId}`, 'PATCH');
+export const likeUnlikeComment = (id, commentId) => httpRequest(`/cards/${id}/comments/${commentId}/like`, 'PATCH');
 export const getFeedCards = () => httpRequest(`/cards/feed`, 'GET');
 export const banCard = (id) => httpRequest(`/cards/${id}/ban`, 'PATCH');
 

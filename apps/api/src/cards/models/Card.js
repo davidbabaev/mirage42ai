@@ -8,6 +8,8 @@ const Comments = new mongoose.Schema({
         type: String,
         maxLength: 1024
     },
+    // userIds who liked this comment — same shape as Card.likes ([String]).
+    likes: [String],
     createdAt: {
         type: Date,
         default: Date.now

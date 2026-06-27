@@ -63,8 +63,10 @@ export default function Notifications({
           const notificationSenderUser = users.find(u => u._id === notification.fromUser)
           const notificationOnCard = registeredCards.find(c => c._id === notification.whichCard)
 
-          const actionText = notification.actionType === 'follow' 
+          const actionText = notification.actionType === 'follow'
           ? 'followed you'
+          : notification.actionType === 'comment-like'
+          ? 'liked your comment'
           : `${notification.actionType}d your post: ${notificationOnCard?.content.slice(0,40)}...`
 
           return(

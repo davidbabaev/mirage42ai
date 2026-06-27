@@ -93,6 +93,30 @@ const likeCard = async (cardById, userId) => {
     return pickSafeCardFields(savedCard);
 }
 
+// Toggle a like on an embedded comment. Mirrors likeCard: same string-array
+// toggle and the same fire-once notification — but the recipient is the COMMENT
+// author (not the card owner), and self-likes don't notify.
+const likeComment = async (cardId, commentId, userId) => {
+    const card = await Card.findById(cardId);
+    if(!card) throw createError(404, "Card not found")
+
+    const comment = card.comments.id(commentId);
+    if(!comment) throw createError(404, "Comment not found")
+
+    if(comment.likes.includes(userId)){
+        comment.likes = comment.likes.filter(id => id !== userId)
+    }
+    else{
+        comment.likes.push(userId);
+        if(userId !== comment.userId.toString()){
+            await new Notification({actionType: 'comment-like', fromUser: userId, toUser: comment.userId, whichCard: card._id}).save();
+        }
+    }
+
+    const savedCard = await card.save();
+    return pickSafeCardFields(savedCard);
+}
+
 const addComment = async (cardId, userId, commentText) => {
     // find the card by ID
     const card = await Card.findById(cardId);
@@ -155,6 +179,7 @@ module.exports = {
     updateCard,
     deleteCard, 
     likeCard,
+    likeComment,
     pickSafeCardFields,
     addComment,
     removeComment,

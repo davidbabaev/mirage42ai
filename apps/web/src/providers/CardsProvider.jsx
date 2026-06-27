@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { getAllCards, createCard, deleteCard, updateCard, likeUnlikeCard, addComment, removeComment, getFeedCards, banCard} from '../services/apiService';
+import { getAllCards, createCard, deleteCard, updateCard, likeUnlikeCard, addComment, removeComment, likeUnlikeComment, getFeedCards, banCard} from '../services/apiService';
 import { useAuth } from './AuthProvider';
 
 const CardsContext = createContext();
@@ -180,6 +180,33 @@ const handleCardRegister = async (cardData) => {
         }
     }
 
+    // Toggle a like on a comment. Same await-then-replace-card pattern as
+    // handleToggleLike: the server returns the full updated card (with the
+    // comment's new likes), which we swap into both state arrays.
+    const handleToggleCommentLike = async (cardId, commentId) => {
+        try{
+            const response = await likeUnlikeComment(cardId, commentId);
+            setRegisteredCards(prev => prev.map((card) => {
+                return card._id === cardId ? response : card
+            }))
+
+            setFeedCards(prev => prev.map((card) => {
+                return card._id === cardId ? response : card
+            }))
+
+            return{
+                success: true,
+                message: 'Comment like toggled'
+            }
+        }
+        catch(err){
+            return{
+                success: false,
+                message: err.message,
+            }
+        }
+    }
+
     const handleRemoveComment = async (cardId, commentId) => {
         try{
             const response = await removeComment(cardId, commentId)
@@ -231,8 +258,9 @@ const handleCardRegister = async (cardData) => {
         handleDeleteCard, 
         handleEditCard, 
         handleToggleLike, 
-        handleAddComment, 
-        handleRemoveComment, 
+        handleAddComment,
+        handleRemoveComment,
+        handleToggleCommentLike,
         refreshFeed,
         removeAuthorFromFeed,
         addAuthorToFeed,
