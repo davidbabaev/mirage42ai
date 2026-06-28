@@ -93,6 +93,8 @@ const UserSchema = new mongoose.Schema({
 
 // Support the recipient/people search (prefix match on name / lastName).
 UserSchema.index({ name: 1, lastName: 1 });
+// Support "who blocked me" lookups used to hide blocked users' content both ways.
+UserSchema.index({ blocked: 1 });
 
 const User = mongoose.model('User', UserSchema);
 module.exports = User;

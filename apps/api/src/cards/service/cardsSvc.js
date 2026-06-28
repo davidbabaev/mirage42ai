@@ -5,6 +5,30 @@ const Card = require('../models/Card')
 const Notification = require('../../notifications/models/Notifications');
 const _ = require('lodash');
 
+// Ids whose content the requester must not see: users they blocked AND users
+// who blocked them (block is enforced both directions, like getUsers). Empty
+// for a logged-out requester.
+const getHiddenUserIds = async (requesterId) => {
+    if(!requesterId) return new Set();
+    const me = await User.findById(requesterId);
+    const iBlocked = (me?.blocked || []).map(String);
+    const blockedMe = await User.find({ blocked: requesterId }, '_id');
+    return new Set([...iBlocked, ...blockedMe.map(u => String(u._id))]);
+}
+
+// Drop comments (and replies) authored by a hidden user from a plain card object,
+// so a blocked user's comments never surface to the requester.
+const stripBlockedComments = (cardObj, hiddenSet) => {
+    if(!hiddenSet.size || !cardObj.comments) return cardObj;
+    cardObj.comments = cardObj.comments
+        .filter(c => !hiddenSet.has(String(c.userId)))
+        .map(c => ({
+            ...c,
+            replies: (c.replies || []).filter(r => !hiddenSet.has(String(r.userId))),
+        }));
+    return cardObj;
+}
+
 const pickSafeCardFields = (card) => {
     return _.pick(card.toObject() ,[
         "title",
@@ -36,10 +60,13 @@ const createNewCard = async (card, userId) => {
     }
 }
 
-const getCards = async (isAdmin) => {
+const getCards = async (requesterId, isAdmin) => {
+        const hidden = await getHiddenUserIds(requesterId);
         const filter = isAdmin ? {} : {status: 'active'}
+        // Hide posts authored by a blocked user (either direction).
+        if(hidden.size) filter.userId = { $nin: [...hidden] };
         const cards = await Card.find(filter)
-        return cards.map(card => pickSafeCardFields(card))
+        return cards.map(card => stripBlockedComments(pickSafeCardFields(card), hidden))
 }
 
 // Raw fetch for internal/owner operations (edit, delete, like, comment):
@@ -52,11 +79,14 @@ const getCard = async (cardId) => {
 
 // Public-facing single-card read: banned/deleted cards are invisible to
 // non-admins (server-side, where the ban is real). Admins see everything.
-const getPublicCard = async (cardId, isAdmin) => {
+const getPublicCard = async (cardId, requesterId, isAdmin) => {
         const card = await Card.findById(cardId)
         if(!card) throw createError(404, "Card not found")
         if(!isAdmin && card.status !== 'active') throw createError(404, "Card not found")
-        return pickSafeCardFields(card);
+        // A blocked author's post is invisible to the requester (either direction).
+        const hidden = await getHiddenUserIds(requesterId);
+        if(hidden.has(String(card.userId))) throw createError(404, "Card not found")
+        return stripBlockedComments(pickSafeCardFields(card), hidden);
 }
 
 const updateCard = async (cardId, upCard) => {
@@ -170,7 +200,10 @@ const getFeedCards = async (userId, isAdmin) => {
     const user = await User.findById(userId);
     if(!user) throw createError(404, "User not found");
     
-    const filter = {userId: {$in: user.following}}
+    const hidden = await getHiddenUserIds(userId);
+    // following is already cleared on block, but stay defensive about both directions.
+    const followingVisible = (user.following || []).filter(id => !hidden.has(String(id)));
+    const filter = {userId: {$in: followingVisible}}
     if(!isAdmin){
         filter.status = 'active';
     }
@@ -180,7 +213,7 @@ const getFeedCards = async (userId, isAdmin) => {
     .limit(30)
     .sort({createdAt: -1});
 
-    return feedCards.map(card => pickSafeCardFields(card));   
+    return feedCards.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
 }
 
 const banCard = async (cardId) => {

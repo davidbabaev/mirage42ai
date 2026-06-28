@@ -140,6 +140,18 @@ const getUsers = async (requesterId, isAdmin, opts = {}) => {
         return users.map(user => projectUser(user, requesterId, isAdmin))
 }
 
+// The requester's own blocked list, with just enough to render a settings row
+// (id + name + avatar) and an Unblock action. Owner-only by construction — it
+// reads the caller's own `blocked` array.
+const getBlockedUsers = async (requesterId) => {
+        const me = await User.findById(requesterId);
+        if(!me) throw createError(404, "User not found");
+        const ids = me.blocked || [];
+        if(!ids.length) return [];
+        const users = await User.find({ _id: { $in: ids } });
+        return users.map(u => _.pick(u.toObject(), ['_id', 'name', 'lastName', 'profilePicture']));
+}
+
 const getUser = async (userId, requesterId, isAdmin) => {
         const user = await User.findById(userId);
         if(!user) throw createError(401, "User not found")
@@ -285,9 +297,10 @@ const promoteUserToAdmin = async (promotedUserId) => {
 }
 
 module.exports = {
-    createNewUser, 
-    getUsers, 
-    getUser, 
+    createNewUser,
+    getUsers,
+    getUser,
+    getBlockedUsers,
     updateUser, 
     deleteUser, 
     loginUser, 

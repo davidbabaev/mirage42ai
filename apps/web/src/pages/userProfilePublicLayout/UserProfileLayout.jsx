@@ -22,12 +22,13 @@ import CloseIcon from '@mui/icons-material/Close';
 import UserProfileMedia from './UserProfileMedia';
 import LoginPopup from '../../components/LoginPopup';
 import OnLoadingSkeletonBox from '../../components/OnLoadingSkeletonBox';
+import LockedProfile from './LockedProfile';
 import { useUsersProvider } from '../../providers/UsersProvider';
 
 export default function UserProfileLayout() {
 
     const {id} = useParams();
-    const{users} = useUsersProvider();
+    const{users, loading, getUsers} = useUsersProvider();
     const {user, isLoggedIn} = useAuth();
     const {registeredCards} = useCardsProvider();
     const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
@@ -56,9 +57,34 @@ export default function UserProfileLayout() {
     const navigate = useNavigate();
 
     const postsAmount = registeredCards.filter((card) => card.userId === id).length
-    
+
+    // A user I've blocked is hidden everywhere else; reaching their profile (only
+    // possible from the Blocked-users settings list) shows the locked placeholder.
+    if(isBlockedByMe(id)){
+        return (
+            <LockedProfile
+                onUnblock={async () => {
+                    await toggleBlock(id);
+                    await getUsers();          // refresh so they reappear normally
+                    navigate('/dashboard/myblocked');
+                }}
+            />
+        );
+    }
+
     if(!userProfile){
-        return <OnLoadingSkeletonBox/>
+        // Still loading the users list -> skeleton. Loaded but absent means the
+        // account is unavailable (e.g. they blocked you) — show a dead-end-free
+        // message instead of an endless skeleton.
+        if(loading || users.length === 0) return <OnLoadingSkeletonBox/>
+        return (
+            <Container maxWidth='sm' sx={{ py: 8, textAlign: 'center' }}>
+                <Typography variant='h6' sx={{ mb: 1 }}>This account is unavailable</Typography>
+                <Typography color='text.secondary'>
+                    This profile can’t be shown.
+                </Typography>
+            </Container>
+        );
     }
 
   return (

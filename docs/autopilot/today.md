@@ -14,16 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### FIX: Block user — settings list, locked profile, app-wide hiding
-- What: Rebuild block behavior to match real social apps.
-- Decisions:
-  1. SETTINGS: add a "Blocked users" section in the logged-in user's settings showing everyone they've blocked, each with an UNBLOCK action (like Instagram/Facebook).
-  2. LOCKED PROFILE: a blocked user's profile is NOT fully deleted from view — it shows a LOCKED page only: a lock icon, a placeholder/mock avatar, and a short banner saying the user is blocked. Nothing else (no posts, no details).
-  3. REACHABLE ONLY VIA THE LIST: that locked profile page is reachable ONLY by clicking the user in the Blocked-users settings list.
-  4. HIDDEN EVERYWHERE ELSE: the blocked user must NOT appear anywhere else in the app — not in feed, search, suggestions, followers/following, messaging, comments. Enforce server-side.
-- Done when: blocking hides the user app-wide (server-enforced); they appear only in the settings Blocked list; opening them from that list shows the locked placeholder profile; unblock restores them; verified end-to-end.
-- Type: feature
-
 ### FIX: Chat dock — global sticky bar of all chats, one big popup, presence, not on Messages page
 - What: Rebuild the docked chat to match LinkedIn's docked messaging (see refs / the LinkedIn screenshots).
 - Decisions:

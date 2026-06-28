@@ -5,10 +5,11 @@ const router = express.Router();
 const {handleError, createError} = require('../../utils/handleErrors')
 
 const {
-    createNewUser, 
-    getUsers, 
-    getUser, 
-    updateUser, 
+    createNewUser,
+    getUsers,
+    getUser,
+    getBlockedUsers,
+    updateUser,
     deleteUser,
     loginUser,
     followUser,
@@ -33,6 +34,17 @@ router.get('/users', auth, async (req, res) => {
             limit: req.query.limit,
         });
         res.send(users);
+    }
+    catch(err){
+        handleError(res, err);
+    }
+})
+
+// Must be registered BEFORE '/users/:id' so 'blocked' isn't captured as an id.
+router.get('/users/blocked', auth, async (req, res) => {
+    try{
+        const blocked = await getBlockedUsers(req.user.userId);
+        res.send(blocked);
     }
     catch(err){
         handleError(res, err);

@@ -28,7 +28,7 @@ const optionalAuth = require('../../auth/optionalAuth');
 
 router.get('/cards', optionalAuth ,async (req, res) => {
     try{
-        const cards = await getCards(req.user?.isAdmin);
+        const cards = await getCards(req.user?.userId, req.user?.isAdmin);
         res.send(cards);
     }
     catch(err){
@@ -77,7 +77,7 @@ router.post('/cards', auth, upload.single('media'), async (req, res) => {
 
 router.get('/cards/:id', optionalAuth, async (req, res) => {
     try{
-        const card = await getPublicCard(req.params.id, req.user?.isAdmin); // -> dynamic!
+        const card = await getPublicCard(req.params.id, req.user?.userId, req.user?.isAdmin); // -> dynamic!
         res.send(card);
     }
     catch(err){
