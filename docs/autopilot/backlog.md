@@ -78,7 +78,7 @@ Mark items [done] when finished so they drop out of the active list.
 - Type: feature
 - Shipped: pinch (mobile) + scroll/double-click (desktop) zoom with drag-to-pan in the post-details modal, via a new ZoomableImage component (react-zoom-pan-pinch); feed images unchanged. Browser-verified at 390px and 1280px.
 - Built on branch autopilot/2026-06-27, commit fa4ef71 — awaiting review/merge.
-- FIX (gradual zoom): wheel `step` was 0.15; with the library's `smooth:true`, zoomStep = step × |deltaY| (~120/notch) → one notch slammed to maxScale (the "single fixed level"). Lowered to 0.0025 so each notch is ~0.3x; double-click changed from `toggle` to incremental `zoomIn`. Now wheel zooms gradually 1→4 and clamps, zoom-out clamps at 1, pan works. Re-verified at 390px and 1280px. Built on branch autopilot/2026-06-28, commit 31a504e.
+- FIX (gradual zoom): wheel `step` was 0.15; with the library's `smooth:true`, zoomStep = step × |deltaY| (~120/notch) → one notch slammed to maxScale (the "single fixed level"). Lowered to 0.0025 so each notch is ~0.3x; double-click changed from `toggle` to incremental `zoomIn`. Now wheel zooms gradually 1→4 and clamps, zoom-out clamps at 1, pan works. Re-verified at 390px and 1280px. Built on branch autopilot/2026-06-28, commit fb14a8d.
 
 ## Done
 
