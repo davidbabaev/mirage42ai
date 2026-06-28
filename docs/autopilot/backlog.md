@@ -36,7 +36,7 @@ Mark items [done] when finished so they drop out of the active list.
 - DECISION: block-awareness is N/A for anonymous crawler requests (no viewer session), so /s/card only guards "card gone/inactive"; logged-in block enforcement stays on the API/SPA.
 - New api tests in share-post.test.js (image c_fill, video so_0, twitter card, dual redirect, 404); full api suite green (115).
 - Verified LOCALLY: curl image + Cloudinary-image + video posts show correct OG tags + absolute images; a browser hitting /s/card/:id redirects to and opens the SPA card. STAGING ACCEPTANCE GATE: real WhatsApp/LinkedIn/X preview rendering can only be verified on a public domain (crawlers can't reach localhost).
-- Built on branch autopilot/2026-06-28-2, commit <pending>.
+- Built on branch autopilot/2026-06-28-2, commit f2db9fc.
 
 ### TASK D — Share dialog: recent-contacts default list (Instagram-style)
 - Type: feature (extends the picker)
