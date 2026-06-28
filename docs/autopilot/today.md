@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### FIX: Gap above create-post on profile
-- What: The "Add post / Start a post" box on the profile sits flush against the tabs menu with no spacing. Add a vertical gap above it.
-- Decisions: Match the spacing already used elsewhere (e.g. the gap above the About section on the right column). Use the theme's spacing, consistent with the app.
-- Done when: there is clear, consistent spacing between the profile tabs row and the create-post box, matching the rest of the page; verified at 390px and 1280px.
-- Type: visual
-
 ### FIX: Share post — clickable rich preview, search, auto-close, IG-style chat card
 - What: The share-post feature currently sends a raw, non-clickable URL and lists all users. Rebuild it to real-app standard.
 - Decisions:

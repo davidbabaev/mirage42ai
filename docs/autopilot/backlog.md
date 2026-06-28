@@ -72,6 +72,7 @@ Mark items [done] when finished so they drop out of the active list.
 - Type: feature
 - Shipped: reuses the feed's CreateCardTrigger -> CreateCardModal composer on the PROFILE tab, owner-gated (never on others' profiles), shown at all widths. Browser-verified at 390px and 1280px (real post created + appears; absent on another user's profile).
 - Built on branch autopilot/2026-06-27, commit 80a156c — awaiting review/merge.
+- FIX (spacing): the create-post Box sat flush under the profile tabs (it had `mb:2` but no top margin). Added `mt:2` to match the right-column section spacing. Re-verified at 390px and 1280px. Built on branch autopilot/2026-06-28, commit <pending>.
 
 ### Image zoom in post modal
 - What: Click/tap a post image inside the post modal to zoom it (full-size lightbox view).

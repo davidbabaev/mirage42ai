@@ -84,7 +84,7 @@ return (
     <Grid container spacing={2}>
         <Grid size={{xs: 12, md:7}}>
             {isOwnProfile && (
-                <Box sx={{mb: 2}}>
+                <Box sx={{mt: 2, mb: 2}}>
                     <CreateCardTrigger
                         onOpen={(type) => {
                             setCreateMediaType(type);
