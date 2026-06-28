@@ -28,7 +28,7 @@ Mark items [done] when finished so they drop out of the active list.
 ### Blocked accounts management screen (was Active — follow-up to Block user)
 - What: A "Blocked accounts" settings list where you can see everyone you've blocked and unblock them.
 - Shipped as part of the Block-user hardening below (new "Blocked" tab in DashboardLayout + BlockedUsersSection backed by `GET /users/blocked`). Resolves the post-reload unblock dead-end.
-- Built on branch autopilot/2026-06-28, commit <pending>.
+- Built on branch autopilot/2026-06-28, commit 7564f73.
 
 ### Chat-popup docked windows system
 - What: Facebook-style docked chat-popup windows (multiple open chats anchored to the bottom of the screen).
@@ -54,7 +54,7 @@ Mark items [done] when finished so they drop out of the active list.
 - Shipped: PATCH /users/:id/block toggle; blocked users hidden from lists/suggestions (getUsers) and profile (getUser 404), mutual follows removed (clears feed both ways), messaging rejected (chat getOrCreateConversation), follow rejected — all enforced server-side; `blocked` exposed only to the owner. Block/Unblock button on the profile (desktop + mobile). Browser-verified end-to-end at 390px and 1280px.
 - Follow-up: discoverable post-reload unblock needs a Blocked-accounts settings screen (see Active).
 - Built on branch autopilot/2026-06-27, commit 53b7138 — awaiting review/merge.
-- FIX (real-app standard): (1) new "Blocked" settings tab + BlockedUsersSection backed by new `GET /users/blocked`, each row Unblockable; (2) a blocked user's profile now shows a LOCKED placeholder (lock + mock avatar + banner + Unblock, no posts/details), reachable only from that list; (3) app-wide hiding extended SERVER-SIDE to posts + comments/replies — getCards/getPublicCard/getFeedCards now take the requester and drop blocked authors' cards (both directions) and strip their comments (new `getHiddenUserIds`/`stripBlockedComments`); index on `blocked`; (4) fixed the infinite-skeleton dead-end for unavailable profiles. Extended block-user.test.js (12 tests: blocked-list endpoint, card hiding, comment stripping, 404, unblock restore); full api suite green (105). Browser-verified end-to-end at 390px and 1280px (block → gone from search → Blocked list → locked profile → unblock restores). Built on branch autopilot/2026-06-28, commit <pending>.
+- FIX (real-app standard): (1) new "Blocked" settings tab + BlockedUsersSection backed by new `GET /users/blocked`, each row Unblockable; (2) a blocked user's profile now shows a LOCKED placeholder (lock + mock avatar + banner + Unblock, no posts/details), reachable only from that list; (3) app-wide hiding extended SERVER-SIDE to posts + comments/replies — getCards/getPublicCard/getFeedCards now take the requester and drop blocked authors' cards (both directions) and strip their comments (new `getHiddenUserIds`/`stripBlockedComments`); index on `blocked`; (4) fixed the infinite-skeleton dead-end for unavailable profiles. Extended block-user.test.js (12 tests: blocked-list endpoint, card hiding, comment stripping, 404, unblock restore); full api suite green (105). Browser-verified end-to-end at 390px and 1280px (block → gone from search → Blocked list → locked profile → unblock restores). Built on branch autopilot/2026-06-28, commit 7564f73.
 
 ### Share a post
 - What: Share an existing post (repost / share to feed or external share).
