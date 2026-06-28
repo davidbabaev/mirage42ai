@@ -1,44 +1,39 @@
 import { createContext, useCallback, useContext, useState } from 'react';
 
-// Global state for LinkedIn/Facebook-style docked chat windows. Lives above the
-// router so windows persist across navigation. Desktop-only rendering is decided
-// by <ChatDock/>; on mobile callers fall back to the full-screen /chat page.
+// Global state for the LinkedIn-style docked messaging. Lives above the router
+// so it persists across navigation. There is a single persistent "Messaging" bar
+// (rendered by <ChatDock/>) plus AT MOST ONE open chat window at a time — opening
+// a different conversation replaces the current window. Desktop-only rendering is
+// decided by <ChatDock/>; on mobile callers fall back to the full-screen /chat.
 const ChatDockContext = createContext(null);
 
-const MAX_DOCKS = 3; // keep the bottom bar from overflowing on desktop
-
 export function ChatDockProvider({ children }) {
-    // each dock: { otherUser, minimized }
-    const [docks, setDocks] = useState([]);
+    // the other user of the single open chat window (null = no window open)
+    const [openUser, setOpenUser] = useState(null);
+    // whether the Messaging bar's conversation list is expanded
+    const [barOpen, setBarOpen] = useState(true);
 
-    const openDock = useCallback((otherUser) => {
+    // Open (or switch to) the chat with this user — replaces any open window.
+    const openChat = useCallback((otherUser) => {
         if (!otherUser?._id) return;
-        setDocks((prev) => {
-            const existing = prev.find((d) => d.otherUser._id === otherUser._id);
-            if (existing) {
-                // bring to front + un-minimize
-                return [
-                    { ...existing, minimized: false },
-                    ...prev.filter((d) => d.otherUser._id !== otherUser._id),
-                ];
-            }
-            const next = [{ otherUser, minimized: false }, ...prev];
-            return next.slice(0, MAX_DOCKS);
-        });
+        setOpenUser(otherUser);
+        setBarOpen(true);
     }, []);
 
-    const closeDock = useCallback((userId) => {
-        setDocks((prev) => prev.filter((d) => d.otherUser._id !== userId));
-    }, []);
+    const closeChat = useCallback(() => setOpenUser(null), []);
 
-    const toggleMinimize = useCallback((userId) => {
-        setDocks((prev) => prev.map((d) =>
-            d.otherUser._id === userId ? { ...d, minimized: !d.minimized } : d
-        ));
-    }, []);
+    const toggleBar = useCallback(() => setBarOpen((v) => !v), []);
 
     return (
-        <ChatDockContext.Provider value={{ docks, openDock, closeDock, toggleMinimize }}>
+        <ChatDockContext.Provider value={{
+            openUser,
+            openChat,
+            closeChat,
+            barOpen,
+            toggleBar,
+            // back-compat alias: the profile "Message" button calls openDock
+            openDock: openChat,
+        }}>
             {children}
         </ChatDockContext.Provider>
     );

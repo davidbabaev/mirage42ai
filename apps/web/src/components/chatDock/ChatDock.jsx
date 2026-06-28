@@ -1,16 +1,22 @@
 import { Box, useMediaQuery, useTheme } from '@mui/material';
+import { useLocation } from 'react-router-dom';
 import { useChatDock } from '../../providers/ChatDockProvider';
+import { useAuth } from '../../providers/AuthProvider';
 import DockedChatWindow from './DockedChatWindow';
+import MessagingBar from './MessagingBar';
 
-// Renders the row of docked chat windows at the bottom-right of the screen.
-// Desktop-only — on mobile, "Message" falls back to the full-screen /chat page,
-// so nothing is rendered here.
+// LinkedIn-style docked messaging at the bottom-right: a persistent Messaging bar
+// plus the single open chat window to its left. Desktop-only — on mobile the
+// "Message" action falls back to the full-screen /chat page, so nothing renders
+// here. Also suppressed on the full chat page (/chat) itself.
 export default function ChatDock() {
     const theme = useTheme();
     const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
-    const { docks, closeDock, toggleMinimize } = useChatDock();
+    const { pathname } = useLocation();
+    const { isLoggedIn } = useAuth();
+    const { openUser, closeChat } = useChatDock();
 
-    if (!isDesktop || docks.length === 0) return null;
+    if (!isDesktop || !isLoggedIn || pathname === '/chat') return null;
 
     return (
         <Box
@@ -22,18 +28,14 @@ export default function ChatDock() {
                 display: 'flex',
                 alignItems: 'flex-end',
                 gap: 1.5,
-                pointerEvents: 'none', // let clicks pass except on the windows themselves
+                pointerEvents: 'none', // let clicks pass except on the bar/window themselves
             }}
         >
-            {docks.map((d) => (
-                <DockedChatWindow
-                    key={d.otherUser._id}
-                    otherUser={d.otherUser}
-                    minimized={d.minimized}
-                    onClose={() => closeDock(d.otherUser._id)}
-                    onToggleMinimize={() => toggleMinimize(d.otherUser._id)}
-                />
-            ))}
+            {/* the single open chat window sits to the LEFT of the bar */}
+            {openUser && (
+                <DockedChatWindow otherUser={openUser} onClose={closeChat} />
+            )}
+            <MessagingBar />
         </Box>
     );
 }

@@ -1,24 +1,33 @@
 import { useNavigate } from 'react-router-dom';
 import { Alert, Avatar, Box, IconButton, Snackbar, Typography } from '@mui/material';
-import RemoveIcon from '@mui/icons-material/Remove';
 import CloseIcon from '@mui/icons-material/Close';
 import useConversationThread from '../../hooks/useConversationThread';
+import { usePresence } from '../../providers/PresenceProvider';
+import OnlineBadge from '../OnlineBadge';
 import MessageList from '../../pages/chat/components/MessageList';
 import MessageInput from '../../pages/chat/components/MessageInput';
 import ScrollToBottomButton from '../../pages/chat/components/ScrollToBottomButton';
 
-// One docked chat window (desktop). Reuses the same thread logic + message
-// components as the full-screen ChatPage, in a compact bottom-docked shell with
-// minimize/close. Send/receive go through the existing chat socket.
-export default function DockedChatWindow({ otherUser, minimized, onClose, onToggleMinimize }) {
+// The single docked chat window (desktop), opened to the LEFT of the Messaging
+// bar. Reuses the same thread logic + message components as the full-screen
+// ChatPage in a comfortably-sized bottom-docked shell. Closing returns the user
+// to the bar (the conversation stays in the list).
+export default function DockedChatWindow({ otherUser, onClose }) {
     const navigate = useNavigate();
-    const t = useConversationThread(otherUser, !minimized);
+    const { isOnline } = usePresence();
+    const t = useConversationThread(otherUser, true);
+
+    const goToProfile = (e) => {
+        e.stopPropagation();
+        navigate(`/profiledashboard/${otherUser?._id}/profilemain`);
+    };
 
     return (
         <Box
             sx={{
-                width: 320,
-                height: minimized ? 'auto' : 440,
+                width: 384,
+                height: 560,
+                maxHeight: 'calc(100vh - 24px)',
                 display: 'flex',
                 flexDirection: 'column',
                 bgcolor: 'background.paper',
@@ -32,65 +41,60 @@ export default function DockedChatWindow({ otherUser, minimized, onClose, onTogg
         >
             {/* Header */}
             <Box
-                onClick={minimized ? onToggleMinimize : undefined}
                 sx={{
                     display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1,
-                    borderBottom: minimized ? 'none' : '1px solid', borderColor: 'divider',
-                    cursor: minimized ? 'pointer' : 'default', flex: '0 0 auto',
+                    borderBottom: '1px solid', borderColor: 'divider', flex: '0 0 auto',
                 }}
             >
-                <Avatar
-                    src={otherUser?.profilePicture}
-                    sx={{ width: 32, height: 32, cursor: 'pointer' }}
-                    onClick={(e) => { e.stopPropagation(); navigate(`/profiledashboard/${otherUser?._id}/profilemain`); }}
-                />
+                <OnlineBadge online={isOnline(otherUser?._id)}>
+                    <Avatar
+                        src={otherUser?.profilePicture}
+                        sx={{ width: 36, height: 36, cursor: 'pointer' }}
+                        onClick={goToProfile}
+                    />
+                </OnlineBadge>
                 <Typography
-                    noWrap fontWeight={600} fontSize={14}
-                    sx={{ flex: 1, cursor: 'pointer' }}
-                    onClick={(e) => { e.stopPropagation(); navigate(`/profiledashboard/${otherUser?._id}/profilemain`); }}
+                    noWrap fontWeight={600} fontSize={15}
+                    sx={{ flex: 1, cursor: 'pointer', textTransform: 'capitalize' }}
+                    onClick={goToProfile}
                 >
                     {otherUser?.name} {otherUser?.lastName}
                 </Typography>
-                <IconButton size='small' aria-label='minimize chat' onClick={(e) => { e.stopPropagation(); onToggleMinimize(); }}>
-                    <RemoveIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-                <IconButton size='small' aria-label='close chat' onClick={(e) => { e.stopPropagation(); onClose(); }}>
-                    <CloseIcon sx={{ fontSize: 18 }} />
+                <IconButton size='small' aria-label='close chat' onClick={onClose}>
+                    <CloseIcon sx={{ fontSize: 20 }} />
                 </IconButton>
             </Box>
 
-            {!minimized && (
-                <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                    <MessageList
-                        messages={t.chatMessages}
-                        currentUserId={t.user?._id}
-                        otherUser={otherUser}
-                        containerRef={t.containerRef}
-                        endRef={t.endRef}
-                        isChatReady={t.isChatReady}
-                        onScroll={t.onScroll}
-                    />
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                <MessageList
+                    messages={t.chatMessages}
+                    currentUserId={t.user?._id}
+                    otherUser={otherUser}
+                    containerRef={t.containerRef}
+                    endRef={t.endRef}
+                    isChatReady={t.isChatReady}
+                    onScroll={t.onScroll}
+                />
 
-                    <ScrollToBottomButton
-                        visible={!t.isNearBottom}
-                        hasNew={t.hasNewBelow}
-                        onClick={() => t.scrollToBottom('smooth')}
-                    />
+                <ScrollToBottomButton
+                    visible={!t.isNearBottom}
+                    hasNew={t.hasNewBelow}
+                    onClick={() => t.scrollToBottom('smooth')}
+                />
 
-                    <MessageInput
-                        messageText={t.messageText}
-                        setMessageText={t.setMessageText}
-                        onSend={t.handleSend}
-                        mediaFile={t.mediaFile}
-                        setMediaFile={t.setMediaFile}
-                        previewMedia={t.previewMedia}
-                        fileInputRef={t.fileInputRef}
-                        isEmojiOpen={t.isEmojiOpen}
-                        setIsEmojiOpen={t.setIsEmojiOpen}
-                        onEmojiClick={t.onEmojiClick}
-                    />
-                </Box>
-            )}
+                <MessageInput
+                    messageText={t.messageText}
+                    setMessageText={t.setMessageText}
+                    onSend={t.handleSend}
+                    mediaFile={t.mediaFile}
+                    setMediaFile={t.setMediaFile}
+                    previewMedia={t.previewMedia}
+                    fileInputRef={t.fileInputRef}
+                    isEmojiOpen={t.isEmojiOpen}
+                    setIsEmojiOpen={t.setIsEmojiOpen}
+                    onEmojiClick={t.onEmojiClick}
+                />
+            </Box>
 
             <Snackbar
                 open={!!t.sendError}
