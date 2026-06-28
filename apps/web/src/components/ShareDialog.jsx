@@ -30,7 +30,10 @@ export default function ShareDialog({ card, open, onClose }) {
     const [sending, setSending] = useState(false);
     const [toast, setToast] = useState('');
 
-    const shareUrl = `${window.location.origin}/allcards?card=${card?._id}`;
+    // External/outbound link points at the API's server-rendered OG route so
+    // social crawlers get a rich preview; it redirects humans to the SPA card.
+    // (In-app card clicks keep using the SPA deep link.)
+    const shareUrl = `${import.meta.env.VITE_API_URL}/s/card/${card?._id}`;
     const query = inputValue.trim();
 
     // On open, load recent contacts as the default list.

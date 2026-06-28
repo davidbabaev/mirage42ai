@@ -190,3 +190,46 @@ describe('recent contacts (GET /users/recent-contacts)', () => {
         expect(res.body.map((u) => u._id)).toEqual([idR]);
     });
 });
+
+describe('external OG share route (GET /s/card/:cardId)', () => {
+    let imgId, vidId;
+    beforeAll(async () => {
+        const Card = requireFromHere(path.join(__dirname, '../src/cards/models/Card'));
+        imgId = (await Card.create({
+            title: 'Coffee tour', content: 'visited five shops', userId: userAId, status: 'active',
+            mediaType: 'image', mediaUrl: 'https://res.cloudinary.com/demo/image/upload/v1/pic.jpg',
+        }))._id;
+        vidId = (await Card.create({
+            title: 'Clip', content: 'a clip', userId: userAId, status: 'active',
+            mediaType: 'video', mediaUrl: 'https://res.cloudinary.com/demo/video/upload/v2/mov.mp4',
+        }))._id;
+    });
+
+    it('image post: post-specific OG + Twitter tags, 1200x630 Cloudinary image, redirect', async () => {
+        const res = await request(app).get(`/s/card/${imgId}`);
+        expect(res.status).toBe(200);
+        expect(res.headers['content-type']).toMatch(/html/);
+        const h = res.text;
+        expect(h).toContain('property="og:title" content="alice anderson');
+        expect(h).toContain('property="og:image" content="https://res.cloudinary.com/demo/image/upload/c_fill,w_1200,h_630/v1/pic.jpg"');
+        expect(h).toContain('name="twitter:card" content="summary_large_image"');
+        expect(h).toContain('property="og:site_name" content="Mirage42"');
+        // both human-redirect mechanisms to the SPA deep link
+        expect(h).toContain(`url=http://localhost:5173/allcards?card=${imgId}`);
+        expect(h).toContain(`location.replace("http://localhost:5173/allcards?card=${imgId}")`);
+    });
+
+    it('video post: og:image is the Cloudinary so_0 poster frame', async () => {
+        const res = await request(app).get(`/s/card/${vidId}`);
+        expect(res.status).toBe(200);
+        expect(res.text).toContain('property="og:image" content="https://res.cloudinary.com/demo/video/upload/so_0/v2/mov.jpg"');
+    });
+
+    it('missing/gone card: neutral "not available" card, 404', async () => {
+        const ghost = new mongoose.Types.ObjectId();
+        const res = await request(app).get(`/s/card/${ghost}`);
+        expect(res.status).toBe(404);
+        // apostrophe is HTML-escaped in the rendered attribute
+        expect(res.text).toContain('This post isn&#39;t available.');
+    });
+});

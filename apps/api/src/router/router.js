@@ -6,11 +6,13 @@ const usersRouter = require('../users/routes/usersRoutes');
 const notificationsRouter = require('../notifications/routes/notificationsRoutes');
 const googleRoutes = require('../auth/googleRoutes');
 const authRoutes = require('../auth/authRoutes');
+const shareRoutes = require('../share/shareRoutes');
 
 router.use(cardsRouter);
 router.use(usersRouter);
 router.use(notificationsRouter);
 router.use(googleRoutes);
 router.use(authRoutes);
+router.use(shareRoutes);
 
 module.exports = router;

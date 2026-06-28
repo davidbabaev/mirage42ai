@@ -23,30 +23,20 @@ Mark items [done] when finished so they drop out of the active list.
 - Reference: none
 - Notes: needs the API CORS origin check to also allow Vercel preview hostnames (e.g. match the `*.vercel.app` preview pattern / per-branch URLs) instead of only the fixed production origin. Keep on Active.
 
-### TASK A — External share previews (Open Graph / rich link cards)
-- Type: feature (buildable now; external rendering only verifiable on staging)
-- Problem: Shared card links show as bare URLs on WhatsApp/LinkedIn/etc — no preview image, title, or text.
-- Root cause: The web app is a client-rendered SPA. Social crawlers don't run JS; they read Open Graph meta tags from the raw HTML, and index.html only has generic tags. localhost is also unreachable by crawlers, so external previews only work on a public domain — verify HTML output locally, treat WhatsApp/LinkedIn rendering as a staging gate.
-- Decisions:
-  - Add a public server-rendered route on the API: GET /s/card/:cardId returning minimal HTML with:
-    og:title (author name + short snippet), og:description (post text, newlines stripped, ~200 chars),
-    og:image (absolute https; image posts: Cloudinary image c_fill ~1200x630; video posts: sharedCard.posterUrl from Task C; fallback: default Mirage42 banner),
-    og:url (canonical SPA deep link), og:type article, og:site_name Mirage42,
-    twitter:card summary_large_image + twitter:title/description/image.
-  - Human redirect with NO user-agent sniffing: include BOTH <meta http-equiv="refresh" content="0;url=..."> AND <script>location.replace('...')</script> pointing to /allcards?card=:cardId.
-  - Build the OG snapshot from the existing server-built sharedCard source — never trust client preview data.
-  - The Share dialog copy-link / outbound link now hands out /s/card/:cardId (in-app card clicks keep the existing deep link).
-  - Make /s/card/:cardId block-aware: if the author blocked the viewer or the card is gone, serve a neutral "This post isn't available" OG card (reuse getHiddenUserIds). Optional if it bloats scope.
-- Check:
-  - Local: curl GET /s/card/:id returns 200 HTML with post-specific OG + Twitter tags and an absolute Cloudinary og:image (test both an image post and a video post); a browser hitting the URL lands on the SPA card.
-  - Note in backlog that full external (WhatsApp/LinkedIn) verification is a STAGING acceptance item.
-
 ### TASK B — Messaging stops after a long session  [BACKLOG ONLY — DO NOT BUILD THIS RUN]
 - Type: bug → diagnose-only, handled in a separate session
 - Symptom: After a long logged-in session the user can't send DMs; sends silently fail until logout + relogin. Likely token expiry interacting with the socket/auth layer.
 - Notes: Queued investigation task. Do not implement now; handled in a separate session.
 
 ## Awaiting review
+
+### TASK A — External share previews (Open Graph / rich link cards)
+- Type: feature (buildable now; external rendering only verifiable on staging)
+- Shipped: new PUBLIC server-rendered route `GET /s/card/:cardId` (apps/api/src/share/shareRoutes.js, mounted in router.js) returns minimal HTML with post-specific OG + Twitter tags: og:title (author · snippet), og:description (~200 chars, newlines stripped), og:image (image posts → Cloudinary `c_fill,w_1200,h_630`, or absolute https as-is; video posts → the Task C `so_0` poster; else a banner fallback), og:url/og:type=article/og:site_name=Mirage42, twitter:card=summary_large_image (+title/description/image). Human redirect uses BOTH `<meta http-equiv=refresh>` AND `<script>location.replace()</script>` to the SPA deep link (no UA sniffing). OG data is built from the authoritative server-side `buildSharedCardSnapshot` (never client data); user content is HTML-escaped. The Share dialog's external/copy link now hands out `/s/card/:id` (in-app card clicks keep the SPA deep link). Missing/inactive card → neutral "This post isn't available" card + 404.
+- DECISION: block-awareness is N/A for anonymous crawler requests (no viewer session), so /s/card only guards "card gone/inactive"; logged-in block enforcement stays on the API/SPA.
+- New api tests in share-post.test.js (image c_fill, video so_0, twitter card, dual redirect, 404); full api suite green (115).
+- Verified LOCALLY: curl image + Cloudinary-image + video posts show correct OG tags + absolute images; a browser hitting /s/card/:id redirects to and opens the SPA card. STAGING ACCEPTANCE GATE: real WhatsApp/LinkedIn/X preview rendering can only be verified on a public domain (crawlers can't reach localhost).
+- Built on branch autopilot/2026-06-28-2, commit <pending>.
 
 ### TASK D — Share dialog: recent-contacts default list (Instagram-style)
 - Type: feature (extends the picker)
