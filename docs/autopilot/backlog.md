@@ -52,7 +52,7 @@ Mark items [done] when finished so they drop out of the active list.
 - Type: feature (extends the picker)
 - Shipped: opening the Share dialog now shows up to 10 most-recent DM contacts (avatar + name) as a visible default list, most-recent first. New `GET /users/recent-contacts?limit=10` (owner-only, registered before `/users/:id`; `chatSvc.getRecentContacts` dedupes conversation participants by recency, excludes block relationships via the now-exported `getHiddenUserIds`, caps at 10). Placeholder is "Search other people"; typing switches to the existing `/users?q=` search; clearing restores the recent list; selecting a row enables SEND (unchanged sharedCard send flow, auto-close). ShareDialog moved from an Autocomplete to a visible search-field + list. New api tests in share-post.test.js (recency order, block exclusion, owner-scope, auth); full api suite green (112).
 - Browser-verified at 390px and 1280px: 4 recent contacts on open, typing finds "lior", clearing restores recent, select + Send delivers the card and auto-closes.
-- Built on branch autopilot/2026-06-28-2, commit <pending>.
+- Built on branch autopilot/2026-06-28-2, commit 52e510e.
 
 ### TASK C — Video posts: real poster preview in the shared card
 - Type: bug/feature (extends sharedCard)
