@@ -1,10 +1,11 @@
 // The CORS allowlist is the single source of truth shared by the HTTP cors
 // middleware and the socket.io config. It must: read ALLOWED_ORIGINS (comma-
-// separated), always include the Vite dev origin outside production, and NOT
-// leak that dev origin into a production allowlist.
+// separated), ALWAYS allow the canonical production origin in production (even
+// with no env set), always include the Vite dev origin outside production, and
+// NOT leak that dev origin into a production allowlist.
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { getAllowedOrigins, DEV_ORIGIN } from '../src/config/allowedOrigins.js';
+import { getAllowedOrigins, DEV_ORIGIN, PROD_ORIGIN } from '../src/config/allowedOrigins.js';
 
 const ENV_KEYS = ['ALLOWED_ORIGINS', 'NODE_ENV'];
 let saved;
@@ -27,17 +28,29 @@ describe('getAllowedOrigins', () => {
         expect(getAllowedOrigins()).toEqual([DEV_ORIGIN]);
     });
 
-    it('parses comma-separated ALLOWED_ORIGINS and trims whitespace', () => {
+    it('always allows the canonical prod origin in production, even with no ALLOWED_ORIGINS', () => {
+        process.env.NODE_ENV = 'production';
+        delete process.env.ALLOWED_ORIGINS;
+        expect(getAllowedOrigins()).toEqual([PROD_ORIGIN]);
+    });
+
+    it('parses comma-separated ALLOWED_ORIGINS (which extend the prod origin) and trims whitespace', () => {
         process.env.NODE_ENV = 'production';
         process.env.ALLOWED_ORIGINS = 'https://a.vercel.app, https://b.com';
-        expect(getAllowedOrigins()).toEqual(['https://a.vercel.app', 'https://b.com']);
+        expect(getAllowedOrigins()).toEqual([PROD_ORIGIN, 'https://a.vercel.app', 'https://b.com']);
     });
 
     it('does NOT include the dev origin in production', () => {
         process.env.NODE_ENV = 'production';
         process.env.ALLOWED_ORIGINS = 'https://a.vercel.app';
-        expect(getAllowedOrigins()).toEqual(['https://a.vercel.app']);
+        expect(getAllowedOrigins()).toEqual([PROD_ORIGIN, 'https://a.vercel.app']);
         expect(getAllowedOrigins()).not.toContain(DEV_ORIGIN);
+    });
+
+    it('de-dupes when ALLOWED_ORIGINS redundantly lists the prod origin in production', () => {
+        process.env.NODE_ENV = 'production';
+        process.env.ALLOWED_ORIGINS = PROD_ORIGIN;
+        expect(getAllowedOrigins()).toEqual([PROD_ORIGIN]);
     });
 
     it('appends the dev origin to env origins outside production', () => {
@@ -55,6 +68,6 @@ describe('getAllowedOrigins', () => {
     it('ignores empty entries from trailing/double commas', () => {
         process.env.NODE_ENV = 'production';
         process.env.ALLOWED_ORIGINS = 'https://a.com,,https://b.com,';
-        expect(getAllowedOrigins()).toEqual(['https://a.com', 'https://b.com']);
+        expect(getAllowedOrigins()).toEqual([PROD_ORIGIN, 'https://a.com', 'https://b.com']);
     });
 });

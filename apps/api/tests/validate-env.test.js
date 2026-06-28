@@ -16,6 +16,7 @@ const KEYS = [
     'CLOUDINARY_API_KEY',
     'CLOUDINARY_API_SECRET',
     'ALLOWED_ORIGINS',
+    'CLIENT_URL',
 ];
 
 // Set every prod-required var EXCEPT the one under test, so a thrown error
@@ -28,6 +29,7 @@ const setProdBaseline = () => {
     process.env.CLOUDINARY_API_KEY = 'key';
     process.env.CLOUDINARY_API_SECRET = 'shh';
     process.env.ALLOWED_ORIGINS = 'https://app.example.com';
+    process.env.CLIENT_URL = 'https://app.example.com';
 };
 
 let snapshot;
@@ -111,6 +113,26 @@ describe('validateEnv', () => {
         process.env.JWT_SECRET = 'secret';
         expect(() => validateEnv()).not.toThrow();
         expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/ALLOWED_ORIGINS/));
+    });
+
+    it('requires CLIENT_URL in production (no silent localhost fallback)', () => {
+        setProdBaseline();
+        delete process.env.CLIENT_URL;
+        expect(() => validateEnv()).toThrow(/CLIENT_URL/);
+    });
+
+    it('treats a whitespace-only CLIENT_URL as missing in production', () => {
+        setProdBaseline();
+        process.env.CLIENT_URL = '   ';
+        expect(() => validateEnv()).toThrow(/CLIENT_URL/);
+    });
+
+    it('does not require CLIENT_URL outside production, but warns', () => {
+        process.env.NODE_ENV = 'development';
+        process.env.DB_CONNECTION_STRING = 'mongodb://localhost/test';
+        process.env.JWT_SECRET = 'secret';
+        expect(() => validateEnv()).not.toThrow();
+        expect(console.warn).toHaveBeenCalledWith(expect.stringMatching(/CLIENT_URL/));
     });
 
     it('passes in production when every required var (incl. Cloudinary + ALLOWED_ORIGINS) is set', () => {
