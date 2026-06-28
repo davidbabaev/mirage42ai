@@ -14,16 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### FIX: Share post — clickable rich preview, search, auto-close, IG-style chat card
-- What: The share-post feature currently sends a raw, non-clickable URL and lists all users. Rebuild it to real-app standard.
-- Decisions:
-  1. SCALE: replace the full user list with a SEARCH box (type a name → search returns matching users). Never render all users. Assume 100k+ users.
-  2. AUTO-CLOSE: after pressing Send, the share modal closes automatically.
-  3. RICH CARD IN CHAT: a post shared into a Mirage chat must appear as a CLICKABLE preview card — post image/thumbnail + title/snippet + author — exactly like the Instagram-DM shared-post example (a tappable card, not a URL). Clicking it opens that post.
-  4. EXTERNAL share keeps Web Share API + copy-link fallback.
-- Done when: sharing a post in-app sends a clickable rich preview card into the chat (image + text, opens the post on click); the recipient picker is a search box not a full list; the modal auto-closes on send; verified at both widths.
-- Type: feature
-
 ### FIX: Block user — settings list, locked profile, app-wide hiding
 - What: Rebuild block behavior to match real social apps.
 - Decisions:

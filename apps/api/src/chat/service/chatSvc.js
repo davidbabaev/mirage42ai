@@ -1,8 +1,32 @@
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const User = require('../../users/models/User');
+const Card = require('../../cards/models/Card');
 const {createError} = require('../../utils/handleErrors');
 const { default: mongoose } = require('mongoose');
+
+// Build the rich-preview snapshot for a shared post, authoritatively, from the
+// card + its author. The client only sends a cardId — everything shown in the
+// chat card (title, image, author) is read here so a sender can't spoof it.
+const buildSharedCardSnapshot = async (cardId) => {
+    if(!mongoose.isValidObjectId(cardId)) throw createError(400, 'Invalid post');
+    const card = await Card.findById(cardId);
+    if(!card || card.status !== 'active') throw createError(404, 'Post not found');
+
+    const author = await User.findById(card.userId);
+    const authorName = author ? `${author.name} ${author.lastName || ''}`.trim() : 'Unknown';
+
+    const snippet = (card.title || card.content || '').slice(0, 140);
+    return {
+        cardId: card._id,
+        title: card.title || '',
+        snippet,
+        mediaUrl: card.mediaUrl,
+        mediaType: card.mediaType,
+        authorName,
+        authorAvatar: author?.profilePicture || '',
+    };
+}
 
 const getOrCreateConversation = async (fromUserId, toUserId) => {
 
@@ -37,8 +61,27 @@ const getOrCreateConversation = async (fromUserId, toUserId) => {
 
 const createNewMessage = async (message, userId) => {
     try{
-        let newMessage = new Message({...message, userId})
+        // Whitelist what a client may set on a message — never spread the raw
+        // socket payload into the model. A shared post is built server-side from
+        // the supplied cardId; `text` (if any) rides along as an optional caption.
+        const fields = {
+            userId,
+            conversationId: message.conversationId,
+            text: message.text,
+            mediaUrl: message.mediaUrl,
+            mediaType: message.mediaType,
+        };
+        if(message.sharedCardId){
+            fields.sharedCard = await buildSharedCardSnapshot(message.sharedCardId);
+        }
+
+        let newMessage = new Message(fields)
         newMessage = await newMessage.save();
+
+        // Preview text for the conversation list: caption if present, else a
+        // generic label for a shared post, else the message text.
+        const previewText = newMessage.text
+            || (newMessage.sharedCard?.cardId ? 'Shared a post' : newMessage.text);
 
         // Bump updatedAt and refresh the denormalized lastMessage snapshot so
         // the conversation list can show a real preview without per-row queries.
@@ -46,7 +89,7 @@ const createNewMessage = async (message, userId) => {
             message.conversationId,
             {
                 lastMessage: {
-                    text: newMessage.text,
+                    text: previewText,
                     mediaType: newMessage.mediaType,
                     senderId: userId,
                     createdAt: newMessage.createdAt,

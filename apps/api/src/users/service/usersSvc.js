@@ -104,18 +104,39 @@ const loginUser = async ({email, password}) => {
     }
 }
 
-const getUsers = async (requesterId, isAdmin) => {
+// Escape user input before using it in a RegExp so a search term can't inject
+// regex metacharacters (ReDoS / unintended matches).
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// `opts.q` turns this into a server-side search (prefix match on name or
+// lastName, case-insensitive) capped by `opts.limit` — so a recipient picker
+// never has to load all 100k+ users. Without `q` it returns the full list
+// (existing behavior).
+// PERF NOTE: a case-insensitive prefix regex is not fully index-served; for very
+// large collections back this with a collation index or a search service. The
+// limit keeps the result set bounded for the autocomplete use case.
+const getUsers = async (requesterId, isAdmin, opts = {}) => {
         // A block is a personal preference and applies to the requester's own
         // view even if they're an admin: never list users they blocked, or users
         // who blocked them. (Admin field-level visibility is unchanged below.)
-        let users;
+        const filter = {};
         if(requesterId){
             const requester = await User.findById(requesterId);
             const blockedByMe = requester?.blocked || [];
-            users = await User.find({ _id: { $nin: blockedByMe }, blocked: { $ne: requesterId } });
-        } else {
-            users = await User.find();
+            filter._id = { $nin: blockedByMe };
+            filter.blocked = { $ne: requesterId };
         }
+
+        const q = (opts.q || '').trim();
+        let query = User.find(filter);
+        if(q){
+            const rx = new RegExp('^' + escapeRegex(q), 'i');
+            query = User.find({ ...filter, $or: [{ name: rx }, { lastName: rx }] });
+            const limit = Math.min(Math.max(Number(opts.limit) || 10, 1), 25);
+            query = query.limit(limit);
+        }
+
+        const users = await query;
         return users.map(user => projectUser(user, requesterId, isAdmin))
 }
 

@@ -20,6 +20,20 @@ const MessageSchema = new mongoose.Schema({
         enum: ['image', 'video']
     },
 
+    // A post shared into the chat. Denormalized snapshot built SERVER-SIDE from
+    // the card (never trusting client-supplied preview data) so the bubble can
+    // render a rich, clickable card without an extra fetch per message. cardId
+    // is the live target — clicking the card opens that post.
+    sharedCard: {
+        cardId: { type: mongoose.Schema.Types.ObjectId, ref: 'Card' },
+        title: String,
+        snippet: String,
+        mediaUrl: String,
+        mediaType: { type: String, enum: ['image', 'video'] },
+        authorName: String,
+        authorAvatar: String,
+    },
+
 }, {timestamps: true});
 
 const Message = mongoose.model('Message', MessageSchema);

@@ -1,44 +1,68 @@
-import { useMemo, useState } from 'react';
-import { Autocomplete, Avatar, Box, Button, Dialog, DialogContent, DialogTitle, IconButton, Snackbar, TextField, Typography } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { Autocomplete, Avatar, Box, Button, Dialog, DialogContent, DialogTitle, IconButton, Snackbar, TextField, Typography, CircularProgress } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SendIcon from '@mui/icons-material/Send';
 import IosShareIcon from '@mui/icons-material/IosShare';
-import { useUsersProvider } from '../providers/UsersProvider';
 import { useAuth } from '../providers/AuthProvider';
 import { getSocket } from '../services/socketService';
+import { searchUsers } from '../services/apiService';
+import useDebounce from '../hooks/useDebounce';
 
 // Share a post two ways:
-// - in-app: pick a user and send them the post via the existing chat socket
-//   ('send-message'); the message body is a caption + a deep link.
+// - in-app: search for a person and send them the post via the chat socket
+//   ('send-message'). We send only the cardId; the server builds the rich
+//   preview snapshot the chat renders as a clickable card. The dialog
+//   auto-closes on send (Instagram/LinkedIn style).
 // - external: native Web Share API where available, with a copy-link fallback.
 // The deep link points at /allcards?card=<id>, which AllCardsPage opens as a
 // modal — no separate public post page needed.
 export default function ShareDialog({ card, open, onClose }) {
-    const { users } = useUsersProvider();
     const { user } = useAuth();
     const [recipient, setRecipient] = useState(null);
+    const [inputValue, setInputValue] = useState('');
+    const [options, setOptions] = useState([]);
+    const [searching, setSearching] = useState(false);
     const [sending, setSending] = useState(false);
     const [toast, setToast] = useState('');
 
     const shareUrl = `${window.location.origin}/allcards?card=${card?._id}`;
-    const shareText = `Check out this post${card?.title ? `: ${card.title}` : ''} ${shareUrl}`;
 
-    // everyone but yourself
-    const recipients = useMemo(
-        () => users.filter((u) => u._id !== user?._id),
-        [users, user]
-    );
+    // Debounced server-side search so the picker scales to any number of users.
+    const debouncedQuery = useDebounce(inputValue, 300);
+    useEffect(() => {
+        const q = debouncedQuery.trim();
+        if (!q) { setOptions([]); return; }
+        let active = true;
+        setSearching(true);
+        searchUsers(q, 10)
+            .then((res) => {
+                if (!active) return;
+                // never offer yourself as a recipient
+                setOptions((res || []).filter((u) => u._id !== user?._id));
+            })
+            .catch(() => { if (active) setOptions([]); })
+            .finally(() => { if (active) setSearching(false); });
+        return () => { active = false; };
+    }, [debouncedQuery, user?._id]);
+
+    const resetAndClose = () => {
+        setRecipient(null);
+        setInputValue('');
+        setOptions([]);
+        onClose();
+    };
 
     const handleSendInApp = async () => {
-        if (!recipient) return;
+        if (!recipient || !card?._id) return;
         const socket = getSocket();
         if (!socket) { setToast('Not connected — please try again'); return; }
         setSending(true);
         try {
-            socket.emit('send-message', { toUser: recipient._id, text: shareText });
+            // Send only the cardId — the server builds the trusted preview.
+            socket.emit('send-message', { toUser: recipient._id, sharedCardId: card._id });
             setToast(`Shared with ${recipient.name}`);
-            setRecipient(null);
+            resetAndClose(); // auto-close after sending
         } finally {
             setSending(false);
         }
@@ -67,10 +91,10 @@ export default function ShareDialog({ card, open, onClose }) {
 
     return (
         <>
-            <Dialog open={open} onClose={onClose} fullWidth maxWidth='xs'>
+            <Dialog open={open} onClose={resetAndClose} fullWidth maxWidth='xs'>
                 <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
                     Share post
-                    <IconButton onClick={onClose} size='small' aria-label='close'>
+                    <IconButton onClick={resetAndClose} size='small' aria-label='close'>
                         <CloseIcon />
                     </IconButton>
                 </DialogTitle>
@@ -83,9 +107,15 @@ export default function ShareDialog({ card, open, onClose }) {
                         <Autocomplete
                             fullWidth
                             size='small'
-                            options={recipients}
+                            options={options}
                             value={recipient}
                             onChange={(e, v) => setRecipient(v)}
+                            inputValue={inputValue}
+                            onInputChange={(e, v) => setInputValue(v)}
+                            loading={searching}
+                            // server already filtered — don't filter again client-side
+                            filterOptions={(x) => x}
+                            noOptionsText={inputValue.trim() ? 'No people found' : 'Type a name to search'}
                             getOptionLabel={(o) => `${o.name} ${o.lastName || ''}`.trim()}
                             isOptionEqualToValue={(o, v) => o._id === v._id}
                             renderOption={(props, o) => (
@@ -94,7 +124,23 @@ export default function ShareDialog({ card, open, onClose }) {
                                     {o.name} {o.lastName}
                                 </Box>
                             )}
-                            renderInput={(params) => <TextField {...params} placeholder='Search people...' />}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    placeholder='Search people...'
+                                    slotProps={{
+                                        input: {
+                                            ...params.InputProps,
+                                            endAdornment: (
+                                                <>
+                                                    {searching ? <CircularProgress size={16} /> : null}
+                                                    {params.InputProps.endAdornment}
+                                                </>
+                                            ),
+                                        },
+                                    }}
+                                />
+                            )}
                         />
                         <Button
                             variant='contained'

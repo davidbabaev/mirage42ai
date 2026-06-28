@@ -89,6 +89,10 @@ const httpRequestFormData = (endpoint, method, body) => send(endpoint, method, b
 export const loginUser = (userData) => httpRequest('/users/login', 'POST', userData);
 export const registerUser = (userData) => httpRequest('/users', 'POST', userData);
 export const getAllUsers = () => httpRequest('/users', 'GET');
+// Server-side people search for pickers (recipient autocomplete etc.) so we
+// never load every user into the client.
+export const searchUsers = (q, limit = 10) =>
+    httpRequest(`/users?q=${encodeURIComponent(q)}&limit=${limit}`, 'GET');
 export const getSingleUser = (id) => httpRequest(`/users/${id}`, 'GET');
 export const updateUser = (id, userData) => httpRequestFormData(`/users/${id}`, 'PUT', userData);
 export const deleteUser = (id) => httpRequest(`/users/${id}`, 'DELETE');

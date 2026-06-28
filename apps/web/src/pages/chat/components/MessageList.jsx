@@ -1,6 +1,7 @@
 import { Avatar, Box, Chip, CircularProgress, Typography } from '@mui/material';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import MediaDisplay from '../../../components/MediaDisplay';
+import SharedPostCard from './SharedPostCard';
 import getMessageTime from '../../../utils/getMessageTime';
 
 const GROUP_GAP_MS = 5 * 60 * 1000; // messages within 5 min from the same sender group together
@@ -47,6 +48,7 @@ export default function MessageList({ messages, currentUserId, otherUser, contai
         >
             {messages.map((message, i) => {
                 const isSent = currentUserId === message.userId;
+                const hasCard = !!message.sharedCard?.cardId;
                 const prev = messages[i - 1];
                 const next = messages[i + 1];
 
@@ -95,8 +97,8 @@ export default function MessageList({ messages, currentUserId, otherUser, contai
                                 sx={{
                                     bgcolor: isSent ? 'primary.main' : 'action.hover',
                                     color: isSent ? 'white' : 'text.primary',
-                                    px: message.mediaUrl ? 1 : 1.75,
-                                    py: message.mediaUrl ? 1 : 1.25,
+                                    px: (message.mediaUrl || hasCard) ? 1 : 1.75,
+                                    py: (message.mediaUrl || hasCard) ? 1 : 1.25,
                                     borderRadius: 2.5,
                                     maxWidth: { xs: '78%', md: '65%' },
                                     display: 'flex',
@@ -131,6 +133,12 @@ export default function MessageList({ messages, currentUserId, otherUser, contai
                                                 <ErrorOutlineIcon sx={{ color: '#fff' }} />
                                             </Box>
                                         )}
+                                    </Box>
+                                )}
+
+                                {hasCard && (
+                                    <Box sx={{ mb: message.text ? 0.75 : 0 }}>
+                                        <SharedPostCard sharedCard={message.sharedCard} />
                                     </Box>
                                 )}
 

@@ -28,7 +28,10 @@ const uploadToCloudinary = require('../../utils/cloudinary');
 
 router.get('/users', auth, async (req, res) => {
     try{
-        const users = await getUsers(req.user.userId, req.user.isAdmin);
+        const users = await getUsers(req.user.userId, req.user.isAdmin, {
+            q: req.query.q,
+            limit: req.query.limit,
+        });
         res.send(users);
     }
     catch(err){
