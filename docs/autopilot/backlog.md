@@ -68,7 +68,7 @@ Mark items [done] when finished so they drop out of the active list.
 - Shipped: server-built sharedCard now derives `posterUrl` for video posts — a Cloudinary `so_0` .jpg frame for Cloudinary-hosted videos (`cloudinaryVideoPoster` in chatSvc, reused as Task A's og:image). SharedPostCard renders posterUrl as the thumbnail; for non-Cloudinary videos (e.g. seed Sintel/Big Buck Bunny, where no Cloudinary frame exists) it falls back to a muted `<video>` seeked ~15% in (capped 4s) to show a real content frame instead of a black box — a strict improvement over the old dark placeholder. Image-post sharing unchanged. New tests in share-post.test.js (poster derivation + snapshot); full api suite green (108).
 - Browser-verified at 390px and 1280px: Cloudinary video → poster image; Sintel → real content frame (not black); image card unchanged.
 - DECISION: the named "Sintel Trailer" seed video is an EXTERNAL url (blender.org), not Cloudinary, so a pure-Cloudinary poster can't satisfy its check — hence the universal first-frame `<video>` fallback. Real app uploads (Cloudinary) get the lighter `<img>` poster + a valid OG image.
-- Built on branch autopilot/2026-06-28-2, commit <pending>.
+- Built on branch autopilot/2026-06-28-2, commit 1fd99cd.
 
 ### Blocked accounts management screen (was Active — follow-up to Block user)
 - What: A "Blocked accounts" settings list where you can see everyone you've blocked and unblock them.
