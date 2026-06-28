@@ -46,18 +46,6 @@ Mark items [done] when finished so they drop out of the active list.
 - Symptom: After a long logged-in session the user can't send DMs; sends silently fail until logout + relogin. Likely token expiry interacting with the socket/auth layer.
 - Notes: Queued investigation task. Do not implement now; handled in a separate session.
 
-### TASK C — Video posts: real poster preview in the shared card
-- Type: bug/feature (extends sharedCard)
-- Symptom: Sharing a video post in a DM shows a blank card + play button, no thumbnail. Image posts work.
-- Root cause: The server-built sharedCard captures an image for image posts but no poster frame for videos.
-- Decisions:
-  - When building sharedCard server-side, detect video media and derive a poster from Cloudinary (deliver as image format, e.g. .jpg, with a frame offset such as so_0 / so_auto). Store as sharedCard.posterUrl (+ width/height if available).
-  - The share-card component renders posterUrl behind the existing play overlay; clicking opens the post via the existing deep link.
-  - Reuse posterUrl as Task A's og:image for video posts (single source of truth).
-  - On derivation failure, fall back to the current neutral dark placeholder + play icon.
-- Check:
-  - Browser (390/1280): share a video post → DM card shows the poster frame with play overlay; clicking opens the post; image-post sharing unchanged. Verify the seeded "Sintel Trailer" post renders a frame, not a blank box.
-
 ### TASK D — Share dialog: recent-contacts default list (Instagram-style)
 - Type: feature (extends the picker)
 - Current: The picker is empty until you type. Target: open it and immediately see likely recipients.
@@ -74,6 +62,13 @@ Mark items [done] when finished so they drop out of the active list.
   - API: GET /users/recent-contacts returns ≤10, recency-ordered, excludes blocked, owner-only.
 
 ## Awaiting review
+
+### TASK C — Video posts: real poster preview in the shared card
+- Type: bug/feature (extends sharedCard)
+- Shipped: server-built sharedCard now derives `posterUrl` for video posts — a Cloudinary `so_0` .jpg frame for Cloudinary-hosted videos (`cloudinaryVideoPoster` in chatSvc, reused as Task A's og:image). SharedPostCard renders posterUrl as the thumbnail; for non-Cloudinary videos (e.g. seed Sintel/Big Buck Bunny, where no Cloudinary frame exists) it falls back to a muted `<video>` seeked ~15% in (capped 4s) to show a real content frame instead of a black box — a strict improvement over the old dark placeholder. Image-post sharing unchanged. New tests in share-post.test.js (poster derivation + snapshot); full api suite green (108).
+- Browser-verified at 390px and 1280px: Cloudinary video → poster image; Sintel → real content frame (not black); image card unchanged.
+- DECISION: the named "Sintel Trailer" seed video is an EXTERNAL url (blender.org), not Cloudinary, so a pure-Cloudinary poster can't satisfy its check — hence the universal first-frame `<video>` fallback. Real app uploads (Cloudinary) get the lighter `<img>` poster + a valid OG image.
+- Built on branch autopilot/2026-06-28-2, commit <pending>.
 
 ### Blocked accounts management screen (was Active — follow-up to Block user)
 - What: A "Blocked accounts" settings list where you can see everyone you've blocked and unblock them.

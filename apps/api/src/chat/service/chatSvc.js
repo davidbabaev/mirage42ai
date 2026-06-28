@@ -5,6 +5,23 @@ const Card = require('../../cards/models/Card');
 const {createError} = require('../../utils/handleErrors');
 const { default: mongoose } = require('mongoose');
 
+// Derive a still poster (a JPG frame) from a Cloudinary VIDEO url:
+//   .../video/upload/<id>.mp4 -> .../video/upload/so_0/<id>.jpg
+// so a shared video has a real thumbnail in chat and a valid OG image. Returns
+// null for non-Cloudinary videos (e.g. external/seed urls) — the chat card then
+// falls back to a muted first-frame <video>, and OG falls back to the banner.
+const cloudinaryVideoPoster = (videoUrl) => {
+    if (!videoUrl || !/res\.cloudinary\.com/.test(videoUrl)) return null;
+    const marker = '/video/upload/';
+    const i = videoUrl.indexOf(marker);
+    if (i === -1) return null;
+    const head = videoUrl.slice(0, i + marker.length);
+    let tail = videoUrl.slice(i + marker.length).replace(/\?.*$/, '');
+    // swap the video extension for .jpg (or append it if none)
+    tail = /\.[a-z0-9]+$/i.test(tail) ? tail.replace(/\.[a-z0-9]+$/i, '.jpg') : `${tail}.jpg`;
+    return `${head}so_0/${tail}`;
+};
+
 // Build the rich-preview snapshot for a shared post, authoritatively, from the
 // card + its author. The client only sends a cardId — everything shown in the
 // chat card (title, image, author) is read here so a sender can't spoof it.
@@ -23,6 +40,7 @@ const buildSharedCardSnapshot = async (cardId) => {
         snippet,
         mediaUrl: card.mediaUrl,
         mediaType: card.mediaType,
+        posterUrl: card.mediaType === 'video' ? cloudinaryVideoPoster(card.mediaUrl) : undefined,
         authorName,
         authorAvatar: author?.profilePicture || '',
     };
@@ -222,5 +240,7 @@ module.exports = {
     getMessages,
     getChats,
     markConversationRead,
-    deleteChat
+    deleteChat,
+    buildSharedCardSnapshot,
+    cloudinaryVideoPoster,
 }

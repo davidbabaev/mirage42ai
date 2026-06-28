@@ -30,6 +30,11 @@ const MessageSchema = new mongoose.Schema({
         snippet: String,
         mediaUrl: String,
         mediaType: { type: String, enum: ['image', 'video'] },
+        // For video posts: a still poster frame (image URL) derived from a
+        // Cloudinary video, so the chat card and external OG image have a real
+        // thumbnail. Null for non-Cloudinary videos (the card shows a first-frame
+        // <video> fallback instead).
+        posterUrl: String,
         authorName: String,
         authorAvatar: String,
     },

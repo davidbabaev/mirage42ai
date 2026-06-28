@@ -14,16 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### TASK C — Video posts: real poster preview in the shared card
-- What: Sharing a video post in a DM shows a blank card + play button, no thumbnail (image posts work). The server-built sharedCard captures an image for image posts but no poster frame for videos. Add a real poster.
-- Decisions:
-  - When building sharedCard server-side, detect video media and derive a poster from Cloudinary (deliver as image format, e.g. .jpg, with a frame offset such as so_0 / so_auto). Store as sharedCard.posterUrl (+ width/height if available).
-  - The share-card component renders posterUrl behind the existing play overlay; clicking opens the post via the existing deep link.
-  - Reuse posterUrl as Task A's og:image for video posts (single source of truth).
-  - On derivation failure, fall back to the current neutral dark placeholder + play icon.
-- Done when (Check): Browser (390/1280): share a video post → DM card shows the poster frame with play overlay; clicking opens the post; image-post sharing unchanged. Verify the seeded "Sintel Trailer" post renders a frame, not a blank box.
-- Type: feature
-
 ### TASK D — Share dialog: recent-contacts default list (Instagram-style)
 - What: The picker is empty until you type. Target: open it and immediately see likely recipients.
 - Decisions:

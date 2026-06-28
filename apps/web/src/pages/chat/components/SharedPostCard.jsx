@@ -12,7 +12,7 @@ export default function SharedPostCard({ sharedCard }) {
     const navigate = useNavigate();
     if (!sharedCard?.cardId) return null;
 
-    const { cardId, title, snippet, mediaUrl, mediaType, authorName, authorAvatar } = sharedCard;
+    const { cardId, title, snippet, mediaUrl, mediaType, posterUrl, authorName, authorAvatar } = sharedCard;
     const open = () => navigate(`/allcards?card=${cardId}`);
 
     return (
@@ -35,23 +35,47 @@ export default function SharedPostCard({ sharedCard }) {
                 '&:hover': { boxShadow: 3 },
             }}
         >
-            {/* Media thumbnail (image inline; video shown as a poster with a play badge) */}
+            {/* Media thumbnail: image inline; video shows a real poster frame
+                (server-derived posterUrl when available, otherwise a muted
+                first-frame <video>) behind a play badge. */}
             <Box sx={{ position: 'relative', height: 140, bgcolor: 'action.hover' }}>
-                {mediaUrl && mediaType === 'image' ? (
+                {mediaType === 'image' && mediaUrl ? (
                     <Box
                         component='img'
                         src={mediaUrl}
                         alt={title || 'Shared post'}
                         sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                     />
+                ) : mediaType === 'video' && posterUrl ? (
+                    <Box
+                        component='img'
+                        src={posterUrl}
+                        alt={title || 'Shared video'}
+                        sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                ) : mediaType === 'video' && mediaUrl ? (
+                    <Box
+                        component='video'
+                        src={mediaUrl}
+                        muted
+                        playsInline
+                        preload='auto'
+                        // Seek a little past any intro/black lead-in so the poster
+                        // frame is real content, not a black box (works for any host).
+                        onLoadedMetadata={(e) => {
+                            const v = e.target;
+                            if (v.duration && isFinite(v.duration)) {
+                                try { v.currentTime = Math.min(v.duration * 0.15, 4); } catch { /* ignore */ }
+                            }
+                        }}
+                        sx={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', pointerEvents: 'none' }}
+                    />
                 ) : (
                     <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {mediaType === 'video'
-                            ? <PlayCircleIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
-                            : <ImageIcon sx={{ fontSize: 40, color: 'text.disabled' }} />}
+                        <ImageIcon sx={{ fontSize: 40, color: 'text.disabled' }} />
                     </Box>
                 )}
-                {mediaUrl && mediaType === 'video' && (
+                {mediaType === 'video' && (
                     <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <PlayCircleIcon sx={{ fontSize: 48, color: 'rgba(255,255,255,0.92)' }} />
                     </Box>

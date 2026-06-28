@@ -115,3 +115,32 @@ describe('sharing a post into chat builds a server-side preview snapshot', () =>
         ).rejects.toMatchObject({ status: 404 });
     });
 });
+
+describe('shared video card poster derivation', () => {
+    it('derives a Cloudinary so_0 .jpg poster from a Cloudinary video url', () => {
+        const v = 'https://res.cloudinary.com/demo/video/upload/v123/clip.mp4';
+        expect(chatSvc.cloudinaryVideoPoster(v))
+            .toBe('https://res.cloudinary.com/demo/video/upload/so_0/v123/clip.jpg');
+    });
+
+    it('returns null for a non-Cloudinary video url (e.g. external/seed)', () => {
+        expect(chatSvc.cloudinaryVideoPoster('https://download.blender.org/durian/trailer/sintel_trailer-480p.mp4')).toBeNull();
+        expect(chatSvc.cloudinaryVideoPoster('')).toBeNull();
+    });
+
+    it('snapshot for a Cloudinary video card includes posterUrl; image card has none', async () => {
+        const Card = requireFromHere(path.join(__dirname, '../src/cards/models/Card'));
+        const vid = await Card.create({
+            title: 'clip', content: 'c', userId: userAId, status: 'active',
+            mediaType: 'video', mediaUrl: 'https://res.cloudinary.com/demo/video/upload/v9/abc.mp4',
+        });
+        const conv = await chatSvc.getOrCreateConversation(userAId, userBId);
+        const vMsg = await chatSvc.createNewMessage({ conversationId: conv._id, sharedCardId: vid._id }, userAId);
+        expect(vMsg.sharedCard.mediaType).toBe('video');
+        expect(vMsg.sharedCard.posterUrl).toBe('https://res.cloudinary.com/demo/video/upload/so_0/v9/abc.jpg');
+
+        // the earlier image card carries no posterUrl
+        const iMsg = await chatSvc.createNewMessage({ conversationId: conv._id, sharedCardId: cardId }, userAId);
+        expect(iMsg.sharedCard.posterUrl == null).toBe(true);
+    });
+});
