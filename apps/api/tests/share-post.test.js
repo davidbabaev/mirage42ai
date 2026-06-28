@@ -144,3 +144,49 @@ describe('shared video card poster derivation', () => {
         expect(iMsg.sharedCard.posterUrl == null).toBe(true);
     });
 });
+
+describe('recent contacts (GET /users/recent-contacts)', () => {
+    let tokenR, idR, idS, idT, tokenS;
+    beforeAll(async () => {
+        const rR = await request(app).post('/users').send(mkUser('rc-r', { name: 'Rita' }));
+        tokenR = rR.body.token; idR = rR.body.safeUser._id;
+        const rS = await request(app).post('/users').send(mkUser('rc-s', { name: 'Sam' }));
+        tokenS = rS.body.token; idS = rS.body.safeUser._id;
+        const rT = await request(app).post('/users').send(mkUser('rc-t', { name: 'Tom' }));
+        idT = rT.body.safeUser._id;
+
+        // R messages S first, then T — so most-recent order is [Tom, Sam].
+        const cRS = await chatSvc.getOrCreateConversation(idR, idS);
+        await chatSvc.createNewMessage({ conversationId: cRS._id, text: 'hi sam' }, idR);
+        const cRT = await chatSvc.getOrCreateConversation(idR, idT);
+        await chatSvc.createNewMessage({ conversationId: cRT._id, text: 'hi tom' }, idR);
+    }, 60_000);
+
+    it('requires auth', async () => {
+        expect((await request(app).get('/users/recent-contacts')).status).toBe(401);
+    });
+
+    it('returns the other participants, most-recent first, capped', async () => {
+        const res = await request(app).get('/users/recent-contacts?limit=10').set('auth-token', tokenR);
+        expect(res.status).toBe(200);
+        const ids = res.body.map((u) => u._id);
+        expect(ids.slice(0, 2)).toEqual([idT, idS]); // Tom (newest) before Sam
+        expect(res.body[0]).toHaveProperty('displayName');
+        expect(res.body[0]).toHaveProperty('lastInteractedAt');
+        expect(res.body.every((u) => u._id !== idR)).toBe(true); // never yourself
+    });
+
+    it('excludes blocked users (either direction)', async () => {
+        await request(app).patch(`/users/${idT}/block`).set('auth-token', tokenR);
+        const res = await request(app).get('/users/recent-contacts').set('auth-token', tokenR);
+        expect(res.body.some((u) => u._id === idT)).toBe(false); // Tom blocked → gone
+        expect(res.body.some((u) => u._id === idS)).toBe(true);  // Sam still there
+        await request(app).patch(`/users/${idT}/block`).set('auth-token', tokenR); // restore
+    });
+
+    it('is owner-scoped: each user sees only their own contacts', async () => {
+        const res = await request(app).get('/users/recent-contacts').set('auth-token', tokenS);
+        // Sam only ever talked to Rita
+        expect(res.body.map((u) => u._id)).toEqual([idR]);
+    });
+});

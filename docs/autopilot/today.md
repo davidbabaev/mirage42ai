@@ -14,21 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### TASK D — Share dialog: recent-contacts default list (Instagram-style)
-- What: The picker is empty until you type. Target: open it and immediately see likely recipients.
-- Decisions:
-  - On open, fetch up to 10 most-recent contacts and show them as the default list (avatar + name), most-recent first.
-  - "Recent contacts" = other participants of the user's most recent DM conversations, deduplicated, capped at 10. If fewer than 10 conversations exist, show what exists (may optionally pad with recent follows, but conversations take priority and ordering).
-  - New endpoint: GET /users/recent-contacts?limit=10 — owner-only, registered BEFORE /users/:id (same route-ordering gotcha as /users/blocked). Returns id, displayName, avatar, lastInteractedAt.
-  - Placeholder text becomes "Search other people".
-  - Typing switches to the existing GET /users?q=&limit= search; clearing the box restores the recent list.
-  - Selecting a person enables SEND (unchanged send flow / sharedCard snapshot).
-  - Block-aware: exclude users the owner blocked or who blocked the owner from both the recent list and search (reuse getHiddenUserIds).
-- Done when (Check):
-  - Browser (390/1280): open Share → up to 10 recent DM contacts with avatars; placeholder reads "Search other people"; typing searches all users; clearing restores the recent list; blocked users never appear; selecting + SEND delivers the shared card.
-  - API: GET /users/recent-contacts returns ≤10, recency-ordered, excludes blocked, owner-only.
-- Type: feature
-
 ### TASK A — External share previews (Open Graph / rich link cards)
 - What: Shared card links show as bare URLs on WhatsApp/LinkedIn/etc — no preview image, title, or text. The web app is a client-rendered SPA; social crawlers don't run JS, they read Open Graph meta tags from raw HTML, and index.html only has generic tags. localhost is also unreachable by crawlers, so external previews only work on a public domain — verify HTML output locally, treat WhatsApp/LinkedIn rendering as a staging gate.
 - Decisions:

@@ -250,4 +250,5 @@ module.exports = {
     removeComment,
     getFeedCards,
     banCard,
+    getHiddenUserIds,
 }

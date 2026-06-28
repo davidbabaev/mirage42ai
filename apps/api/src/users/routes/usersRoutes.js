@@ -18,6 +18,7 @@ const {
     banUser,
     promoteUserToAdmin,
 } = require('../service/usersSvc');
+const { getRecentContacts } = require('../../chat/service/chatSvc');
 const validateUser = require('../validation/joi/validateUserWithJoi');
 const validateLogin = require('../validation/joi/validateLoginWithJoi');
 const auth = require('../../auth/authService');
@@ -45,6 +46,17 @@ router.get('/users/blocked', auth, async (req, res) => {
     try{
         const blocked = await getBlockedUsers(req.user.userId);
         res.send(blocked);
+    }
+    catch(err){
+        handleError(res, err);
+    }
+})
+
+// Recent DM contacts for the share-dialog default list. Also before '/users/:id'.
+router.get('/users/recent-contacts', auth, async (req, res) => {
+    try{
+        const contacts = await getRecentContacts(req.user.userId, req.query.limit);
+        res.send(contacts);
     }
     catch(err){
         handleError(res, err);

@@ -46,22 +46,13 @@ Mark items [done] when finished so they drop out of the active list.
 - Symptom: After a long logged-in session the user can't send DMs; sends silently fail until logout + relogin. Likely token expiry interacting with the socket/auth layer.
 - Notes: Queued investigation task. Do not implement now; handled in a separate session.
 
+## Awaiting review
+
 ### TASK D — Share dialog: recent-contacts default list (Instagram-style)
 - Type: feature (extends the picker)
-- Current: The picker is empty until you type. Target: open it and immediately see likely recipients.
-- Decisions:
-  - On open, fetch up to 10 most-recent contacts and show them as the default list (avatar + name), most-recent first.
-  - "Recent contacts" = other participants of the user's most recent DM conversations, deduplicated, capped at 10. If fewer than 10 conversations exist, show what exists (may optionally pad with recent follows, but conversations take priority and ordering).
-  - New endpoint: GET /users/recent-contacts?limit=10 — owner-only, registered BEFORE /users/:id (same route-ordering gotcha as /users/blocked). Returns id, displayName, avatar, lastInteractedAt.
-  - Placeholder text becomes "Search other people".
-  - Typing switches to the existing GET /users?q=&limit= search; clearing the box restores the recent list.
-  - Selecting a person enables SEND (unchanged send flow / sharedCard snapshot).
-  - Block-aware: exclude users the owner blocked or who blocked the owner from both the recent list and search (reuse getHiddenUserIds).
-- Check:
-  - Browser (390/1280): open Share → up to 10 recent DM contacts with avatars; placeholder reads "Search other people"; typing searches all users; clearing restores the recent list; blocked users never appear; selecting + SEND delivers the shared card.
-  - API: GET /users/recent-contacts returns ≤10, recency-ordered, excludes blocked, owner-only.
-
-## Awaiting review
+- Shipped: opening the Share dialog now shows up to 10 most-recent DM contacts (avatar + name) as a visible default list, most-recent first. New `GET /users/recent-contacts?limit=10` (owner-only, registered before `/users/:id`; `chatSvc.getRecentContacts` dedupes conversation participants by recency, excludes block relationships via the now-exported `getHiddenUserIds`, caps at 10). Placeholder is "Search other people"; typing switches to the existing `/users?q=` search; clearing restores the recent list; selecting a row enables SEND (unchanged sharedCard send flow, auto-close). ShareDialog moved from an Autocomplete to a visible search-field + list. New api tests in share-post.test.js (recency order, block exclusion, owner-scope, auth); full api suite green (112).
+- Browser-verified at 390px and 1280px: 4 recent contacts on open, typing finds "lior", clearing restores recent, select + Send delivers the card and auto-closes.
+- Built on branch autopilot/2026-06-28-2, commit <pending>.
 
 ### TASK C — Video posts: real poster preview in the shared card
 - Type: bug/feature (extends sharedCard)

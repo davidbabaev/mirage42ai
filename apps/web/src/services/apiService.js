@@ -96,6 +96,9 @@ export const searchUsers = (q, limit = 10) =>
 export const getSingleUser = (id) => httpRequest(`/users/${id}`, 'GET');
 // The caller's own blocked users (id + name + avatar) for the settings list.
 export const getBlockedUsers = () => httpRequest('/users/blocked', 'GET');
+// Recent DM contacts for the share-dialog default list.
+export const getRecentContacts = (limit = 10) =>
+    httpRequest(`/users/recent-contacts?limit=${limit}`, 'GET');
 export const updateUser = (id, userData) => httpRequestFormData(`/users/${id}`, 'PUT', userData);
 export const deleteUser = (id) => httpRequest(`/users/${id}`, 'DELETE');
 export const followUnfollowUser = (id) => httpRequest(`/users/${id}/follow`, 'PATCH');

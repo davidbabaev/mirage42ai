@@ -2,6 +2,7 @@ const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const User = require('../../users/models/User');
 const Card = require('../../cards/models/Card');
+const { getHiddenUserIds } = require('../../cards/service/cardsSvc');
 const {createError} = require('../../utils/handleErrors');
 const { default: mongoose } = require('mongoose');
 
@@ -183,6 +184,43 @@ const getChats = async (userId) => {
     return enriched.filter(Boolean);
 }
 
+// Recent DM contacts for the share-dialog default list: the other participant
+// of each of this user's most-recent conversations, deduped, most-recent first,
+// excluding anyone in a block relationship (either direction), capped at `limit`.
+const getRecentContacts = async (userId, limit = 10) => {
+    const cap = Math.min(Math.max(Number(limit) || 10, 1), 10);
+    const convos = await Conversation.find({
+        $or: [{ fromUser: userId }, { toUser: userId }],
+    }).sort({ updatedAt: -1 });
+
+    const hidden = await getHiddenUserIds(userId);
+    const seen = new Set();
+    const ordered = [];
+    for (const c of convos) {
+        const otherId = String(c.fromUser) === String(userId) ? String(c.toUser) : String(c.fromUser);
+        if (seen.has(otherId) || hidden.has(otherId)) continue;
+        seen.add(otherId);
+        ordered.push({ otherId, lastInteractedAt: c.updatedAt });
+        if (ordered.length >= cap) break;
+    }
+    if (!ordered.length) return [];
+
+    const users = await User.find({ _id: { $in: ordered.map(o => o.otherId) } });
+    const byId = new Map(users.map(u => [String(u._id), u]));
+    // preserve recency order; drop any participant that no longer exists
+    return ordered
+        .map(o => ({ o, u: byId.get(o.otherId) }))
+        .filter(x => x.u)
+        .map(({ o, u }) => ({
+            _id: u._id,
+            name: u.name,
+            lastName: u.lastName,
+            displayName: `${u.name} ${u.lastName || ''}`.trim(),
+            profilePicture: u.profilePicture || '',
+            lastInteractedAt: o.lastInteractedAt,
+        }));
+};
+
 // Mark a conversation read for this user (sets their read pointer to now).
 const markConversationRead = async (userId, conversationId) => {
     const conversation = await Conversation.findById(conversationId);
@@ -243,4 +281,5 @@ module.exports = {
     deleteChat,
     buildSharedCardSnapshot,
     cloudinaryVideoPoster,
+    getRecentContacts,
 }
