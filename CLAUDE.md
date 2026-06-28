@@ -79,3 +79,14 @@ This is a social media product (Mirage42). When a task is ambiguous, underspecif
 - Apply standard UX/UI, accessibility, coding, and architecture conventions from real production apps.
 - Prefer the interpretation a competent product team would ship: sensible defaults, no dead-ends, mobile-first, consistent with the rest of this app.
 - Log any such interpretation in the decisions log so it can be reviewed at merge.
+
+### Feature realism (non-negotiable)
+
+A feature is NOT done when it technically runs — it is done when it works the way a real user of a top social app (Instagram, LinkedIn, WhatsApp, Facebook) would expect. Before marking any feature done, check it against the real product:
+- Shared content must be CLICKABLE and show a PREVIEW (image + title/snippet), never a raw URL. A bare link is a failure.
+- Any "pick a user/item" UI must SCALE: use a search box, never a list that assumes a small number of users. Assume the app has 100,000+ users.
+- After a confirming action (send, post, share), the modal/dialog CLOSES automatically.
+- Interactive things behave continuously where users expect it (zoom is gradual with limits, not a single toggle; scroll paginates; etc.).
+- Match the real app's interaction: if Instagram closes the sheet on send and shows a rich card in chat, do that.
+- Empty, loading, and error states exist — never a dead end or a frozen screen.
+If you cannot tell what "realistic" means for a case, replicate the dominant pattern from the named apps above. Shipping a technically-working but unrealistic version is a defect, not a partial success.
