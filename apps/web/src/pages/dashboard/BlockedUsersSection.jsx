@@ -4,14 +4,12 @@ import BlockIcon from '@mui/icons-material/Block';
 import { useNavigate } from 'react-router-dom';
 import { getBlockedUsers } from '../../services/apiService';
 import useBlockUser from '../../hooks/useBlockUser';
-import { useAuth } from '../../providers/AuthProvider';
 
 // Settings list of everyone the user has blocked, each with an Unblock action
 // (Instagram/Facebook style). This is the discoverable way back to a blocked
 // user — clicking a row opens their (locked) profile. Because blocked users are
 // server-excluded everywhere else, this list is the only place they appear.
 export default function BlockedUsersSection() {
-    const { user } = useAuth();
     const { toggleBlock } = useBlockUser();
     const navigate = useNavigate();
     const [blocked, setBlocked] = useState([]);
