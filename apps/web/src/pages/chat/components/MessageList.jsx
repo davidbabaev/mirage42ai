@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Avatar, Box, Chip, CircularProgress, Typography } from '@mui/material';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import MediaDisplay from '../../../components/MediaDisplay';
+import ChatImageViewer from '../../../components/ChatImageViewer';
 import SharedPostCard from './SharedPostCard';
 import getMessageTime from '../../../utils/getMessageTime';
 
@@ -27,7 +29,13 @@ function dayLabel(dateStr) {
 // Scrollable message area: WhatsApp/IG-style grouped bubbles + day separators.
 // The parent owns the container/end refs, scroll tracking, and the reveal flag.
 export default function MessageList({ messages, currentUserId, otherUser, containerRef, endRef, isChatReady, onScroll }) {
+    const [viewerSrc, setViewerSrc] = useState(null);
+    const [viewerOpen, setViewerOpen] = useState(false);
+    const openViewer = (url) => { setViewerSrc(url); setViewerOpen(true); };
+    const closeViewer = () => setViewerOpen(false);
+
     return (
+        <>
         <Box
             ref={containerRef}
             onScroll={onScroll}
@@ -66,6 +74,14 @@ export default function MessageList({ messages, currentUserId, otherUser, contai
                 // received avatar appears once, on the group's last bubble
                 const showAvatar = !isSent && lastOfGroup;
                 const needsAvatarSpacer = !isSent && !lastOfGroup;
+
+                // Image messages (not video, not sending/failed) are tappable to
+                // open the fullscreen viewer. Videos and in-flight/failed uploads
+                // are excluded — a failed upload may not be a complete image.
+                const isZoomable = !!message.mediaUrl
+                    && message.mediaType !== 'video'
+                    && message.status !== 'sending'
+                    && message.status !== 'failed';
 
                 return (
                     <Box key={message._id}>
@@ -110,7 +126,26 @@ export default function MessageList({ messages, currentUserId, otherUser, contai
                                 }}
                             >
                                 {message.mediaUrl && (
-                                    <Box sx={{ mb: message.text ? 0.75 : 0, overflow: 'hidden', position: 'relative' }}>
+                                    <Box
+                                        {...(isZoomable ? {
+                                            role: 'button',
+                                            tabIndex: 0,
+                                            'aria-label': 'View full-size image',
+                                            onClick: () => openViewer(message.mediaUrl),
+                                            onKeyDown: (e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    openViewer(message.mediaUrl);
+                                                }
+                                            },
+                                        } : {})}
+                                        sx={{
+                                            mb: message.text ? 0.75 : 0,
+                                            overflow: 'hidden',
+                                            position: 'relative',
+                                            ...(isZoomable && { cursor: 'zoom-in' }),
+                                        }}
+                                    >
                                         <MediaDisplay
                                             mediaUrl={message.mediaUrl}
                                             mediaType={message.mediaType}
@@ -172,5 +207,11 @@ export default function MessageList({ messages, currentUserId, otherUser, contai
             {/* invisible marker at the bottom */}
             <Box ref={endRef} />
         </Box>
+
+        {/* Fullscreen image viewer — renders in a Portal so it sits outside the
+            scroll container. Mounts per-conversation; Dialog content unmounts on
+            close so ZoomableImage zoom resets each time. */}
+        <ChatImageViewer src={viewerSrc} open={viewerOpen} onClose={closeViewer} />
+        </>
     );
 }

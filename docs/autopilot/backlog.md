@@ -71,6 +71,7 @@ Mark items [done] when finished so they drop out of the active list.
 - Responsive: 390px — fullscreen dialog edge-to-edge, pinch + double-tap zoom, swipe-down to dismiss, close button reachable, respects safe areas. 1280px — fullscreen/large dialog, scroll-to-zoom + double-click, click backdrop or X to close. Reduced-motion respected.
 - A11y: image has alt text; dialog traps focus; Esc closes; zoom controls reachable; close button ≥44px.
 - Done-when: clicking a chat image opens a fullscreen viewer; the image zooms GRADUALLY in/out (with limits) and pans when zoomed, via scroll+double-click on desktop and pinch+double-tap on mobile; closes via X/backdrop/Esc/swipe; works from full chat and dock; correct at 390px and 1280px.
+- Progress: T12 chat image zoom done, commit 4eb907f. FEATURE 5 complete.
 
 ### Infrastructure hardening (deployment task — do with Render staging/production)
 - What: Add network-level protection at the host: firewall rules, DDoS/WAF protection (e.g. Cloudflare in front), restrict inbound to required ports, lock down Atlas network access to known IPs.
