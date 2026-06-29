@@ -18,7 +18,7 @@ Mark items [done] when finished so they drop out of the active list.
 - Done-when: a brand-new account (both register paths) sees the wizard once; can skip straight through to a feed that shows popular posts (not blank); can pick interests + follow ≥1 suggested user + finish profile and land on a feed including those follows; re-login does NOT show the wizard again; correct at 390px and 1280px.
 
 ### FEATURE 2 — Smarter notifications
-- Progress: T3 (delete bug + comment copy) done, commit <sha>.
+- Progress: T3 (delete bug + comment copy) done, commit 1ace22b.
 - What: Four fixes + one addition on the existing notifications dropdown (`Notifications.jsx`). (Bug) The delete (trash) button navigates to the sender's profile because the click bubbles to the row — stop propagation so delete only deletes. (Copy) `comment` type renders "commentd your post" — fix to "commented on your post". (Deep-link) Clicking a like/comment notification about your post opens THAT post (not the sender profile). (Deep-link) Clicking a comment-reply / comment-like notification opens the post AND scrolls to + briefly highlights the specific comment. (Addition) Notification settings: per-type toggles like a real app.
 - Note: `comment-like` ("liked your comment") and `comment-reply` ("replied to your comment") notifications ALREADY exist on backend + frontend text — do NOT rebuild them; only add their deep-linking + the settings gate.
 - Reference: Instagram/X notifications — tap a like/comment notif → jump to the post; tap a reply notif → jump to the comment; per-type notification settings.
