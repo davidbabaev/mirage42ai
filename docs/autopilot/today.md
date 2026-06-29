@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### T7 — Likes-count modal (clickable likes → PeopleModal)
-- What: Make the "N likes" count + avatar cluster a button in `CardItem.jsx` and `CardDetailsModal.jsx`; clicking opens a modal (reuse `PeopleModal`) listing likers from `GET /cards/:id/likes`, each row: avatar, name, job, follower count, Follow button (or "Following" text), matching `refs/likes-count-modal.png`. Paginated scroll; optimistic follow from inside the modal.
-- Decisions: 0 likes → not clickable. Reuse PeopleModal exactly; don't fork a new list UI.
-- Done when: clicking "N likes" opens a likers modal with working Follow/Following; scroll paginates; matches the ref design; verified in browser at 390px and 1280px.
-- Type: visual
-
 ### T8 — Report-a-post backend
 - What: Add a `Report` model `{ cardId, reporterId, reason, createdAt }` with a unique index on (cardId, reporterId). `POST /cards/:id/report` (reason validated against an allowlist enum) — one report per user per post (dedupe → idempotent/409). Maintain a per-post report count (denormalized `reportCount` on the card or an aggregate). Create an admin-targeted Notification on each new report (new actionType `post-reported`). `GET /cards/:id/reports` — admin-only — returns reporter identities + reasons.
 - Decisions: reason allowlist = spam, harassment, nudity/sexual, hate, violence, misinformation, other. `GET /cards/:id/reports` requires isAdmin (authorization, not just auth). Admin notification recipients = all admins — pick one inbox model and log it.

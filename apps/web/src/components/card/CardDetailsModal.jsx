@@ -21,6 +21,7 @@ import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import ShareDialog from '../ShareDialog';
+import LikesModal from '../LikesModal';
 import OnLoadingSkeletonBox from '../OnLoadingSkeletonBox';
 import { useUsersProvider } from '../../providers/UsersProvider';
 
@@ -33,6 +34,7 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
         const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
         const [isExpanded, setIsExpanded] = useState(false)
         const [isShareOpen, setIsShareOpen] = useState(false)
+        const [isLikesModalOpen, setIsLikesModalOpen] = useState(false)
         const theme = useTheme();
 
 
@@ -224,31 +226,45 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
                     justifyContent: 'space-between',
                     mb: 1
                 }}>
-                    {/* left: ovelapping avatars */}
-                    <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
-
-                        {/* Avatars */}
-                        <Box sx={{display: 'flex'}}>
-                            {getLikesUsers.map((likedUser, index) => (
-                                <Avatar
-                                    key={likedUser._id}
-                                    src={likedUser.profilePicture}
-                                    sx={{
-                                        width: 30,
-                                        height: 30,
-                                        ml: index === 0 ? 0 : -0.8,
-                                        border: '1.5px solid',
-                                        borderColor: 'background.paper'
-                                    }}
-                                />
-                            ))}
+                    {/* left: overlapping avatars + likes count — clickable when >0 */}
+                    {getLikeCount(currentCard._id) > 0 ? (
+                        <Box
+                            component='button'
+                            aria-label={`View ${getLikeCount(currentCard._id)} likes`}
+                            onClick={() => setIsLikesModalOpen(true)}
+                            sx={{
+                                display: 'flex', alignItems: 'center', gap: 1,
+                                background: 'none', border: 'none', p: 0,
+                                cursor: 'pointer', minHeight: 44, minWidth: 44,
+                                color: 'inherit',
+                            }}
+                        >
+                            {/* Avatars */}
+                            <Box sx={{display: 'flex'}}>
+                                {getLikesUsers.map((likedUser, index) => (
+                                    <Avatar
+                                        key={likedUser._id}
+                                        src={likedUser.profilePicture}
+                                        sx={{
+                                            width: 30,
+                                            height: 30,
+                                            ml: index === 0 ? 0 : -0.8,
+                                            border: '1.5px solid',
+                                            borderColor: 'background.paper'
+                                        }}
+                                    />
+                                ))}
+                            </Box>
+                            {/* Count */}
+                            <Typography component='span' fontSize={13} color='text.secondary'>
+                                {getLikeCount(currentCard._id)} likes
+                            </Typography>
                         </Box>
-
-                        {/* Count */}
-                        <Typography component={'div'} fontSize={13} color='text.secondary'>
-                            {getLikeCount(currentCard._id)} likes
+                    ) : (
+                        <Typography component='div' fontSize={13} color='text.secondary'>
+                            No likes yet
                         </Typography>
-                    </Box>
+                    )}
 
                     {/* Right */}
                     <Typography component={'div'} fontSize={13} color='text.secondary'>
@@ -301,6 +317,15 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
 
                 {isShareOpen && (
                     <ShareDialog card={currentCard} open={isShareOpen} onClose={() => setIsShareOpen(false)}/>
+                )}
+
+                {isLikesModalOpen && (
+                    <LikesModal
+                        open={isLikesModalOpen}
+                        onClose={() => setIsLikesModalOpen(false)}
+                        cardId={currentCard._id}
+                        likeCount={getLikeCount(currentCard._id)}
+                    />
                 )}
 
 

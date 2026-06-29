@@ -18,6 +18,7 @@ import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
 import ShareDialog from './ShareDialog';
+import LikesModal from './LikesModal';
 import { useUsersProvider } from '../providers/UsersProvider';
 
 export default function CardItem({
@@ -32,6 +33,7 @@ export default function CardItem({
 
     const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
+    const [isLikesModalOpen, setIsLikesModalOpen] = useState(false);
     function onCloseLoginPopup(){
         setIsLoginPopupOpen(false)
     }
@@ -244,31 +246,45 @@ export default function CardItem({
                 px: 1,
                 pt: 1
             }}>
-                {/* left: ovelapping avatars */}
-                <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
-
-                    {/* Avatars */}
-                    <Box sx={{display: 'flex'}}>
-                        {getLikesUsers.map((likedUser, index) => (
-                            <Avatar
-                                key={likedUser._id}
-                                src={likedUser.profilePicture}
-                                sx={{
-                                    width: 30,
-                                    height: 30,
-                                    ml: index === 0 ? 0 : -0.8,
-                                    border: '1.5px solid',
-                                    borderColor: 'background.paper'
-                                }}
-                            />
-                        ))}
+                {/* left: overlapping avatars + likes count — clickable when >0 */}
+                {getLikeCount(card._id) > 0 ? (
+                    <Box
+                        component='button'
+                        aria-label={`View ${getLikeCount(card._id)} likes`}
+                        onClick={() => setIsLikesModalOpen(true)}
+                        sx={{
+                            display: 'flex', alignItems: 'center', gap: 1,
+                            background: 'none', border: 'none', p: 0,
+                            cursor: 'pointer', minHeight: 44, minWidth: 44,
+                            color: 'inherit',
+                        }}
+                    >
+                        {/* Avatars */}
+                        <Box sx={{display: 'flex'}}>
+                            {getLikesUsers.map((likedUser, index) => (
+                                <Avatar
+                                    key={likedUser._id}
+                                    src={likedUser.profilePicture}
+                                    sx={{
+                                        width: 30,
+                                        height: 30,
+                                        ml: index === 0 ? 0 : -0.8,
+                                        border: '1.5px solid',
+                                        borderColor: 'background.paper'
+                                    }}
+                                />
+                            ))}
+                        </Box>
+                        {/* Count */}
+                        <Typography component='span' fontSize={13} color='text.secondary'>
+                            {getLikeCount(card._id)} likes
+                        </Typography>
                     </Box>
-
-                    {/* Count */}
-                    <Typography component={'div'} fontSize={13} color='text.secondary'>
-                        {getLikeCount(card._id)} likes
+                ) : (
+                    <Typography component='div' fontSize={13} color='text.secondary'>
+                        No likes yet
                     </Typography>
-                </Box>
+                )}
 
                 {/* Right */}
                 <Typography component={'div'} fontSize={13} color='text.secondary'>
@@ -338,6 +354,15 @@ export default function CardItem({
 
             {isShareOpen && (
                 <ShareDialog card={card} open={isShareOpen} onClose={() => setIsShareOpen(false)}/>
+            )}
+
+            {isLikesModalOpen && (
+                <LikesModal
+                    open={isLikesModalOpen}
+                    onClose={() => setIsLikesModalOpen(false)}
+                    cardId={card._id}
+                    likeCount={getLikeCount(card._id)}
+                />
             )}
             
             {openCommentCardId === card._id && (
