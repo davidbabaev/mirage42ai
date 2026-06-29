@@ -7,7 +7,7 @@ import CardsComments from './CardsComments';
 import LoginPopup from './LoginPopup';
 import getTimeAgo from '../utils/getTimeAgo';
 import MediaDisplay from './MediaDisplay';
-import { Avatar, Box, Button, Chip, Divider, Typography, useTheme } from '@mui/material';
+import { Avatar, Box, Button, Chip, Divider, IconButton, Menu, MenuItem, Snackbar, Typography, useTheme } from '@mui/material';
 import useFollowUser from '../hooks/useFollowUser';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import LaunchIcon from '@mui/icons-material/Launch';
@@ -17,8 +17,11 @@ import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import ShareOutlinedIcon from '@mui/icons-material/ShareOutlined';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined';
 import ShareDialog from './ShareDialog';
 import LikesModal from './LikesModal';
+import ReportPostDialog from './card/ReportPostDialog';
 import { useUsersProvider } from '../providers/UsersProvider';
 
 export default function CardItem({
@@ -34,6 +37,10 @@ export default function CardItem({
     const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [isLikesModalOpen, setIsLikesModalOpen] = useState(false);
+    const [menuAnchorEl, setMenuAnchorEl] = useState(null);
+    const [isReportOpen, setIsReportOpen] = useState(false);
+    const [hasReported, setHasReported] = useState(false);
+    const [toast, setToast] = useState('');
     function onCloseLoginPopup(){
         setIsLoginPopupOpen(false)
     }
@@ -131,27 +138,59 @@ export default function CardItem({
                 </Box>
 
 
-                {/* Right: Follow button */}
-                {user && user._id !== creator?._id && !isFollowByMe(creator?._id) &&(
-                    <Button
-                        size='small'
-                        variant={'outlined'}
-                        startIcon={<PersonAddIcon/>}
-                        onClick={async () => {
-                            await toggleFollow(creator?._id)
-                        }}
-                        sx={{
-                            fontSize: 9, 
-                            minWidth: 70, 
-                            borderRadius: 5, 
-                            py: 0.3,
-                            m: 2,
-                            '& .MuiButton-startIcon' : {mb: 0.2}, lineHeight: 0 
-                        }}
-                    >
-                        Follow
-                    </Button>
-                )}
+                {/* Right: Follow button + overflow menu */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, m: 1 }}>
+                    {user && user._id !== creator?._id && !isFollowByMe(creator?._id) && (
+                        <Button
+                            size='small'
+                            variant={'outlined'}
+                            startIcon={<PersonAddIcon/>}
+                            onClick={async () => {
+                                await toggleFollow(creator?._id)
+                            }}
+                            sx={{
+                                fontSize: 9,
+                                minWidth: 70,
+                                borderRadius: 5,
+                                py: 0.3,
+                                '& .MuiButton-startIcon': { mb: 0.2 }, lineHeight: 0
+                            }}
+                        >
+                            Follow
+                        </Button>
+                    )}
+
+                    {/* ⋯ overflow — only shown to other users (not own post) */}
+                    {user && user._id !== creator?._id && (
+                        <>
+                            <IconButton
+                                aria-label="Post options"
+                                size="small"
+                                onClick={(e) => setMenuAnchorEl(e.currentTarget)}
+                                sx={{ minWidth: 44, minHeight: 44 }}
+                            >
+                                <MoreHorizIcon fontSize="small" />
+                            </IconButton>
+
+                            <Menu
+                                anchorEl={menuAnchorEl}
+                                open={Boolean(menuAnchorEl)}
+                                onClose={() => setMenuAnchorEl(null)}
+                            >
+                                <MenuItem
+                                    disabled={hasReported}
+                                    onClick={() => {
+                                        setMenuAnchorEl(null);
+                                        setIsReportOpen(true);
+                                    }}
+                                >
+                                    <FlagOutlinedIcon fontSize="small" sx={{ mr: 1 }} />
+                                    {hasReported ? 'Reported' : 'Report post'}
+                                </MenuItem>
+                            </Menu>
+                        </>
+                    )}
+                </Box>
             </Box>
 
             <Box sx={{px:2, flex: 1}} >
@@ -380,6 +419,28 @@ export default function CardItem({
                     onCloseLoginPopup={onCloseLoginPopup}
                 />
             )}
+
+            {isReportOpen && (
+                <ReportPostDialog
+                    open={isReportOpen}
+                    onClose={() => setIsReportOpen(false)}
+                    cardId={card._id}
+                    onSuccess={(alreadyReported) => {
+                        setIsReportOpen(false);
+                        setHasReported(true);
+                        setToast(alreadyReported
+                            ? "You've already reported this post."
+                            : "Thanks for your report. We'll look into it.");
+                    }}
+                />
+            )}
+
+            <Snackbar
+                open={!!toast}
+                autoHideDuration={3000}
+                onClose={() => setToast('')}
+                message={toast}
+            />
 
         </Box>
 

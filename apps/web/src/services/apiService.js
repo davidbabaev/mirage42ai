@@ -123,6 +123,7 @@ export const likeUnlikeComment = (id, commentId) => httpRequest(`/cards/${id}/co
 export const addReply = (id, commentId, replyData) => httpRequest(`/cards/${id}/comments/${commentId}/replies`, 'PATCH', replyData);
 export const getFeedCards = () => httpRequest(`/cards/feed`, 'GET');
 export const banCard = (id) => httpRequest(`/cards/${id}/ban`, 'PATCH');
+export const reportCard = (id, reason) => httpRequest(`/cards/${id}/report`, 'POST', { reason });
 export const getCardLikes = (cardId, cursor, limit = 20) => {
     const params = new URLSearchParams({ limit });
     if (cursor) params.set('cursor', cursor);

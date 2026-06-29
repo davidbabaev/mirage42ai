@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### T9 — Report-a-post UI
-- What: Add a ⋯ overflow menu on the post (introduce a reusable one if absent) with "Report post"; opens a reason picker dialog (radio group of the allowlist), submit shows pending → success toast → auto-close. If already reported, show an "already reported" state (disabled/secondary).
-- Decisions: auto-close the dialog on success (real-app standard). Reasons from the backend allowlist. Don't allow reporting your own post.
-- Done when: a user reports a post via the overflow → reason → success + auto-close; cannot report the same post twice (UI reflects it); verified in browser at 390px and 1280px.
-- Type: visual
-
 ### T10 — Admin: report column + reporter list
 - What: In `AdminCardsPanel.jsx`, add a "Reports" column showing each post's report count (muted when 0); clicking a non-zero count opens a modal listing who reported and why (from `GET /cards/:id/reports`). Surface `post-reported` admin notifications in the admin's notification view.
 - Decisions: clicking the count opens a modal (loading/empty/error states); reporter rows show name + reason + time.
