@@ -6,7 +6,7 @@ Mark items [done] when finished so they drop out of the active list.
 ## Active
 
 ### FEATURE 1 — New-user onboarding + non-empty first feed
-- Progress: T1 backend done on branch autopilot/2026-06-29, commit PLACEHOLDER — suggested endpoint + onboarding fields + popular-feed fallback; UI (T2) pending.
+- Progress: T1 backend done on branch autopilot/2026-06-29, commit 9e51af4 — suggested endpoint + onboarding fields + popular-feed fallback; UI (T2) pending.
 - What: A new user (register form OR Google OAuth) currently lands on an empty feed (follows nobody) and gets no guidance. Build the real-app first-run experience: (1) a non-empty feed for users with zero follows — show popular/trending public posts labeled "Suggested for you" so the first screen is never blank; (2) a post-registration onboarding wizard shown once, as ordered steps with Skip / Back / Next / Done: **Step 1 — Pick interests** (select from the existing post categories; multi-select chips), **Step 2 — Suggested people to follow** (real users, searchable, follow inline), **Step 3 — Finish your profile** (only if `isProfileIncomplete`, prefilled, inline edit). Skipping any step is allowed and lands on the (now non-empty) feed; completing sets `onboardingComplete`.
 - Reference: Instagram / X / LinkedIn first-run — interests picker, "suggested to follow" with one-tap follow, cold-start feed seeded with popular content. Wizard pattern like LinkedIn signup steps.
 - States: each step has loading (skeleton user/category rows), empty ("No suggestions yet — search to find people"), error (retry), and a disabled/looping state on Next while saving. Feed cold-start has its own labeled section + empty fallback if even popular posts are zero.
