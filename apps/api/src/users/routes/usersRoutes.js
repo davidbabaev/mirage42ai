@@ -19,6 +19,7 @@ const {
     promoteUserToAdmin,
     updateOnboarding,
     getSuggestedUsers,
+    updateNotificationPrefs,
 } = require('../service/usersSvc');
 const { getRecentContacts } = require('../../chat/service/chatSvc');
 const validateUser = require('../validation/joi/validateUserWithJoi');
@@ -75,6 +76,18 @@ router.get('/users/suggested', auth, async (req, res) => {
             cursor: req.query.cursor,
         });
         res.send(result);
+    }
+    catch(err){
+        handleError(res, err);
+    }
+})
+
+// PATCH /users/me/notification-prefs — update per-type notification toggles for
+// the calling user only. Must be before /users/:id so 'me' is not captured as an id.
+router.patch('/users/me/notification-prefs', auth, async (req, res) => {
+    try{
+        const updated = await updateNotificationPrefs(req.user.userId, req.body);
+        res.send(updated);
     }
     catch(err){
         handleError(res, err);

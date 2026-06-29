@@ -5,6 +5,7 @@ import ProfileSection from './ProfileSection'
 import MyCardsSection from './MyCardsSection'
 import FavoriteCards from './FavoriteCards'
 import BlockedUsersSection from './BlockedUsersSection'
+import NotificationSettingsSection from './NotificationSettingsSection'
 import useFollowUser from '../../hooks/useFollowUser'
 import { useAuth } from '../../providers/AuthProvider'
 import { useCardsProvider } from '../../providers/CardsProvider'
@@ -368,6 +369,13 @@ export default function DashboardLayout() {
                     value='/dashboard/myblocked'
                     onClick={() => navigate('/dashboard/myblocked')}
                 />
+
+                <Tab
+                    sx={{fontSize: {xs: 11, md: 14}}}
+                    label='Notifications'
+                    value='/dashboard/notifications'
+                    onClick={() => navigate('/dashboard/notifications')}
+                />
             </Tabs>
 
             <Routes>
@@ -380,6 +388,7 @@ export default function DashboardLayout() {
                 <Route path='/myfavorites' element={<SelectedPage/>}/>
                 <Route path='/myfavoritescards' element={<FavoriteCards/>}/>
                 <Route path='/myblocked' element={<BlockedUsersSection/>}/>
+                <Route path='/notifications' element={<NotificationSettingsSection/>}/>
             </Routes>
 
             {confirmDeleteUser && (

@@ -108,6 +108,7 @@ export const promoteUser = (id) => httpRequest(`/users/${id}/promote`, 'PATCH');
 export const getSuggestedUsers = (limit = 20, cursor) =>
     httpRequest(`/users/suggested?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, 'GET');
 export const updateOnboarding = (data) => httpRequest('/users/me/onboarding', 'PATCH', data);
+export const updateNotificationPrefs = (prefs) => httpRequest('/users/me/notification-prefs', 'PATCH', prefs);
 
 // Cards Requests
 export const getAllCards = () => httpRequest('/cards', 'GET');

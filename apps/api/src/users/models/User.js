@@ -97,6 +97,13 @@ const UserSchema = new mongoose.Schema({
         type: [String],
         default: [],
     },
+    notificationPrefs: {
+        likes:          { type: Boolean, default: true },
+        comments:       { type: Boolean, default: true },
+        follows:        { type: Boolean, default: true },
+        commentLikes:   { type: Boolean, default: true },
+        commentReplies: { type: Boolean, default: true },
+    },
 })
 
 // Support the recipient/people search (prefix match on name / lastName).

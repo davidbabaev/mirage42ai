@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### T5 — Notification settings (per-type preferences)
-- What: Add `User.notificationPrefs` (per-type booleans: likes, comments, follows, commentLikes, commentReplies — all default true). Gate notification CREATION server-side on the recipient's prefs (in `cardsSvc`/follow notification writes). Add `PATCH /users/me/notification-prefs` and a settings UI (in the existing dashboard/settings area) with toggles.
-- Decisions: default all true (opt-out model, like real apps). Gating happens at creation time (don't store-then-hide). post-removed/admin notifications are NOT user-suppressible.
-- Done when: tests — toggling a type off stops new notifications of that type for that user; others still arrive; settings UI persists and reflects state; verified in browser at 390px and 1280px for the settings screen.
-- Type: feature
-
 ### T6 — Likes list endpoint
 - What: Add `GET /cards/:id/likes?cursor=&limit=` returning the users who liked a post — minimal profile (avatar, name, job, followersCount) + `isFollowing` for the requester — block-aware (either direction), paginated for scale (assume 100k+ likers; never return all at once).
 - Decisions: cursor pagination consistent with existing list endpoints; default limit 20; exclude blocked-either-way likers from the list.

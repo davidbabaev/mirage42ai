@@ -31,6 +31,7 @@ const pickSafeUserFields = (user) => {
         "lastLoginAt",
         "onboardingComplete",
         "interests",
+        "notificationPrefs",
     ]);
 }
 
@@ -204,7 +205,11 @@ const followUser = async (userId, followingUserId) => {
         // Only notify on a REAL new follow — i.e. the id was actually added.
         // A no-op $addToSet (already present) reports modifiedCount 0 and stays silent.
         if(res.modifiedCount > 0){
-            await new Notification({actionType: 'follow', fromUser: userId, toUser: followingUserId}).save()
+            // target already loaded above; gate on recipient's follows pref.
+            const followsEnabled = target.notificationPrefs?.follows !== false;
+            if(followsEnabled){
+                await new Notification({actionType: 'follow', fromUser: userId, toUser: followingUserId}).save()
+            }
         }
     }
 
@@ -416,6 +421,29 @@ const getSuggestedUsers = async (requesterId, opts = {}) => {
     };
 };
 
+// Allowlist of toggleable per-type notification preference keys. Any unknown
+// key in the request body is rejected so clients can't sneak in arbitrary
+// fields.
+const NOTIF_PREF_KEYS = new Set(['likes', 'comments', 'follows', 'commentLikes', 'commentReplies']);
+
+// PATCH /users/me/notification-prefs — update one or more per-type booleans for
+// the calling user only. Rejects unknown keys and non-boolean values.
+const updateNotificationPrefs = async (userId, prefs) => {
+    if (!prefs || typeof prefs !== 'object' || Array.isArray(prefs)) {
+        throw createError(400, 'Request body must be an object');
+    }
+    const update = {};
+    for (const [key, val] of Object.entries(prefs)) {
+        if (!NOTIF_PREF_KEYS.has(key)) throw createError(400, `Unknown preference key: ${key}`);
+        if (typeof val !== 'boolean') throw createError(400, `Value for "${key}" must be a boolean`);
+        update[`notificationPrefs.${key}`] = val;
+    }
+    if (Object.keys(update).length === 0) throw createError(400, 'No preference fields provided');
+    const updated = await User.findByIdAndUpdate(userId, update, { new: true });
+    if (!updated) throw createError(404, 'User not found');
+    return pickSafeUserFields(updated);
+};
+
 module.exports = {
     createNewUser,
     getUsers,
@@ -432,4 +460,5 @@ module.exports = {
     promoteUserToAdmin,
     updateOnboarding,
     getSuggestedUsers,
+    updateNotificationPrefs,
 };

@@ -132,7 +132,11 @@ const likeCard = async (cardById, userId) => {
     else{
         card.likes.push(userId);
         if(userId !== card.userId.toString()){
-            await new Notification({actionType: 'like',fromUser: userId, toUser: card.userId, whichCard: card._id}).save();
+            // Gate on recipient's per-type pref. One targeted read with projection.
+            const recipient = await User.findById(card.userId, 'notificationPrefs').lean();
+            if(recipient?.notificationPrefs?.likes !== false){
+                await new Notification({actionType: 'like',fromUser: userId, toUser: card.userId, whichCard: card._id}).save();
+            }
         }
     }
     // 3. save after changes
@@ -163,7 +167,10 @@ const likeComment = async (cardId, commentId, userId) => {
         // The recipient is the COMMENT author, who may be a third party — guard
         // the notification against a block between actor and comment author.
         if(userId !== comment.userId.toString() && !(await blockExistsBetween(userId, comment.userId))){
-            await new Notification({actionType: 'comment-like', fromUser: userId, toUser: comment.userId, whichCard: card._id, commentId: comment._id}).save();
+            const recipient = await User.findById(comment.userId, 'notificationPrefs').lean();
+            if(recipient?.notificationPrefs?.commentLikes !== false){
+                await new Notification({actionType: 'comment-like', fromUser: userId, toUser: comment.userId, whichCard: card._id, commentId: comment._id}).save();
+            }
         }
     }
 
@@ -181,7 +188,10 @@ const addComment = async (cardId, userId, commentText) => {
     card.comments.push({userId, commentText})
 
     if(userId !== card.userId.toString()){
-        await new Notification({actionType: 'comment',fromUser: userId, toUser: card.userId, whichCard: card._id}).save()
+        const recipient = await User.findById(card.userId, 'notificationPrefs').lean();
+        if(recipient?.notificationPrefs?.comments !== false){
+            await new Notification({actionType: 'comment',fromUser: userId, toUser: card.userId, whichCard: card._id}).save()
+        }
     }
 
     // save after changes
@@ -209,7 +219,10 @@ const addReply = async (cardId, commentId, userId, replyText) => {
     // Recipient is the COMMENT author (possibly a third party) — suppress the
     // notification if a block exists between actor and comment author.
     if(userId !== comment.userId.toString() && !(await blockExistsBetween(userId, comment.userId))){
-        await new Notification({actionType: 'comment-reply', fromUser: userId, toUser: comment.userId, whichCard: card._id, commentId: comment._id}).save()
+        const recipient = await User.findById(comment.userId, 'notificationPrefs').lean();
+        if(recipient?.notificationPrefs?.commentReplies !== false){
+            await new Notification({actionType: 'comment-reply', fromUser: userId, toUser: comment.userId, whichCard: card._id, commentId: comment._id}).save()
+        }
     }
 
     const savedCard = await card.save();
