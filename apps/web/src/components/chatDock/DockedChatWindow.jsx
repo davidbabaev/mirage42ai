@@ -1,8 +1,16 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Alert, Avatar, Box, IconButton, Snackbar, Typography } from '@mui/material';
+import { Alert, Avatar, Box, IconButton, Menu, MenuItem, Snackbar, Typography } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import PersonIcon from '@mui/icons-material/Person';
+import DeleteIcon from '@mui/icons-material/Delete';
+import BlockIcon from '@mui/icons-material/Block';
 import useConversationThread from '../../hooks/useConversationThread';
 import { usePresence } from '../../providers/PresenceProvider';
+import { useAuth } from '../../providers/AuthProvider';
+import useBlockUser from '../../hooks/useBlockUser';
+import ConfirmationDialog from '../ConfirmationDialog';
 import OnlineBadge from '../OnlineBadge';
 import MessageList from '../../pages/chat/components/MessageList';
 import MessageInput from '../../pages/chat/components/MessageInput';
@@ -15,7 +23,33 @@ import ScrollToBottomButton from '../../pages/chat/components/ScrollToBottomButt
 export default function DockedChatWindow({ otherUser, onClose }) {
     const navigate = useNavigate();
     const { isOnline } = usePresence();
+    const { user } = useAuth();
+    const { toggleBlock } = useBlockUser();
     const t = useConversationThread(otherUser, true);
+
+    // ⋯ overflow menu state
+    const [menuAnchor, setMenuAnchor] = useState(null);
+    const openMenu = (e) => setMenuAnchor(e.currentTarget);
+    const closeMenu = () => setMenuAnchor(null);
+
+    // Block flow
+    const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
+    const [isBlocking, setIsBlocking] = useState(false);
+
+    const handleBlockConfirm = async () => {
+        const otherId = otherUser?._id;
+        if (!otherId || otherId === user?._id) return;
+        setIsBlocking(true);
+        try {
+            const result = await toggleBlock(otherId);
+            if (result) {
+                setBlockConfirmOpen(false);
+                onClose();
+            }
+        } finally {
+            setIsBlocking(false);
+        }
+    };
 
     const goToProfile = (e) => {
         e.stopPropagation();
@@ -60,10 +94,41 @@ export default function DockedChatWindow({ otherUser, onClose }) {
                 >
                     {otherUser?.name} {otherUser?.lastName}
                 </Typography>
+                <IconButton size='small' aria-label='More options' onClick={openMenu}>
+                    <MoreHorizIcon sx={{ fontSize: 20 }} />
+                </IconButton>
                 <IconButton size='small' aria-label='close chat' onClick={onClose}>
                     <CloseIcon sx={{ fontSize: 20 }} />
                 </IconButton>
             </Box>
+
+            {/* Overflow menu */}
+            <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={closeMenu}>
+                <MenuItem onClick={() => { closeMenu(); navigate(`/profiledashboard/${otherUser?._id}/profilemain`); }}>
+                    <PersonIcon sx={{ mr: 1 }} /> Profile
+                </MenuItem>
+                <MenuItem onClick={() => { closeMenu(); t.deleteConversation(t.conversationId); onClose(); }}>
+                    <DeleteIcon sx={{ mr: 1 }} /> Delete chat
+                </MenuItem>
+                <MenuItem
+                    sx={{ color: 'error.main' }}
+                    onClick={() => { closeMenu(); setBlockConfirmOpen(true); }}
+                >
+                    <BlockIcon sx={{ mr: 1 }} /> Block user
+                </MenuItem>
+            </Menu>
+
+            {/* Block confirmation */}
+            {blockConfirmOpen && (
+                <ConfirmationDialog
+                    icon={BlockIcon}
+                    message={`block ${otherUser?.name}?`}
+                    confirmLabel={isBlocking ? 'Blocking…' : 'Block'}
+                    confirmDisabled={isBlocking}
+                    onClose={() => setBlockConfirmOpen(false)}
+                    onConfirm={handleBlockConfirm}
+                />
+            )}
 
             <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
                 <MessageList

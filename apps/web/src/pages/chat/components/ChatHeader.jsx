@@ -3,10 +3,11 @@ import { Avatar, Box, IconButton, Menu, MenuItem, Typography } from '@mui/materi
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import PersonIcon from '@mui/icons-material/Person';
 import DeleteIcon from '@mui/icons-material/Delete';
+import BlockIcon from '@mui/icons-material/Block';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 // Top bar of the active conversation. Back arrow (mobile) + name + actions menu.
-export default function ChatHeader({ otherUser, onBack, onViewProfile, onDeleteChat }) {
+export default function ChatHeader({ otherUser, onBack, onViewProfile, onDeleteChat, onBlock }) {
     const [anchorEl, setAnchorEl] = useState(null);
     const handleOpen = (e) => setAnchorEl(e.currentTarget);
     const handleClose = () => setAnchorEl(null);
@@ -51,7 +52,7 @@ export default function ChatHeader({ otherUser, onBack, onViewProfile, onDeleteC
             </Box>
 
             <Box>
-                <IconButton onClick={handleOpen}>
+                <IconButton onClick={handleOpen} aria-label='More options'>
                     <MoreHorizIcon/>
                 </IconButton>
             </Box>
@@ -70,9 +71,19 @@ export default function ChatHeader({ otherUser, onBack, onViewProfile, onDeleteC
 
                 <MenuItem onClick={() => {
                     handleClose();
-                    onDeleteChat()
+                    onDeleteChat();
                 }}>
                     <DeleteIcon sx={{mr:1}}/> Delete chat
+                </MenuItem>
+
+                <MenuItem
+                    onClick={() => {
+                        handleClose();
+                        onBlock?.();
+                    }}
+                    sx={{ color: 'error.main' }}
+                >
+                    <BlockIcon sx={{mr:1}}/> Block user
                 </MenuItem>
             </Menu>
         </Box>

@@ -4,7 +4,18 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 
 
-export default function ConfirmationDialog({message, onClose, onConfirm}) {
+export default function ConfirmationDialog({
+    message,
+    onClose,
+    onConfirm,
+    /** Optional big icon to display (defaults to DeleteForeverIcon). */
+    icon: BigIcon,
+    /** Label for the confirm button (defaults to "Delete"). */
+    confirmLabel = 'Delete',
+    /** Disable the confirm button (e.g. while an async action is pending). */
+    confirmDisabled = false,
+}) {
+    const DisplayIcon = BigIcon ?? DeleteForeverIcon;
 
     useEffect(() => {
         document.body.style.overflow = 'hidden'
@@ -46,7 +57,7 @@ export default function ConfirmationDialog({message, onClose, onConfirm}) {
             }}
         >
 
-            <DeleteForeverIcon
+            <DisplayIcon
                 color = 'error'
                 sx={{fontSize: 90, transform: 'rotate(10deg)', width: '100%', mb: 2}}
             />
@@ -68,7 +79,7 @@ export default function ConfirmationDialog({message, onClose, onConfirm}) {
                 pt: 2
             }}
             >
-                <Button 
+                <Button
                     variant='outlined'
                     color='error'
                     size='small'
@@ -76,8 +87,9 @@ export default function ConfirmationDialog({message, onClose, onConfirm}) {
                     sx={{borderRadius: 5, px: 2, py:1,fontSize: 12}}
                     endIcon={<DeleteIcon/>}
                     onClick={onConfirm}
+                    disabled={confirmDisabled}
                 >
-                    Delete
+                    {confirmLabel}
                 </Button>
 
                 <Button 

@@ -15,12 +15,6 @@ Clear and rewrite it each day. Git keeps the history.
 ## Tasks
 
 
-### T11 — Block user from chat 3-dot menu
-- What: Add a "Block user" item to the chat ⋯ menu in `ChatHeader.jsx` (alongside Profile + Delete chat) and add a ⋯ menu with Profile / Block / Delete to `DockedChatWindow.jsx` (currently has none). Reuse `useBlockUser().toggleBlock(otherUserId)`. Confirm before blocking (reuse `ConfirmationDialog`); on success show a toast and close/leave the conversation (it disappears from the list/dock per the block-hardening change).
-- Decisions: confirm-before-block (real-app standard). Cannot block self. Dock menu is desktop-only (dock is hidden on mobile already).
-- Done when: from an open conversation (full chat AND dock) the ⋯ menu shows Block; choosing it confirms, blocks, closes the conversation, and the thread leaves the list/dock; verified in browser at 390px (full chat) and 1280px (full chat + dock).
-- Type: visual
-
 ### T12 — Fullscreen zoomable chat images
 - What: Tapping an image message in `MessageList.jsx` (and the dock's message list) opens it fullscreen in a MUI Dialog wrapping the existing `ZoomableImage` (react-zoom-pan-pinch, already installed). Gradual scroll/pinch/double-tap zoom + pan; dark backdrop; close via X / backdrop / Esc / swipe-down. Loading spinner while the full image loads.
 - Decisions: reuse `ZoomableImage` + `MediaDisplay`'s existing `zoomable` branch; don't add a new lightbox library. Zoom is gradual with limits (not a binary toggle).

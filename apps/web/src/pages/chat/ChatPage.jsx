@@ -12,6 +12,9 @@ import MessageList from './components/MessageList';
 import MessageInput from './components/MessageInput';
 import ChatEmptyState from './components/ChatEmptyState';
 import ScrollToBottomButton from './components/ScrollToBottomButton';
+import useBlockUser from '../../hooks/useBlockUser';
+import ConfirmationDialog from '../../components/ConfirmationDialog';
+import BlockIcon from '@mui/icons-material/Block';
 
 export default function ChatPage() {
 
@@ -22,6 +25,29 @@ export default function ChatPage() {
     const {users} = useUsersProvider();
     const {setIsChatOpen} = useUI();
     const {conversations, markRead, deleteConversation, setActiveConversationId} = useChatList();
+
+    // Block flow
+    const { toggleBlock } = useBlockUser();
+    const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
+    const [isBlocking, setIsBlocking] = useState(false);
+    const [blockToast, setBlockToast] = useState('');
+
+    const handleBlockConfirm = async () => {
+        const otherId = selectedChat?.otherUser?._id;
+        if (!otherId || otherId === user?._id) return;
+        setIsBlocking(true);
+        try {
+            const result = await toggleBlock(otherId);
+            if (result) {
+                const blockedName = selectedChat?.otherUser?.name ?? 'User';
+                setBlockConfirmOpen(false);
+                setSelectedChat(null);
+                setBlockToast(`${blockedName} has been blocked.`);
+            }
+        } finally {
+            setIsBlocking(false);
+        }
+    };
 
     // emoji
     const [isEmojiOpen, setIsEmojiOpen] = useState(false);
@@ -288,6 +314,7 @@ return (
                         deleteConversation(selectedChat.conversationId)
                         setSelectedChat(null)
                     }}
+                    onBlock={() => setBlockConfirmOpen(true)}
                 />
 
                 <MessageList
@@ -335,6 +362,28 @@ return (
         {sendError}
     </Alert>
 </Snackbar>
+
+<Snackbar
+    open={!!blockToast}
+    autoHideDuration={4000}
+    onClose={() => setBlockToast('')}
+    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+>
+    <Alert severity="success" variant="filled" onClose={() => setBlockToast('')} sx={{ width: '100%' }}>
+        {blockToast}
+    </Alert>
+</Snackbar>
+
+{blockConfirmOpen && selectedChat && (
+    <ConfirmationDialog
+        icon={BlockIcon}
+        message={`block ${selectedChat.otherUser?.name}?`}
+        confirmLabel={isBlocking ? 'Blocking…' : 'Block'}
+        confirmDisabled={isBlocking}
+        onClose={() => setBlockConfirmOpen(false)}
+        onConfirm={handleBlockConfirm}
+    />
+)}
 </Container>
 )
 }

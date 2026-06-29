@@ -74,6 +74,10 @@ vi.mock('../src/pages/chat/components/MessageList', () => ({ default: () => <div
 vi.mock('../src/pages/chat/components/MessageInput', () => ({ default: () => <div /> }));
 vi.mock('../src/pages/chat/components/ScrollToBottomButton', () => ({ default: () => <div /> }));
 vi.mock('../src/pages/chat/components/ChatEmptyState', () => ({ default: () => <div /> }));
+// ChatPage now imports useBlockUser which transitively needs CardsProvider.
+vi.mock('../src/hooks/useBlockUser', () => ({
+    default: () => ({ toggleBlock: vi.fn(), isBlockedByMe: () => false }),
+}));
 
 import { ChatProvider, useChatList } from '../src/providers/ChatProvider';
 import ChatPage from '../src/pages/chat/ChatPage';
