@@ -59,7 +59,7 @@ Mark items [done] when finished so they drop out of the active list.
 - A11y: ⋯ button labelled "More options"; menu items keyboard reachable; destructive Block styled as such with a confirm.
 - Done-when: from an open conversation (full chat AND dock), the ⋯ menu shows Block; choosing it confirms, blocks the user, closes the conversation, and the thread disappears from the list/dock; correct at 390px (full chat) and 1280px (full chat + dock).
 
-- Progress: T11 block-from-chat done. FEATURE 4 complete.
+- Progress: T11 block-from-chat done, commit 4ba5fbe. FEATURE 4 complete.
 
 ### FEATURE 5 — Fullscreen, zoomable chat images
 - What: Tapping/clicking an image message in chat opens it fullscreen with gradual zoom (scroll/pinch/double-tap) and pan, like WhatsApp — on mobile and desktop. Reuse the existing `ZoomableImage` (`react-zoom-pan-pinch`, already installed and used in the post-detail modal) inside a fullscreen MUI Dialog. Works in the full chat (`MessageList.jsx`) and the docked chat window.
