@@ -105,6 +105,9 @@ export const followUnfollowUser = (id) => httpRequest(`/users/${id}/follow`, 'PA
 export const blockUnblockUser = (id) => httpRequest(`/users/${id}/block`, 'PATCH');
 export const banUser = (id) => httpRequest(`/users/${id}/ban`, 'PATCH');
 export const promoteUser = (id) => httpRequest(`/users/${id}/promote`, 'PATCH');
+export const getSuggestedUsers = (limit = 20, cursor) =>
+    httpRequest(`/users/suggested?limit=${limit}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, 'GET');
+export const updateOnboarding = (data) => httpRequest('/users/me/onboarding', 'PATCH', data);
 
 // Cards Requests
 export const getAllCards = () => httpRequest('/cards', 'GET');

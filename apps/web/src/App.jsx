@@ -25,6 +25,7 @@ import { VideoCoordinatorProvider } from './providers/VideoCoordinatorProvider'
 import { ChatProvider } from './providers/ChatProvider'
 import { ChatDockProvider } from './providers/ChatDockProvider'
 import ChatDock from './components/chatDock/ChatDock'
+import OnboardingWizard from './components/OnboardingWizard'
 import { PresenceProvider } from './providers/PresenceProvider'
 import RotateOverlay from './components/style/RotateOverlay'
 import RequireAuth from './components/RequireAuth'
@@ -136,6 +137,7 @@ export default function App(){
 
               </Box>
               <ChatDock/>
+              <OnboardingWizard/>
               </ChatDockProvider>
               </ChatProvider>
               </PresenceProvider>

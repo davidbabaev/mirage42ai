@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### T2 — Onboarding wizard UI + cold-start feed label
-- What: Build a one-time post-registration wizard shown when `onboardingComplete` is false, for BOTH the form-register redirect and the Google `?token=` landing. Steps with Skip / Back / Next / Done: (1) pick interests (category chips, multi-select), (2) suggested people to follow (from `GET /users/suggested`, searchable, inline follow), (3) finish profile (only if `isProfileIncomplete`, inline edit, prefilled). Skipping any step lands on the feed; finishing calls `PATCH /users/me/onboarding`. On the feed, when posts are the suggested/popular fallback, show a "Suggested for you" header so a new user never sees a blank feed.
-- Decisions: wizard is a full-screen flow on mobile and a centered card+backdrop on desktop. Don't block the user — Skip is always available. Mark onboardingComplete on Done OR on first skip-through so it doesn't reappear every login. Reuse MUI Stepper + existing PeopleModal-style user rows for step 2.
-- Done when: a brand-new account (both register paths) sees the wizard once; skipping reaches a non-empty feed labeled "Suggested for you"; completing (pick interests + follow ≥1 + finish profile) lands on a feed including the new follows; re-login does NOT show the wizard; verified in browser at 390px and 1280px.
-- Type: visual
-
 ### T3 — Notifications: delete-button bug + comment copy fix
 - What: In `Notifications.jsx`, stop the delete (trash) IconButton click from bubbling to the row (`e.stopPropagation()`) so deleting no longer navigates to the sender's profile. Fix the `comment` actionType text from "commentd your post" to "commented on your post".
 - Decisions: keep delete optimistic; roll back on API failure. No other behavior change in this task.

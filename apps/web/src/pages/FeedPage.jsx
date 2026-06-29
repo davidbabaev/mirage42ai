@@ -338,27 +338,57 @@ export default function FeedPage() {
                     )}
 
                     {/* Card Item */}
-                    {countedRegisterCards.map((card, index) => (
-                        <React.Fragment key={card._id}>
-                            <CardItem
-                                card={card}
-                                onOpenCard={() => setSelectedCardId(card._id)}
-                                openCommentCardId={openCommentCardId}
-                                setOpenCommentCardId = {setOpenCommentCardId}
-                                onRemoveSavedCard = {() => handleRemoveCard(card)}
-                                onSaveCard = {() => handleFavoriteCards(card)}
-                                isSavedCard = {favoriteCards.some(c => c._id === card._id)}
-                            />
+                    {countedRegisterCards.map((card, index) => {
+                        // Show "Suggested for you" header before the first isSuggested card.
+                        // This labels the cold-start feed so new users never see an unlabelled feed.
+                        const isFirstSuggested =
+                            card.isSuggested &&
+                            (index === 0 || !countedRegisterCards[index - 1]?.isSuggested);
 
-                            {/* Mobile-only: inject a "People you may know" strip between
-                                posts. Desktop already shows the right-column sidebar. */}
-                            {index === 2 && uniqueFriendsOfFriends.length > 0 && (
-                                <Box display={{xs: 'block', md: 'none'}}>
-                                    <MobileSuggestions suggestions={uniqueFriendsOfFriends} />
-                                </Box>
-                            )}
-                        </React.Fragment>
-                    ))}
+                        return (
+                            <React.Fragment key={card._id}>
+                                {isFirstSuggested && (
+                                    <Box
+                                        sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1,
+                                            mt: index === 0 ? 0 : 1,
+                                            mb: 1,
+                                            px: 0.5,
+                                        }}
+                                    >
+                                        <Typography
+                                            variant="subtitle2"
+                                            fontWeight={700}
+                                            color="text.secondary"
+                                            sx={{ textTransform: 'uppercase', fontSize: 11, letterSpacing: 0.5 }}
+                                        >
+                                            Suggested for you
+                                        </Typography>
+                                        <Box sx={{ flex: 1, height: '1px', bgcolor: 'divider' }} />
+                                    </Box>
+                                )}
+                                <CardItem
+                                    card={card}
+                                    onOpenCard={() => setSelectedCardId(card._id)}
+                                    openCommentCardId={openCommentCardId}
+                                    setOpenCommentCardId = {setOpenCommentCardId}
+                                    onRemoveSavedCard = {() => handleRemoveCard(card)}
+                                    onSaveCard = {() => handleFavoriteCards(card)}
+                                    isSavedCard = {favoriteCards.some(c => c._id === card._id)}
+                                />
+
+                                {/* Mobile-only: inject a "People you may know" strip between
+                                    posts. Desktop already shows the right-column sidebar. */}
+                                {index === 2 && uniqueFriendsOfFriends.length > 0 && (
+                                    <Box display={{xs: 'block', md: 'none'}}>
+                                        <MobileSuggestions suggestions={uniqueFriendsOfFriends} />
+                                    </Box>
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
 
                     {selectedCardId && (
                         <CardPopupModal
