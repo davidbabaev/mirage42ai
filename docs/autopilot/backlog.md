@@ -42,6 +42,7 @@ Mark items [done] when finished so they drop out of the active list.
 - Responsive: 390px — likes modal full-width sheet, rows stack, follow button reachable; report reason dialog full-width. 1280px — centered dialogs. Admin table column visible/scrollable on small screens.
 - A11y: likes count is a labelled button ("View N likes"); follow buttons labelled; report reasons are a radio group; modals trap focus.
 - Done-when: clicking "N likes" opens a modal of likers with working follow/Following state; modal paginates and doesn't choke on many likers; a user can report a post via the overflow, picks a reason, sees success + auto-close, and cannot report the same post twice; the admin sees a Reports column with the count and can click it to see who reported and why; an admin notification appears on a new report; correct at 390px and 1280px.
+- Progress: T6 likes endpoint done, commit <sha>.
 
 ### FEATURE 4 — Block user from the chat 3-dot menu
 - What: Add "Block user" to the chat conversation overflow (⋯) menu alongside the existing Profile and Delete-chat items, in BOTH the full chat (`ChatHeader.jsx`) and the docked chat window (`DockedChatWindow.jsx`, which currently has no ⋯ menu — add one for parity). Uses the existing block path; after blocking, the conversation closes/leaves the list (consistent with the block-hardening change that drops blocked conversations from `getChats`).

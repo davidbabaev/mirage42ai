@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### T6 — Likes list endpoint
-- What: Add `GET /cards/:id/likes?cursor=&limit=` returning the users who liked a post — minimal profile (avatar, name, job, followersCount) + `isFollowing` for the requester — block-aware (either direction), paginated for scale (assume 100k+ likers; never return all at once).
-- Decisions: cursor pagination consistent with existing list endpoints; default limit 20; exclude blocked-either-way likers from the list.
-- Done when: tests — endpoint returns liker rows with isFollowing, paginates, and omits blocked users; 404 for a hidden/blocked card; suite green.
-- Type: logic
-
 ### T7 — Likes-count modal (clickable likes → PeopleModal)
 - What: Make the "N likes" count + avatar cluster a button in `CardItem.jsx` and `CardDetailsModal.jsx`; clicking opens a modal (reuse `PeopleModal`) listing likers from `GET /cards/:id/likes`, each row: avatar, name, job, follower count, Follow button (or "Following" text), matching `refs/likes-count-modal.png`. Paginated scroll; optimistic follow from inside the modal.
 - Decisions: 0 likes → not clickable. Reuse PeopleModal exactly; don't fork a new list UI.

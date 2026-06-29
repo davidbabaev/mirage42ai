@@ -8,12 +8,12 @@ const {upload} = require('../../middlewares/multer');
 const uploadToCloudinary = require('../../utils/cloudinary');
 
 const {
-    createNewCard, 
+    createNewCard,
     getCards,
     getCard,
     getPublicCard,
     updateCard,
-    deleteCard, 
+    deleteCard,
     likeCard,
     likeComment,
     pickSafeCardFields,
@@ -22,6 +22,7 @@ const {
     removeComment,
     getFeedCards,
     banCard,
+    getCardLikes,
 } = require('../service/cardsSvc');
 const auth = require('../../auth/authService');
 const optionalAuth = require('../../auth/optionalAuth');
@@ -86,6 +87,20 @@ router.get('/cards/:id', optionalAuth, async (req, res) => {
         
     }
 })
+
+// GET /cards/:id/likes — paginated list of users who liked a card.
+// Returns { users: [...], nextCursor }. Auth required (block-awareness + isFollowing).
+router.get('/cards/:id/likes', auth, async (req, res) => {
+    try {
+        const result = await getCardLikes(req.params.id, req.user.userId, req.user.isAdmin, {
+            limit: req.query.limit,
+            cursor: req.query.cursor,
+        });
+        res.send(result);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
 
 router.put('/cards/:id', auth, upload.single('media'), async (req, res) => {
     try{

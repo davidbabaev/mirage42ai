@@ -284,6 +284,77 @@ const getFeedCards = async (userId, isAdmin) => {
     return feedCards.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
 }
 
+// GET /cards/:id/likes — paginated list of users who liked a card.
+// Block-aware both directions: hidden users are excluded from the likers list
+// and a hidden card author 404s the whole request (mirror getPublicCard).
+// Cursor = base64-encoded skip offset, consistent with getSuggestedUsers.
+const getCardLikes = async (cardId, requesterId, isAdmin, opts = {}) => {
+    // Verify card visibility (mirrors getPublicCard semantics)
+    const card = await Card.findById(cardId);
+    if (!card) throw createError(404, 'Card not found');
+    if (!isAdmin && card.status !== 'active') throw createError(404, 'Card not found');
+
+    const hidden = await getHiddenUserIds(requesterId);
+    if (hidden.has(String(card.userId))) throw createError(404, 'Card not found');
+
+    // Parse pagination options
+    const lim = Math.min(Math.max(Number(opts.limit) || 20, 1), 100);
+    const skip = opts.cursor
+        ? parseInt(Buffer.from(opts.cursor, 'base64').toString('utf8'), 10) || 0
+        : 0;
+
+    // Filter likers: exclude blocked-either-way users
+    const filteredLikerIds = (card.likes || []).filter(id => !hidden.has(String(id)));
+
+    // Apply cursor (offset-based)
+    const pageIds = filteredLikerIds.slice(skip, skip + lim);
+    const hasMore = filteredLikerIds.length > skip + lim;
+    const nextCursor = hasMore
+        ? Buffer.from(String(skip + lim)).toString('base64')
+        : null;
+
+    if (!pageIds.length) return { users: [], nextCursor };
+
+    // Fetch user details for this page — single query, only fields we expose
+    const users = await User.find(
+        { _id: { $in: pageIds } },
+        '_id name lastName job profilePicture'
+    ).lean();
+
+    // Compute follower counts for the page in ONE aggregation (no N+1)
+    const pageIdStrs = pageIds.map(String);
+    const followerAgg = await User.aggregate([
+        { $match: { following: { $in: pageIdStrs } } },
+        { $unwind: '$following' },
+        { $match: { following: { $in: pageIdStrs } } },
+        { $group: { _id: '$following', count: { $sum: 1 } } },
+    ]);
+    const followerCountMap = {};
+    for (const row of followerAgg) {
+        followerCountMap[String(row._id)] = row.count;
+    }
+
+    // isFollowing: whether the requester follows each liker
+    let myFollowingSet = new Set();
+    if (requesterId) {
+        const me = await User.findById(requesterId, 'following').lean();
+        myFollowingSet = new Set((me?.following || []).map(String));
+    }
+
+    return {
+        users: users.map(u => ({
+            _id: u._id,
+            name: u.name,
+            lastName: u.lastName,
+            job: u.job,
+            profilePicture: u.profilePicture,
+            followersCount: followerCountMap[String(u._id)] || 0,
+            isFollowing: myFollowingSet.has(String(u._id)),
+        })),
+        nextCursor,
+    };
+};
+
 const banCard = async (cardId) => {
     let card = await Card.findById(cardId);
     if(!card) throw createError(404, 'Card not found');
@@ -309,7 +380,7 @@ module.exports = {
     getCard,
     getPublicCard,
     updateCard,
-    deleteCard, 
+    deleteCard,
     likeCard,
     likeComment,
     pickSafeCardFields,
@@ -318,5 +389,6 @@ module.exports = {
     removeComment,
     getFeedCards,
     banCard,
+    getCardLikes,
     getHiddenUserIds,
 }
