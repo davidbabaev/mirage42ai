@@ -29,6 +29,21 @@ const stripBlockedComments = (cardObj, hiddenSet) => {
     return cardObj;
 }
 
+// True if a block exists in EITHER direction between two users — one indexed
+// lookup against the `blocked` array (see User index). Used to reject writes
+// across a block and to suppress notifications to/from a blocked user. A read
+// already 404s the card; this closes the matching hole on the write/notify side.
+const blockExistsBetween = async (aId, bId) => {
+    if(!aId || !bId || String(aId) === String(bId)) return false;
+    const hit = await User.findOne({
+        $or: [
+            { _id: aId, blocked: String(bId) },
+            { _id: bId, blocked: String(aId) },
+        ],
+    }, '_id');
+    return !!hit;
+}
+
 const pickSafeCardFields = (card) => {
     return _.pick(card.toObject() ,[
         "title",
@@ -106,6 +121,10 @@ const likeCard = async (cardById, userId) => {
     const card = await Card.findById(cardById);
     if(!card) throw createError(404, "Card not found")
 
+    // No interacting across a block (either direction) — the card is already
+    // invisible to a blocked viewer on read; reject the write to match.
+    if(await blockExistsBetween(userId, card.userId)) throw createError(403, "Action not allowed")
+
     // 2. check and change likes
     if(card.likes.includes(userId)){
         card.likes = card.likes.filter(id => id !== userId)
@@ -130,6 +149,9 @@ const likeComment = async (cardId, commentId, userId) => {
     const card = await Card.findById(cardId);
     if(!card) throw createError(404, "Card not found")
 
+    // Reject the write across a block with the post owner.
+    if(await blockExistsBetween(userId, card.userId)) throw createError(403, "Action not allowed")
+
     const comment = card.comments.id(commentId);
     if(!comment) throw createError(404, "Comment not found")
 
@@ -138,7 +160,9 @@ const likeComment = async (cardId, commentId, userId) => {
     }
     else{
         comment.likes.push(userId);
-        if(userId !== comment.userId.toString()){
+        // The recipient is the COMMENT author, who may be a third party — guard
+        // the notification against a block between actor and comment author.
+        if(userId !== comment.userId.toString() && !(await blockExistsBetween(userId, comment.userId))){
             await new Notification({actionType: 'comment-like', fromUser: userId, toUser: comment.userId, whichCard: card._id}).save();
         }
     }
@@ -151,6 +175,8 @@ const addComment = async (cardId, userId, commentText) => {
     // find the card by ID
     const card = await Card.findById(cardId);
     if(!card) throw createError(404, "Card not found")
+
+    if(await blockExistsBetween(userId, card.userId)) throw createError(403, "Action not allowed")
 
     card.comments.push({userId, commentText})
 
@@ -173,12 +199,16 @@ const addReply = async (cardId, commentId, userId, replyText) => {
     const card = await Card.findById(cardId);
     if(!card) throw createError(404, "Card not found")
 
+    if(await blockExistsBetween(userId, card.userId)) throw createError(403, "Action not allowed")
+
     const comment = card.comments.id(commentId);
     if(!comment) throw createError(404, "Comment not found")
 
     comment.replies.push({userId, replyText: replyText.trim()})
 
-    if(userId !== comment.userId.toString()){
+    // Recipient is the COMMENT author (possibly a third party) — suppress the
+    // notification if a block exists between actor and comment author.
+    if(userId !== comment.userId.toString() && !(await blockExistsBetween(userId, comment.userId))){
         await new Notification({actionType: 'comment-reply', fromUser: userId, toUser: comment.userId, whichCard: card._id}).save()
     }
 

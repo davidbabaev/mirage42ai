@@ -149,12 +149,22 @@ const getChats = async (userId) => {
         ],
     }).sort({updatedAt: -1});
 
+    // Drop conversations with a blocked counterpart (either direction). New
+    // messages are already refused by getOrCreateConversation; this removes the
+    // stale thread from the chat list + dock so a blocked user disappears there
+    // too, matching WhatsApp/IG.
+    const hidden = await getHiddenUserIds(userId);
+
     // Per conversation: apply this user's delete cutoff, then attach unread count.
     // SCALING NOTE: this runs one or two countDocuments per conversation (N+1).
     // Fine for the per-user conversation counts we expect; if a user accumulates
     // many hundreds of conversations, replace this loop with a single aggregation
     // ($lookup messages + $group, or a $facet) to compute all counts in one query.
     const enriched = await Promise.all(chats.map(async (chat) => {
+        const otherId = String(chat.fromUser) === String(userId)
+            ? String(chat.toUser) : String(chat.fromUser);
+        if (hidden.has(otherId)) return null;
+
         const deletedAt = chat.deletedAt?.get(String(userId));
 
         // Per-side delete: if I cleared this chat, hide it until a newer message
