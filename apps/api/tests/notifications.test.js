@@ -78,6 +78,83 @@ afterAll(async () => {
     if (mongoServer) await mongoServer.stop();
 });
 
+describe('comment-like / comment-reply notifications carry commentId', () => {
+    it('comment-like notification includes the comment _id as commentId', async () => {
+        // Bob creates a card with a comment.
+        const cardRes = await request(app)
+            .post('/cards')
+            .set('auth-token', tokenBob)
+            .field('content', 'Bob card for comment-like commentId test')
+            .attach('media', Buffer.from('img'), { filename: 'b2.png', contentType: 'image/png' });
+        expect(cardRes.status).toBe(200);
+        const cardId = cardRes.body._id;
+
+        // Bob adds a comment to his own card.
+        const commentRes = await request(app)
+            .patch(`/cards/${cardId}/comments`)
+            .set('auth-token', tokenBob)
+            .send({ commentText: 'Test comment for like' });
+        expect(commentRes.status).toBe(200);
+        const comments = commentRes.body.comments || [];
+        const commentId = comments[comments.length - 1]?._id;
+        expect(commentId).toBeTruthy();
+
+        // Alice likes Bob's comment → creates a comment-like notification.
+        const likeRes = await request(app)
+            .patch(`/cards/${cardId}/comments/${commentId}/like`)
+            .set('auth-token', tokenAlice);
+        expect(likeRes.status).toBe(200);
+
+        // Bob fetches his notifications — the comment-like notif must carry commentId.
+        const notifsRes = await request(app)
+            .get('/notifications')
+            .set('auth-token', tokenBob);
+        expect(notifsRes.status).toBe(200);
+        const notif = notifsRes.body.find(n => n.actionType === 'comment-like');
+        expect(notif).toBeTruthy();
+        expect(notif.commentId).toBeTruthy();
+        expect(String(notif.commentId)).toBe(String(commentId));
+    });
+
+    it('comment-reply notification includes the parent comment _id as commentId', async () => {
+        // Alice creates a card.
+        const cardRes = await request(app)
+            .post('/cards')
+            .set('auth-token', tokenAlice)
+            .field('content', 'Alice card for comment-reply commentId test')
+            .attach('media', Buffer.from('img'), { filename: 'a2.png', contentType: 'image/png' });
+        expect(cardRes.status).toBe(200);
+        const cardId = cardRes.body._id;
+
+        // Alice adds a comment.
+        const commentRes = await request(app)
+            .patch(`/cards/${cardId}/comments`)
+            .set('auth-token', tokenAlice)
+            .send({ commentText: 'Parent comment for reply test' });
+        expect(commentRes.status).toBe(200);
+        const aliceComments = commentRes.body.comments || [];
+        const commentId = aliceComments[aliceComments.length - 1]?._id;
+        expect(commentId).toBeTruthy();
+
+        // Bob replies to Alice's comment → creates a comment-reply notification.
+        const replyRes = await request(app)
+            .patch(`/cards/${cardId}/comments/${commentId}/replies`)
+            .set('auth-token', tokenBob)
+            .send({ replyText: 'Bob reply' });
+        expect(replyRes.status).toBe(200);
+
+        // Alice fetches her notifications — the comment-reply notif must carry commentId.
+        const notifsRes = await request(app)
+            .get('/notifications')
+            .set('auth-token', tokenAlice);
+        expect(notifsRes.status).toBe(200);
+        const notif = notifsRes.body.find(n => n.actionType === 'comment-reply');
+        expect(notif).toBeTruthy();
+        expect(notif.commentId).toBeTruthy();
+        expect(String(notif.commentId)).toBe(String(commentId));
+    });
+});
+
 describe('DELETE /notifications/:id auth boundary', () => {
     it('returns 403 (does not hang) when a user tries to delete a notification not addressed to them', async () => {
         // Bob creates a card.

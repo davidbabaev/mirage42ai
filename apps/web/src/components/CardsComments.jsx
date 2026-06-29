@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../providers/AuthProvider';
 import { Avatar, Box, Button, IconButton, TextField, Tooltip, Typography } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -11,12 +11,16 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 
-export default function CardsComments({card, users, addComment, removeComment, focusRef, closeOnNav}) {
+export default function CardsComments({card, users, addComment, removeComment, focusRef, closeOnNav, highlightCommentId}) {
 
     const [commentText, setCommentText] = useState('');
     const {user: loggedInUser} = useAuth();
     const [commentsCount, setCommentsCount] = useState(5);
     const [isLoading, setIsLoading] = useState(false)
+    // ID of the comment currently being highlighted (background flash + outline).
+    const [highlightedId, setHighlightedId] = useState(null)
+    // Refs keyed by comment._id so we can scrollIntoView after render.
+    const commentRefs = useRef(new Map())
     const navigate = useNavigate();
 
     // Reply state: only one reply box is open at a time (replyingTo = commentId).
@@ -24,6 +28,36 @@ export default function CardsComments({card, users, addComment, removeComment, f
     const [replyText, setReplyText] = useState('');
     const [isReplyLoading, setIsReplyLoading] = useState(false);
 
+
+    // Scroll to + highlight a specific comment when `highlightCommentId` is set
+    // (e.g. opening a post via a comment-like / comment-reply notification).
+    useEffect(() => {
+        if (!highlightCommentId || !card?.comments) return
+
+        const allComments = [...card.comments].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        const idx = allComments.findIndex(c => c._id === highlightCommentId)
+
+        if (idx < 0) return // comment not found (deleted) — open post without error
+
+        // Ensure the target comment is within the visible slice.
+        setCommentsCount(prev => Math.max(prev, idx + 1))
+
+        setHighlightedId(highlightCommentId)
+
+        // Small delay lets the commentsCount update flush to the DOM before we scroll.
+        const scrollTimer = setTimeout(() => {
+            const el = commentRefs.current.get(highlightCommentId)
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 150)
+
+        // Remove the highlight after 2.2s (the CSS transition then fades it out).
+        const fadeTimer = setTimeout(() => setHighlightedId(null), 2200)
+
+        return () => {
+            clearTimeout(scrollTimer)
+            clearTimeout(fadeTimer)
+        }
+    }, [highlightCommentId]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSubmit = async (e) => {
         try{
@@ -112,10 +146,25 @@ export default function CardsComments({card, users, addComment, removeComment, f
 
             {countedComments.map((comment) => {
                 const userComment = users.find(u => u._id === comment.userId);
+                const isHighlighted = highlightedId === comment._id
 
                 return(
                     <Box
                         key={comment._id}
+                        ref={el => {
+                            if (el) commentRefs.current.set(comment._id, el)
+                            else commentRefs.current.delete(comment._id)
+                        }}
+                        sx={{
+                            borderRadius: 2,
+                            px: 0.5,
+                            // Highlight: background flash + outline as non-color cue.
+                            // Instant-on when highlighted, fades out when removed (~0.6s).
+                            bgcolor: isHighlighted ? 'warning.light' : 'transparent',
+                            outline: isHighlighted ? '2px solid' : '0px solid',
+                            outlineColor: 'warning.main',
+                            transition: 'background-color 0.6s ease-out, outline-width 0.4s ease-out',
+                        }}
                     >
 
                         <Box sx={{

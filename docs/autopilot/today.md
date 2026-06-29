@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### T4 — Notifications: deep-link to post + comment anchor
-- What: Clicking a like/comment notification about your post opens THAT post via the existing `CardPopupModal` (`/allcards?card=<whichCard>`), not the sender profile. Clicking a comment-like/comment-reply notification opens the post AND scrolls to + briefly highlights the specific comment. Persist the relevant `commentId` on comment-like/comment-reply notifications (add field on creation in `cardsSvc`) and read a new `?comment=<id>` param in `AllCardsPage`/`CardPopupModal` to scroll+highlight (fade after ~2s). Follow-notifications still go to the profile.
-- Decisions: highlight = brief background flash + non-color cue; if the comment isn't found (deleted), open the post anyway. Reuse the existing `?card=` deep-link plumbing.
-- Done when: clicking a like/comment-on-your-post notif opens that post; clicking a comment-reply/comment-like notif opens the post scrolled to the highlighted comment; clicking a follow notif still opens the profile; verified in browser at 390px and 1280px.
-- Type: visual
-
 ### T5 — Notification settings (per-type preferences)
 - What: Add `User.notificationPrefs` (per-type booleans: likes, comments, follows, commentLikes, commentReplies — all default true). Gate notification CREATION server-side on the recipient's prefs (in `cardsSvc`/follow notification writes). Add `PATCH /users/me/notification-prefs` and a settings UI (in the existing dashboard/settings area) with toggles.
 - Decisions: default all true (opt-out model, like real apps). Gating happens at creation time (don't store-then-hide). post-removed/admin notifications are NOT user-suppressible.

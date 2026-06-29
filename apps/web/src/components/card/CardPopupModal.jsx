@@ -3,7 +3,7 @@ import { Box, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useEffect } from 'react';
 
-export default function CardPopupModal({cardId, onClose}) {
+export default function CardPopupModal({cardId, onClose, highlightCommentId}) {
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -65,8 +65,9 @@ export default function CardPopupModal({cardId, onClose}) {
             </IconButton>
 
             <CardDetailsModal
-              cardId = {cardId}
-              onClose = {onClose}
+              cardId={cardId}
+              onClose={onClose}
+              highlightCommentId={highlightCommentId}
             />
 
           </Box>

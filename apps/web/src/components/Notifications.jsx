@@ -67,6 +67,32 @@ export default function Notifications({
           // Moderation notice: no actor (the moderator is intentionally hidden),
           // so it renders as a system message with a gavel icon and no profile link.
           const isSystem = notification.actionType === 'post-removed'
+          const actionType = notification.actionType
+
+          // Build the deep-link URL for this notification:
+          // - follow             → sender's profile page
+          // - like / comment     → the post modal
+          // - comment-like / comment-reply → the post modal + comment anchor
+          // - post-removed       → /allcards (post is banned; attempting to open it
+          //                        would show a stuck skeleton for non-admins since
+          //                        banned cards are excluded from registeredCards)
+          const buildNavigationTarget = () => {
+              if (actionType === 'follow') {
+                  return `/profiledashboard/${notificationSenderUser?._id}/profilemain`
+              }
+              if (actionType === 'like' || actionType === 'comment') {
+                  return `/allcards?card=${notification.whichCard}`
+              }
+              if (actionType === 'comment-like' || actionType === 'comment-reply') {
+                  return notification.commentId
+                      ? `/allcards?card=${notification.whichCard}&comment=${notification.commentId}`
+                      : `/allcards?card=${notification.whichCard}`
+              }
+              if (actionType === 'post-removed') {
+                  return '/allcards'
+              }
+              return `/profiledashboard/${notificationSenderUser?._id}/profilemain`
+          }
 
           const actionText = notification.actionType === 'follow'
           ? 'followed you'
@@ -92,20 +118,27 @@ export default function Notifications({
               sx={{
                 px: 2,
                 py: 1.5,
-                cursor: isSystem ? 'default' : 'pointer',
+                cursor: 'pointer',
                 borderBottom: '0.5px solid',
                 borderColor: 'divider',
                 '&:last-child': {borderBottom: 'none'},
                 '&:hover': {bgcolor: 'action.hover'}
               }}
               onClick={() => {
-                if(isSystem) return // no moderator profile to open
-                navigate(`/profiledashboard/${notificationSenderUser?._id}/profilemain`)
+                navigate(buildNavigationTarget())
                 onClose()
               }}
             >
               <ListItemAvatar sx={{maxWidth: 44}}
-                onClick={() => { if(!isSystem) navigate(`/profiledashboard/${notificationSenderUser?._id}/profilemain`) }}
+                onClick={(e) => {
+                  // Avatar always links to the sender's profile (except system notifications
+                  // which have no actor). Stop propagation so the row's deep-link doesn't fire.
+                  if (!isSystem) {
+                    e.stopPropagation()
+                    navigate(`/profiledashboard/${notificationSenderUser?._id}/profilemain`)
+                    onClose()
+                  }
+                }}
               >
                 <Avatar
                   sx={{width: 36, height: 36, cursor: isSystem ? 'default' : 'pointer', bgcolor: isSystem ? 'error.main' : undefined}}

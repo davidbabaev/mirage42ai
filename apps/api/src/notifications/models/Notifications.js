@@ -14,7 +14,10 @@ const NotificationSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
-    whichCard: mongoose.Schema.Types.ObjectId
+    whichCard: mongoose.Schema.Types.ObjectId,
+    // Set on comment-like / comment-reply notifications so the client can
+    // scroll to and highlight the specific comment the action was about.
+    commentId: mongoose.Schema.Types.ObjectId,
 })
 
 const Notification = mongoose.model('Notification', NotificationSchema);

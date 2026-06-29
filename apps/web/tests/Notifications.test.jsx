@@ -62,6 +62,69 @@ describe('Notifications — delete button', () => {
     });
 });
 
+describe('Notifications — navigation by actionType', () => {
+    it('like notification navigates to the post page', () => {
+        const onClose = vi.fn();
+        renderNotifications([makeNotification({ actionType: 'like', whichCard: 'c1' })], vi.fn(), onClose);
+        fireEvent.click(screen.getByRole('listitem'));
+        expect(navigate).toHaveBeenCalledWith('/allcards?card=c1');
+        expect(onClose).toHaveBeenCalled();
+    });
+
+    it('comment notification navigates to the post page', () => {
+        const onClose = vi.fn();
+        renderNotifications([makeNotification({ actionType: 'comment', whichCard: 'c1' })], vi.fn(), onClose);
+        fireEvent.click(screen.getByRole('listitem'));
+        expect(navigate).toHaveBeenCalledWith('/allcards?card=c1');
+    });
+
+    it('comment-reply notification navigates to the post with comment anchor', () => {
+        const onClose = vi.fn();
+        renderNotifications(
+            [makeNotification({ actionType: 'comment-reply', whichCard: 'c1', commentId: 'cmt1' })],
+            vi.fn(),
+            onClose,
+        );
+        fireEvent.click(screen.getByRole('listitem'));
+        expect(navigate).toHaveBeenCalledWith('/allcards?card=c1&comment=cmt1');
+    });
+
+    it('comment-like notification navigates to the post with comment anchor', () => {
+        const onClose = vi.fn();
+        renderNotifications(
+            [makeNotification({ actionType: 'comment-like', whichCard: 'c1', commentId: 'cmt1' })],
+            vi.fn(),
+            onClose,
+        );
+        fireEvent.click(screen.getByRole('listitem'));
+        expect(navigate).toHaveBeenCalledWith('/allcards?card=c1&comment=cmt1');
+    });
+
+    it('comment-reply without commentId falls back to the post page without anchor', () => {
+        renderNotifications([makeNotification({ actionType: 'comment-reply', whichCard: 'c1', commentId: undefined })]);
+        fireEvent.click(screen.getByRole('listitem'));
+        expect(navigate).toHaveBeenCalledWith('/allcards?card=c1');
+    });
+
+    it('follow notification still navigates to the sender profile', () => {
+        const onClose = vi.fn();
+        renderNotifications([makeNotification({ actionType: 'follow' })], vi.fn(), onClose);
+        fireEvent.click(screen.getByRole('listitem'));
+        expect(navigate).toHaveBeenCalledWith('/profiledashboard/u1/profilemain');
+    });
+
+    it('post-removed notification navigates to /allcards', () => {
+        const onClose = vi.fn();
+        renderNotifications(
+            [makeNotification({ actionType: 'post-removed', fromUser: undefined })],
+            vi.fn(),
+            onClose,
+        );
+        fireEvent.click(screen.getByRole('listitem'));
+        expect(navigate).toHaveBeenCalledWith('/allcards');
+    });
+});
+
 describe('Notifications — actionType copy', () => {
     it('renders "commented on your post" for comment actionType', () => {
         renderNotifications([makeNotification({ actionType: 'comment' })]);

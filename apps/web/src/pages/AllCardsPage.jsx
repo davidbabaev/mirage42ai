@@ -39,12 +39,18 @@ export default function AllCardsPage() {
     
     const [openCommentCardId, setOpenCommentCardId] = useState(null);
     const [selectedCardId, setSelectedCardId] = useState(null);
+    // When a notification deep-link includes ?comment=<id>, the modal scrolls to
+    // and highlights that specific comment (comment-like / comment-reply flows).
+    const [highlightCommentId, setHighlightCommentId] = useState(null);
 
     // Deep link from a shared post (/allcards?card=<id>) opens that post's modal.
+    // Optional ?comment=<id> scrolls to + highlights that comment inside the modal.
     const [searchParams] = useSearchParams();
     useEffect(() => {
         const cardParam = searchParams.get('card');
+        const commentParam = searchParams.get('comment');
         if (cardParam) setSelectedCardId(cardParam);
+        setHighlightCommentId(commentParam || null);
     }, [searchParams]);
 
     // Mobile:
@@ -616,8 +622,9 @@ export default function AllCardsPage() {
 
                 {selectedCardId && (
                     <CardPopupModal
-                        cardId = {selectedCardId}
-                        onClose = {() => setSelectedCardId(null)}
+                        cardId={selectedCardId}
+                        onClose={() => { setSelectedCardId(null); setHighlightCommentId(null); }}
+                        highlightCommentId={highlightCommentId}
                     />
                 )}
 

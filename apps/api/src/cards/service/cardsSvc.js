@@ -163,7 +163,7 @@ const likeComment = async (cardId, commentId, userId) => {
         // The recipient is the COMMENT author, who may be a third party — guard
         // the notification against a block between actor and comment author.
         if(userId !== comment.userId.toString() && !(await blockExistsBetween(userId, comment.userId))){
-            await new Notification({actionType: 'comment-like', fromUser: userId, toUser: comment.userId, whichCard: card._id}).save();
+            await new Notification({actionType: 'comment-like', fromUser: userId, toUser: comment.userId, whichCard: card._id, commentId: comment._id}).save();
         }
     }
 
@@ -209,7 +209,7 @@ const addReply = async (cardId, commentId, userId, replyText) => {
     // Recipient is the COMMENT author (possibly a third party) — suppress the
     // notification if a block exists between actor and comment author.
     if(userId !== comment.userId.toString() && !(await blockExistsBetween(userId, comment.userId))){
-        await new Notification({actionType: 'comment-reply', fromUser: userId, toUser: comment.userId, whichCard: card._id}).save()
+        await new Notification({actionType: 'comment-reply', fromUser: userId, toUser: comment.userId, whichCard: card._id, commentId: comment._id}).save()
     }
 
     const savedCard = await card.save();

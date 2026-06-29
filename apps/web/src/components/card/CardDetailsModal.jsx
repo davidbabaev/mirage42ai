@@ -24,7 +24,7 @@ import ShareDialog from '../ShareDialog';
 import OnLoadingSkeletonBox from '../OnLoadingSkeletonBox';
 import { useUsersProvider } from '../../providers/UsersProvider';
 
-export default function CardDetailsModal({cardId, onClose}) {
+export default function CardDetailsModal({cardId, onClose, highlightCommentId}) {
 
         const {registeredCards} = useCardsProvider()
         const {favoriteCards, handleFavoriteCards} = useFavoriteCards();
@@ -307,12 +307,13 @@ export default function CardDetailsModal({cardId, onClose}) {
                 {/* Comment input */}
                 {/* comments */}
                 <CardsComments
-                    card = {currentCard}
+                    card={currentCard}
                     users={users}
                     addComment={addComment}
-                    removeComment = {removeComment}
-                    focusRef = {inputRef}
-                    closeOnNav = {onClose}
+                    removeComment={removeComment}
+                    focusRef={inputRef}
+                    closeOnNav={onClose}
+                    highlightCommentId={highlightCommentId}
                 />
             </Box>
         </Box>
