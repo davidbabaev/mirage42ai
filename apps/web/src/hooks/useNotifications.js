@@ -13,12 +13,14 @@ function useNotifications() {
     }, [notifications])
 
     const handleDeleteNotification = async (notificationId) => {
+        const snapshot = notifications;
+        setNotifications(prev => prev.filter(n => n._id !== notificationId));
         try{
             await deleteOneNotification(notificationId);
-            setNotifications(notifications.filter(n => n._id !== notificationId))
         }
         catch(err){
             console.log(err.message);
+            setNotifications(snapshot);
         }
     }
 

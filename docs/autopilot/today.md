@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### T3 — Notifications: delete-button bug + comment copy fix
-- What: In `Notifications.jsx`, stop the delete (trash) IconButton click from bubbling to the row (`e.stopPropagation()`) so deleting no longer navigates to the sender's profile. Fix the `comment` actionType text from "commentd your post" to "commented on your post".
-- Decisions: keep delete optimistic; roll back on API failure. No other behavior change in this task.
-- Done when: a web component test asserts clicking the delete button calls delete and does NOT trigger navigation; the `comment` text reads "commented on your post"; suite green.
-- Type: logic
-
 ### T4 — Notifications: deep-link to post + comment anchor
 - What: Clicking a like/comment notification about your post opens THAT post via the existing `CardPopupModal` (`/allcards?card=<whichCard>`), not the sender profile. Clicking a comment-like/comment-reply notification opens the post AND scrolls to + briefly highlights the specific comment. Persist the relevant `commentId` on comment-like/comment-reply notifications (add field on creation in `cardsSvc`) and read a new `?comment=<id>` param in `AllCardsPage`/`CardPopupModal` to scroll+highlight (fade after ~2s). Follow-notifications still go to the profile.
 - Decisions: highlight = brief background flash + non-color cue; if the comment isn't found (deleted), open the post anyway. Reuse the existing `?card=` deep-link plumbing.

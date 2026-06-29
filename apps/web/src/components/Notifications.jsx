@@ -70,13 +70,17 @@ export default function Notifications({
 
           const actionText = notification.actionType === 'follow'
           ? 'followed you'
+          : notification.actionType === 'like'
+          ? 'liked your post'
+          : notification.actionType === 'comment'
+          ? 'commented on your post'
           : notification.actionType === 'comment-like'
           ? 'liked your comment'
           : notification.actionType === 'comment-reply'
           ? 'replied to your comment'
           : isSystem
           ? 'Your post was removed for violating community guidelines.'
-          : `${notification.actionType}d your post: ${notificationOnCard?.content.slice(0,40)}...`
+          : `${notification.actionType}d your post`
 
           const primaryText = isSystem
           ? actionText
@@ -129,7 +133,7 @@ export default function Notifications({
 
               <IconButton
                 sx={{color: 'text.disabled', '&:hover' : {color: 'error.main'}}}
-                onClick={() => handleDeleteNotificationValue(notification._id)}
+                onClick={(e) => { e.stopPropagation(); handleDeleteNotificationValue(notification._id); }}
               >
                 <DeleteIcon fontSize='small'/>
               </IconButton>
