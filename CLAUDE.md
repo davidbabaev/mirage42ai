@@ -71,6 +71,12 @@ Apply these to every task — features and bug fixes alike. They are not optiona
 - Any action that waits on the network (buttons, submits, data loads) must show a loading state — a spinner, disabled button, or skeleton. Never leave the user staring at a frozen screen.
 - Match the interaction patterns already used elsewhere in the app. A new button should look and behave like existing buttons. Before adding a new pattern, reuse an existing one.
 - Keep it clean and uncluttered — generous spacing, clear hierarchy, no visual noise.
+- Reuse our existing design system/components for all new UI — never hand-roll ad-hoc styles or one-off form controls.
+- We have built-in select components for **country, city, gender, and job** — always reuse these for those fields. Never use free-text input for them.
+
+### Profile data & onboarding
+- The registration form already collects first name, last name, gender, birth date, country, and city. Don't re-collect this for form-registered users.
+- The "finish profile" onboarding step is **only** for Google-login users (form-register users already provided this data). Don't show it to form-registered users.
 
 ## Product judgment (when a task is unclear)
 
