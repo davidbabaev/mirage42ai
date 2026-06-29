@@ -62,6 +62,15 @@ vi.mock('../src/providers/AuthProvider', () => ({
     AuthProvider: ({ children }) => <>{children}</>,
 }));
 
+// ─── Mock hooks used by ProfileStep ──────────────────────────────────────────
+vi.mock('../src/hooks/useCountries', () => ({
+    default: () => ({ apiCountriesList: [{ code: 'US', name: 'United States' }], apiCountriesListLoading: '' }),
+}));
+
+vi.mock('../src/hooks/useCities', () => ({
+    default: () => ({ cities: ['New York', 'Los Angeles'], isCitiesLoading: false }),
+}));
+
 // ─── Mock providers used by useFollowUser internally ─────────────────────────
 vi.mock('../src/providers/UsersProvider', () => ({
     useUsersProvider: () => ({ users: [], syncUser: vi.fn() }),
@@ -106,6 +115,13 @@ const INCOMPLETE_USER = {
     gender: 'Unknown',
     aboutMe: 'Not Defined',
     address: { country: 'Not Defined', city: '' },
+};
+
+// A Google-login user that has an incomplete profile — the finish-profile step
+// SHOULD appear for this user.
+const GOOGLE_INCOMPLETE_USER = {
+    ...INCOMPLETE_USER,
+    googleId: 'google_oauth_123',
 };
 
 const renderWizard = () =>
@@ -219,8 +235,10 @@ describe('OnboardingWizard', () => {
         );
     });
 
-    it('shows step 3 (Finish Profile) when profile is incomplete', async () => {
-        mockUser = { ...INCOMPLETE_USER, onboardingComplete: false };
+    // ── Step-gating: finish-profile is ONLY for Google-login users ────────────────
+
+    it('shows finish-profile step (step 3) when user is a Google-login user with incomplete profile', async () => {
+        mockUser = { ...GOOGLE_INCOMPLETE_USER, onboardingComplete: false };
         renderWizard();
         // Verify "Finish Profile" appears in stepper labels
         expect(screen.getByText('Finish Profile')).toBeInTheDocument();
@@ -230,14 +248,48 @@ describe('OnboardingWizard', () => {
         expect(screen.getByText(/finish your profile/i)).toBeInTheDocument();
     });
 
-    it('does NOT show step 3 when profile is complete', () => {
+    it('does NOT show finish-profile step for a form-registered user even if profile is incomplete', () => {
+        // INCOMPLETE_USER has no googleId — form-registered users already provided
+        // this data at sign-up, so they must never see the finish-profile step.
+        mockUser = { ...INCOMPLETE_USER, onboardingComplete: false };
+        renderWizard();
+        expect(screen.queryByText('Finish Profile')).not.toBeInTheDocument();
+        // Only 2 steps visible in stepper
+        expect(screen.getByText('Pick Interests')).toBeInTheDocument();
+        expect(screen.getByText('Suggested People')).toBeInTheDocument();
+    });
+
+    it('does NOT show finish-profile step when profile is complete (even for Google user)', () => {
+        mockUser = { ...COMPLETE_USER, googleId: 'google_oauth_123', onboardingComplete: false };
+        renderWizard();
+        expect(screen.queryByText('Finish Profile')).not.toBeInTheDocument();
+    });
+
+    it('does NOT show finish-profile step when profile is complete (form user)', () => {
         mockUser = { ...COMPLETE_USER, onboardingComplete: false };
         renderWizard();
         expect(screen.queryByText('Finish Profile')).not.toBeInTheDocument();
     });
 
-    it('Done on step 3 calls editUser then updateOnboarding', async () => {
+    it('Done on step 2 for form user calls updateOnboarding but NOT editUser', async () => {
+        // Form user (no googleId) has only 2 steps; Done on step 2 must complete
+        // onboarding without calling editUser (profile was already collected at sign-up).
         mockUser = { ...INCOMPLETE_USER, onboardingComplete: false };
+        renderWizard();
+        // step 1 → Next
+        await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); });
+        // step 2 → Done (last step for 2-step path)
+        await act(async () => { fireEvent.click(screen.getByRole('button', { name: /done/i })); });
+        await waitFor(() =>
+            expect(mockUpdateOnboarding).toHaveBeenCalledWith(
+                expect.objectContaining({ onboardingComplete: true })
+            )
+        );
+        expect(mockEditUser).not.toHaveBeenCalled();
+    });
+
+    it('Done on step 3 (Google user) calls editUser then updateOnboarding', async () => {
+        mockUser = { ...GOOGLE_INCOMPLETE_USER, onboardingComplete: false };
         renderWizard();
         await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); }); // →2
         await act(async () => { fireEvent.click(screen.getByRole('button', { name: /next/i })); }); // →3

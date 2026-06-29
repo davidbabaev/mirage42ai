@@ -17,6 +17,8 @@ import {
     useMediaQuery,
     InputAdornment,
     CircularProgress,
+    MenuItem,
+    Autocomplete,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -24,9 +26,12 @@ import CheckIcon from '@mui/icons-material/Check';
 import { useAuth } from '../providers/AuthProvider';
 import { getSuggestedUsers, updateOnboarding, searchUsers } from '../services/apiService';
 import { CARD_CATEGORIES } from '../constants/cardsCategories';
+import { JOB_INDUSTRIES } from '../constants/usersJobIndustries';
 import isProfileIncomplete from '../utils/isProfileIncomplete';
 import useFollowUser from '../hooks/useFollowUser';
 import useDebounce from '../hooks/useDebounce';
+import useCountries from '../hooks/useCountries';
+import useCities from '../hooks/useCities';
 
 const REDUCED_MOTION =
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
@@ -43,8 +48,9 @@ export default function OnboardingWizard() {
     // Derived: show only if authenticated + onboarding not done
     const open = !!(isLoggedIn && user?.onboardingComplete === false);
 
-    // Build step list dynamically based on profile completeness
-    const needsProfile = user ? isProfileIncomplete(user) : false;
+    // Build step list dynamically — finish-profile step is ONLY for Google-login
+    // users (form-registered users already provided this data at sign-up).
+    const needsProfile = user ? (Boolean(user.googleId) && isProfileIncomplete(user)) : false;
     const steps = needsProfile
         ? ['Pick Interests', 'Suggested People', 'Finish Profile']
         : ['Pick Interests', 'Suggested People'];
@@ -481,16 +487,32 @@ function UserRow({ user: u, isFollowing, onFollow }) {
 }
 
 // ─── Step 3: Finish Profile ────────────────────────────────────────────────────
+// Only shown to Google-login users (form-registered users already provided
+// this data). Uses the same built-in select components as RegisteredPage and
+// ProfileSection to ensure consistent UX and valid values.
 function ProfileStep({ values, onChange, error }) {
+    const { apiCountriesList } = useCountries();
+    const { cities, isCitiesLoading } = useCities(values.country || '');
+
+    const handleCountryChange = (e) => {
+        onChange('country', e.target.value);
+        onChange('city', ''); // reset city when country changes
+    };
+
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <TextField
-                label="Job / Occupation"
+                label="Job / Industry"
+                select
                 size="small"
                 fullWidth
                 value={values.job || ''}
                 onChange={(e) => onChange('job', e.target.value)}
-            />
+            >
+                {JOB_INDUSTRIES.map((job) => (
+                    <MenuItem key={job} value={job}>{job}</MenuItem>
+                ))}
+            </TextField>
             <TextField
                 label="Phone"
                 size="small"
@@ -502,27 +524,41 @@ function ProfileStep({ values, onChange, error }) {
             <Box sx={{ display: 'flex', gap: 2 }}>
                 <TextField
                     label="Country"
+                    select
                     size="small"
                     fullWidth
                     value={values.country || ''}
-                    onChange={(e) => onChange('country', e.target.value)}
-                />
-                <TextField
-                    label="City"
-                    size="small"
+                    onChange={handleCountryChange}
+                >
+                    {apiCountriesList.map((country) => (
+                        <MenuItem key={country.code} value={country.name}>
+                            {country.name}
+                        </MenuItem>
+                    ))}
+                </TextField>
+                <Autocomplete
                     fullWidth
-                    value={values.city || ''}
-                    onChange={(e) => onChange('city', e.target.value)}
+                    options={cities}
+                    value={values.city || null}
+                    onChange={(e, newValue) => onChange('city', newValue || '')}
+                    disabled={!values.country}
+                    loading={isCitiesLoading}
+                    renderInput={(params) => (
+                        <TextField {...params} size="small" label="City" />
+                    )}
                 />
             </Box>
             <TextField
                 label="Gender"
+                select
                 size="small"
                 fullWidth
                 value={values.gender || ''}
                 onChange={(e) => onChange('gender', e.target.value)}
-                helperText="e.g. Male, Female, Non-binary…"
-            />
+            >
+                <MenuItem value="Male">Male</MenuItem>
+                <MenuItem value="Female">Female</MenuItem>
+            </TextField>
             <TextField
                 label="About me"
                 size="small"
