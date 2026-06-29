@@ -320,7 +320,7 @@ export default function OnboardingWizard() {
                     onClick={handleSkip}
                     disabled={saving}
                     color="inherit"
-                    sx={{ minHeight: 44, textTransform: 'none' }}
+                    sx={{ minHeight: 44, borderRadius: 5, textTransform: 'none' }}
                 >
                     Skip all
                 </Button>
@@ -331,7 +331,7 @@ export default function OnboardingWizard() {
                             variant="outlined"
                             onClick={handleBack}
                             disabled={saving}
-                            sx={{ minHeight: 44, textTransform: 'none' }}
+                            sx={{ minHeight: 44, borderRadius: 5, textTransform: 'none' }}
                         >
                             Back
                         </Button>
@@ -340,7 +340,7 @@ export default function OnboardingWizard() {
                         variant="contained"
                         onClick={handleNext}
                         disabled={saving}
-                        sx={{ minHeight: 44, minWidth: 100, textTransform: 'none' }}
+                        sx={{ minHeight: 44, minWidth: 100, borderRadius: 5, textTransform: 'none' }}
                     >
                         {saving
                             ? <CircularProgress size={18} color="inherit" />
@@ -383,7 +383,7 @@ function SuggestedStep({ users, loading, error, onRetry, searchQuery, onSearchCh
         return (
             <Box textAlign="center" py={4}>
                 <Typography color="error" gutterBottom>{error}</Typography>
-                <Button onClick={onRetry} variant="outlined" sx={{ minHeight: 44 }}>
+                <Button onClick={onRetry} variant="outlined" sx={{ minHeight: 44, borderRadius: 5, textTransform: 'none' }}>
                     Retry
                 </Button>
             </Box>
@@ -416,7 +416,7 @@ function SuggestedStep({ users, loading, error, onRetry, searchQuery, onSearchCh
                             <Skeleton width="60%" />
                             <Skeleton width="40%" />
                         </Box>
-                        <Skeleton variant="rectangular" width={90} height={36} sx={{ borderRadius: 1 }} />
+                        <Skeleton variant="rounded" width={88} height={30} sx={{ borderRadius: 5 }} />
                     </Box>
                 ))
             ) : users.length === 0 ? (
@@ -471,12 +471,15 @@ function UserRow({ user: u, isFollowing, onFollow }) {
             <Button
                 size="small"
                 variant={isFollowing ? 'outlined' : 'contained'}
+                color={isFollowing ? 'inherit' : 'primary'}
                 startIcon={isFollowing ? <CheckIcon /> : <PersonAddIcon />}
                 onClick={onFollow}
+                aria-label={isFollowing ? `Unfollow ${u.name}` : `Follow ${u.name}`}
                 sx={{
-                    minHeight: 44,
-                    textTransform: 'none',
+                    borderRadius: 5,
+                    fontSize: 11,
                     flexShrink: 0,
+                    minWidth: 88,
                     transition: REDUCED_MOTION ? 'none' : undefined,
                 }}
             >
