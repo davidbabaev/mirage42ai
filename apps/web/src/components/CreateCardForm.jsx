@@ -3,7 +3,7 @@ import { CARD_CATEGORIES } from '../constants/cardsCategories';
 import { useCardsProvider } from '../providers/CardsProvider';
 import EmojiPicker from 'emoji-picker-react';
 import MediaDisplay from './MediaDisplay';
-import { Alert, Avatar, Box, Button, IconButton, Input, InputAdornment, MenuItem, TextField, Tooltip, Typography, useTheme } from '@mui/material';
+import { Alert, Avatar, Box, Button, CircularProgress, IconButton, Input, InputAdornment, MenuItem, TextField, Tooltip, Typography, useTheme } from '@mui/material';
 import { useAuth } from '../providers/AuthProvider';
 import MovieIcon from '@mui/icons-material/Movie';
 import InsertPhotoIcon from '@mui/icons-material/InsertPhoto';
@@ -14,6 +14,29 @@ import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
 import CategoryIcon from '@mui/icons-material/Category';
+
+// Verify a selected file is a real, decodable image/video before we let the
+// user post it. A corrupt file (or a non-image renamed to .png) passes the
+// "a file was chosen" check but renders as a broken image in the feed — we
+// reject it here so a post can never ship without valid media.
+function validateMediaFile(file) {
+    return new Promise((resolve) => {
+        const url = URL.createObjectURL(file);
+        const cleanup = () => URL.revokeObjectURL(url);
+        if (file.type.startsWith('video/')) {
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.onloadedmetadata = () => { cleanup(); resolve(true); };
+            video.onerror = () => { cleanup(); resolve(false); };
+            video.src = url;
+        } else {
+            const img = new Image();
+            img.onload = () => { cleanup(); resolve(img.naturalWidth > 0 && img.naturalHeight > 0); };
+            img.onerror = () => { cleanup(); resolve(false); };
+            img.src = url;
+        }
+    });
+}
 
 export default function CreateCardForm({onSuccess, mediaButton, card}) {
 
@@ -40,6 +63,7 @@ export default function CreateCardForm({onSuccess, mediaButton, card}) {
     const [, setSuccessMessage] = useState('');
     const {handleCardRegister, handleEditCard} = useCardsProvider();
     const [isLoading, setIsLoading] = useState(false);
+    const [isCheckingMedia, setIsCheckingMedia] = useState(false);
     const [isEmojiOpen, setIsEmojiOpen] = useState(false);
     const fileInputRef = useRef(null);
 
@@ -62,6 +86,32 @@ export default function CreateCardForm({onSuccess, mediaButton, card}) {
     const onEmojiClick = (emojiData) => {
         setText(prev => prev + emojiData.emoji);
         setIsEmojiOpen(false);
+    }
+
+    // Validate the chosen file before accepting it as the post's media.
+    const handleFileSelect = async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = ''; // allow re-selecting the same file after a rejection
+        if (!file) return;
+        setError('');
+        if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+            setMediaFile(null);
+            setError('Unsupported file type. Please choose an image or video.');
+            return;
+        }
+        setIsCheckingMedia(true);
+        const isValid = await validateMediaFile(file);
+        setIsCheckingMedia(false);
+        if (!isValid) {
+            setMediaFile(null);
+            setError(
+                file.type.startsWith('video/')
+                    ? "This video is broken and can't be added. Please choose a different file."
+                    : "This image is broken and can't be added to your post. Please choose a valid image — a post can't be published without working media."
+            );
+            return;
+        }
+        setMediaFile(file);
     }
 
     const noUnderlineSx = {
@@ -380,7 +430,19 @@ return (
                         mediaUrl={previewMedia}
                         mediaType={mediaFile instanceof File ? mediaFile.type.startsWith('video/') ? 'video' : 'image' : card?.mediaType}
                         style={{width: '100%', borderRadius: '10px'}}
+                        onError={() => {
+                            setMediaFile(null);
+                            setError("This image is broken and can't be added to your post. Please choose a valid image.");
+                        }}
                     />
+                </Box>
+            )}
+
+            {/* Media validation in progress */}
+            {isCheckingMedia && (
+                <Box sx={{display: 'flex', alignItems: 'center', gap: 1, mb: 2, color: 'text.secondary'}}>
+                    <CircularProgress size={16}/>
+                    <Typography fontSize={13}>Checking media…</Typography>
                 </Box>
             )}
 
@@ -406,8 +468,8 @@ return (
             <input 
                 ref={fileInputRef}
                 type="file"
-                accept = {'image/*,video/*'} 
-                onChange={(e) => setMediaFile(e.target.files[0])}
+                accept = {'image/*,video/*'}
+                onChange={handleFileSelect}
                 style={{display: 'none'}}
             />
 
@@ -489,7 +551,7 @@ return (
                 loading={isLoading}
                 loadingPosition='start'
                 // startIcon={<AutorenewIcon/>}
-                disabled={!text || !mediaFile}
+                disabled={!text || !mediaFile || isCheckingMedia}
                 sx={{ml: 'auto', borderRadius: 5, minWidth: 90}}
             >
                 {isLoading ? (card ? 'Saving..' : 'Posting..') : (card ? 'Save' : 'Post')}
