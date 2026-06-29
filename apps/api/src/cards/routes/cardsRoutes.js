@@ -24,6 +24,7 @@ const {
     banCard,
     getCardLikes,
 } = require('../service/cardsSvc');
+const { reportCard, getCardReports } = require('../service/reportSvc');
 const auth = require('../../auth/authService');
 const optionalAuth = require('../../auth/optionalAuth');
 
@@ -220,6 +221,29 @@ router.patch('/cards/:id/ban', auth, async (req,res) => {
         handleError(res, err);
     }
 })
+
+// POST /cards/:id/report — authenticated users report a post.
+// Body: { reason } — validated against the allowlist in reportSvc.
+// Idempotent: a duplicate report returns 200 { alreadyReported: true }.
+router.post('/cards/:id/report', auth, async (req, res) => {
+    try {
+        const result = await reportCard(req.params.id, req.user.userId, req.body.reason);
+        res.send(result);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+// GET /cards/:id/reports — admin-only list of reporters + reasons + timestamps.
+router.get('/cards/:id/reports', auth, async (req, res) => {
+    try {
+        if (!req.user.isAdmin) throw createError(403, 'Admin only');
+        const reports = await getCardReports(req.params.id);
+        res.send(reports);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
 
 module.exports = router;
 

@@ -62,6 +62,12 @@ const CardSchema = new mongoose.Schema({
         enum: ['active', 'banned', 'deleted'],
         default: 'active'
     },
+    // Denormalized counter incremented on each new (non-duplicate) report.
+    // Kept on the card for fast admin-table queries without an aggregate.
+    reportCount: {
+        type: Number,
+        default: 0,
+    },
 })
 
 const Card = mongoose.model('Card', CardSchema)

@@ -14,12 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### T8 — Report-a-post backend
-- What: Add a `Report` model `{ cardId, reporterId, reason, createdAt }` with a unique index on (cardId, reporterId). `POST /cards/:id/report` (reason validated against an allowlist enum) — one report per user per post (dedupe → idempotent/409). Maintain a per-post report count (denormalized `reportCount` on the card or an aggregate). Create an admin-targeted Notification on each new report (new actionType `post-reported`). `GET /cards/:id/reports` — admin-only — returns reporter identities + reasons.
-- Decisions: reason allowlist = spam, harassment, nudity/sexual, hate, violence, misinformation, other. `GET /cards/:id/reports` requires isAdmin (authorization, not just auth). Admin notification recipients = all admins — pick one inbox model and log it.
-- Done when: tests — a user can report once (second attempt deduped); reason validated; reportCount increments; admin notification created; non-admin gets 403 on `GET /cards/:id/reports`; suite green.
-- Type: logic
-
 ### T9 — Report-a-post UI
 - What: Add a ⋯ overflow menu on the post (introduce a reusable one if absent) with "Report post"; opens a reason picker dialog (radio group of the allowlist), submit shows pending → success toast → auto-close. If already reported, show an "already reported" state (disabled/secondary).
 - Decisions: auto-close the dialog on success (real-app standard). Reasons from the backend allowlist. Don't allow reporting your own post.

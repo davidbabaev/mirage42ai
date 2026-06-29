@@ -58,7 +58,8 @@ const pickSafeCardFields = (card) => {
         "createdAt",
         "_id",
         "userId",
-        "status"
+        "status",
+        "reportCount"
     ])
 }
 
