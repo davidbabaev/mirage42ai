@@ -10,11 +10,11 @@ const Notification = require('../../notifications/models/Notifications');
  
 const pickSafeUserFields = (user) => {
     return _.pick(user.toObject() , [
-        "name", 
-        "lastName", 
-        "email", 
-        "phone", 
-        "profilePicture", 
+        "name",
+        "lastName",
+        "email",
+        "phone",
+        "profilePicture",
         "coverImage",
         "address",
         "age",
@@ -28,7 +28,9 @@ const pickSafeUserFields = (user) => {
         "blocked",
         "isAdmin",
         "isBanned",
-        "lastLoginAt"
+        "lastLoginAt",
+        "onboardingComplete",
+        "interests",
     ]);
 }
 
@@ -296,18 +298,138 @@ const promoteUserToAdmin = async (promotedUserId) => {
     return pickSafeUserFields(updatedPromotedUser)
 }
 
+// PATCH /users/me/onboarding — update onboardingComplete and/or interests for the
+// calling user only. Validates that all interest entries are strings.
+const updateOnboarding = async (userId, { interests, onboardingComplete } = {}) => {
+    if (interests !== undefined) {
+        if (!Array.isArray(interests)) throw createError(400, 'interests must be an array');
+        if (!interests.every(i => typeof i === 'string')) {
+            throw createError(400, 'each interest must be a string');
+        }
+    }
+
+    const update = {};
+    if (interests !== undefined) update.interests = interests;
+    if (onboardingComplete !== undefined) update.onboardingComplete = !!onboardingComplete;
+
+    if (Object.keys(update).length === 0) throw createError(400, 'No fields to update');
+
+    const updated = await User.findByIdAndUpdate(userId, update, { new: true });
+    if (!updated) throw createError(404, 'User not found');
+    return pickSafeUserFields(updated);
+};
+
+// GET /users/suggested — real users to follow, block-aware both directions.
+// Order: friends-of-friends (users followed by people I follow) first, then by
+// follower count desc. Offset-based cursor so pages are stable in the context of
+// a single open session (encoded as base64 of the skip offset).
+const getSuggestedUsers = async (requesterId, opts = {}) => {
+    const me = await User.findById(requesterId);
+    if (!me) throw createError(404, 'User not found');
+
+    const lim = Math.min(Math.max(Number(opts.limit) || 10, 1), 50);
+    const skip = opts.cursor
+        ? parseInt(Buffer.from(opts.cursor, 'base64').toString('utf8'), 10) || 0
+        : 0;
+
+    const myIdStr = String(requesterId);
+    const blockedByMe = (me.blocked || []).map(String);
+    const myFollowing = (me.following || []).map(String);
+
+    // Users who blocked the requester (using the blocked index)
+    const blockedMeDocs = await User.find({ blocked: requesterId }, '_id');
+    const blockedMe = blockedMeDocs.map(u => String(u._id));
+
+    // Build full exclusion set: self + already-following + blocked-either-way
+    const excludeStrs = new Set([myIdStr, ...myFollowing, ...blockedByMe, ...blockedMe]);
+
+    // Friends-of-friends: users followed by anyone the requester follows,
+    // excluding already-excluded ids.
+    const fofSet = new Set();
+    if (myFollowing.length) {
+        const followedUsers = await User.find({ _id: { $in: myFollowing } }, 'following');
+        for (const f of followedUsers) {
+            for (const id of (f.following || [])) {
+                const s = String(id);
+                if (!excludeStrs.has(s)) fofSet.add(s);
+            }
+        }
+    }
+
+    // Fetch all candidate users (not excluded). No follower count yet.
+    const excludeArr = [...excludeStrs];
+    const candidates = await User.find(
+        { _id: { $nin: excludeArr }, blocked: { $ne: requesterId } },
+        '_id name lastName job profilePicture'
+    );
+
+    if (!candidates.length) return { users: [], nextCursor: null };
+
+    // Compute follower counts for all candidates in ONE aggregation query.
+    // A user's follower count = number of other users whose `following` array
+    // contains their id.  `following` is a [String] array.
+    const candidateIdStrs = candidates.map(u => String(u._id));
+    const followerAgg = await User.aggregate([
+        { $match: { following: { $in: candidateIdStrs } } },
+        { $unwind: '$following' },
+        { $match: { following: { $in: candidateIdStrs } } },
+        { $group: { _id: '$following', count: { $sum: 1 } } },
+    ]);
+    const followerCountMap = {};
+    for (const row of followerAgg) {
+        followerCountMap[String(row._id)] = row.count;
+    }
+
+    // Build result list with computed fields, then sort deterministically.
+    const sorted = candidates
+        .map(u => {
+            const idStr = String(u._id);
+            return {
+                _id: u._id,
+                name: u.name,
+                lastName: u.lastName,
+                job: u.job,
+                profilePicture: u.profilePicture,
+                followersCount: followerCountMap[idStr] || 0,
+                isFollowing: false, // all candidates are already excluded from myFollowing
+                _isFoF: fofSet.has(idStr) ? 1 : 0,
+                _idStr: idStr,
+            };
+        })
+        .sort((a, b) => {
+            if (b._isFoF !== a._isFoF) return b._isFoF - a._isFoF;
+            if (b.followersCount !== a.followersCount) return b.followersCount - a.followersCount;
+            // Tiebreak by _id string (deterministic, avoids random ordering)
+            return b._idStr.localeCompare(a._idStr);
+        });
+
+    // Apply cursor (offset-based)
+    const page = sorted.slice(skip, skip + lim);
+    const hasMore = sorted.length > skip + lim;
+    const nextCursor = hasMore
+        ? Buffer.from(String(skip + lim)).toString('base64')
+        : null;
+
+    return {
+        users: page.map(({ _isFoF, _idStr, ...u }) => u),
+        nextCursor,
+    };
+};
+
 module.exports = {
     createNewUser,
     getUsers,
     getUser,
     getBlockedUsers,
-    updateUser, 
-    deleteUser, 
-    loginUser, 
+    updateUser,
+    deleteUser,
+    loginUser,
     pickSafeUserFields,
     followUser,
     blockUser,
     // cardsFeed,
     banUser,
-    promoteUserToAdmin
+    promoteUserToAdmin,
+    updateOnboarding,
+    getSuggestedUsers,
 };

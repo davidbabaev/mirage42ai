@@ -17,6 +17,8 @@ const {
     // cardsFeed,
     banUser,
     promoteUserToAdmin,
+    updateOnboarding,
+    getSuggestedUsers,
 } = require('../service/usersSvc');
 const { getRecentContacts } = require('../../chat/service/chatSvc');
 const validateUser = require('../validation/joi/validateUserWithJoi');
@@ -57,6 +59,37 @@ router.get('/users/recent-contacts', auth, async (req, res) => {
     try{
         const contacts = await getRecentContacts(req.user.userId, req.query.limit);
         res.send(contacts);
+    }
+    catch(err){
+        handleError(res, err);
+    }
+})
+
+// GET /users/suggested — users the requester might want to follow.
+// Block-aware both directions. FoF first, then by follower count. Paginated.
+// Must be before /users/:id so 'suggested' is not captured as an id.
+router.get('/users/suggested', auth, async (req, res) => {
+    try{
+        const result = await getSuggestedUsers(req.user.userId, {
+            limit: req.query.limit,
+            cursor: req.query.cursor,
+        });
+        res.send(result);
+    }
+    catch(err){
+        handleError(res, err);
+    }
+})
+
+// PATCH /users/me/onboarding — set interests and/or onboardingComplete on the
+// calling user only. Must be before /users/:id so 'me' is not captured as an id.
+router.patch('/users/me/onboarding', auth, async (req, res) => {
+    try{
+        const updated = await updateOnboarding(req.user.userId, {
+            interests: req.body.interests,
+            onboardingComplete: req.body.onboardingComplete,
+        });
+        res.send(updated);
     }
     catch(err){
         handleError(res, err);

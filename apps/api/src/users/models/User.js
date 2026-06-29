@@ -88,7 +88,15 @@ const UserSchema = new mongoose.Schema({
     googleId: {
         type: String,
         default: null
-    }
+    },
+    onboardingComplete: {
+        type: Boolean,
+        default: false,
+    },
+    interests: {
+        type: [String],
+        default: [],
+    },
 })
 
 // Support the recipient/people search (prefix match on name / lastName).

@@ -229,10 +229,35 @@ const removeComment = async (cardId, commentId) => {
 const getFeedCards = async (userId, isAdmin) => {
     const user = await User.findById(userId);
     if(!user) throw createError(404, "User not found");
-    
+
     const hidden = await getHiddenUserIds(userId);
     // following is already cleared on block, but stay defensive about both directions.
     const followingVisible = (user.following || []).filter(id => !hidden.has(String(id)));
+
+    // Popular fallback: when the viewer has no visible follows, show the most-liked
+    // public posts so new users never land on a blank feed. Tagged with isSuggested:true
+    // so the client can show a "Suggested for you" label. This path is NOT admin-gated
+    // (always status:active) and always excludes the viewer's own posts and blocked authors.
+    if (followingVisible.length === 0) {
+        const hiddenAndSelf = [...hidden, String(userId)];
+        // Fetch recent active cards (capped), then re-rank by likes in the application
+        // layer so Mongoose handles ObjectId casting without a raw aggregate.
+        const recentActive = await Card.find({
+            status: 'active',
+            userId: { $nin: hiddenAndSelf },
+        }).sort({ createdAt: -1 }).limit(100);
+
+        const popular = recentActive
+            .slice()
+            .sort((a, b) => b.likes.length - a.likes.length || b.createdAt - a.createdAt)
+            .slice(0, 30);
+
+        return popular.map(card => ({
+            ...stripBlockedComments(pickSafeCardFields(card), hidden),
+            isSuggested: true,
+        }));
+    }
+
     const filter = {userId: {$in: followingVisible}}
     if(!isAdmin){
         filter.status = 'active';
