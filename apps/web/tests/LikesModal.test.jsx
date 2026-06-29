@@ -135,6 +135,24 @@ describe('LikesModal', () => {
         expect(toggleFollow).toHaveBeenCalledWith('u0');
     });
 
+    it('does NOT render a follow button on the logged-in user\'s own row, but still shows them', async () => {
+        // The current user (mocked as _id 'me') liked their own card and appears
+        // in the list — you can't follow yourself, so no follow/unfollow button.
+        getCardLikesMock.mockResolvedValue({
+            users: [
+                { _id: 'me', name: 'Myself', lastName: 'Doe', job: 'Engineer', profilePicture: '' },
+                { _id: 'u1', name: 'Alice1', lastName: 'Doe', job: 'Engineer', profilePicture: '' },
+            ],
+            nextCursor: null,
+        });
+        renderLikesModal();
+        await waitFor(() => expect(screen.getByText('Myself Doe')).toBeInTheDocument());
+        // My own row has no follow/unfollow button…
+        expect(screen.queryByRole('button', { name: /follow myself/i })).not.toBeInTheDocument();
+        // …but other users still do.
+        expect(screen.getByRole('button', { name: /follow alice1/i })).toBeInTheDocument();
+    });
+
     it('shows Following text when already following', async () => {
         isFollowByMe.mockReturnValue(true);
         getCardLikesMock.mockResolvedValue({ users: makeUsers(1), nextCursor: null });

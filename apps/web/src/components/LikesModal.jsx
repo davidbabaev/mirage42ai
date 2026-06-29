@@ -7,6 +7,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import useFollowUser from '../hooks/useFollowUser';
+import { useAuth } from '../providers/AuthProvider';
 import { getCardLikes } from '../services/apiService';
 
 const LIMIT = 20;
@@ -16,6 +17,7 @@ const LIMIT = 20;
 // counts without loading everything at once.
 export default function LikesModal({ open, onClose, cardId, likeCount }) {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const { toggleFollow, isFollowByMe, getFollowersCount } = useFollowUser();
 
     const [users, setUsers] = useState([]);
@@ -143,18 +145,20 @@ export default function LikesModal({ open, onClose, cardId, likeCount }) {
                                     {getFollowersCount(u._id)} followers
                                 </Typography>
                             </Box>
-                            <Button
-                                size='small'
-                                variant={following ? 'outlined' : 'contained'}
-                                color={following ? 'inherit' : 'primary'}
-                                startIcon={!following && <PersonAddIcon />}
-                                onClick={() => handleFollow(u._id)}
-                                disabled={pending}
-                                aria-label={following ? `Unfollow ${u.name}` : `Follow ${u.name}`}
-                                sx={{ borderRadius: 5, fontSize: 11, flexShrink: 0, minWidth: 88 }}
-                            >
-                                {following ? 'Following' : 'Follow'}
-                            </Button>
+                            {u._id !== user?._id && (
+                                <Button
+                                    size='small'
+                                    variant={following ? 'outlined' : 'contained'}
+                                    color={following ? 'inherit' : 'primary'}
+                                    startIcon={!following && <PersonAddIcon />}
+                                    onClick={() => handleFollow(u._id)}
+                                    disabled={pending}
+                                    aria-label={following ? `Unfollow ${u.name}` : `Follow ${u.name}`}
+                                    sx={{ borderRadius: 5, fontSize: 11, flexShrink: 0, minWidth: 88 }}
+                                >
+                                    {following ? 'Following' : 'Follow'}
+                                </Button>
+                            )}
                         </Box>
                     );
                 })}
