@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import { useCardsProvider } from '../../providers/CardsProvider';
 import useDebounce from '../../hooks/useDebounce';
 import { useAuth } from '../../providers/AuthProvider';
@@ -7,15 +7,28 @@ import useFavoriteCards from '../../hooks/useFavoriteCards';
 import { CARD_CATEGORIES } from '../../constants/cardsCategories';
 import getTimeAgo from '../../utils/getTimeAgo';
 import MediaDisplay from '../../components/MediaDisplay';
-import { Avatar, Box, Button, Chip, IconButton, InputAdornment, MenuItem, Table, TableBody, TableCell, TableHead, TableRow, TextField, Tooltip, Typography } from '@mui/material';
+import { Avatar, Box, Button, Chip, CircularProgress, Dialog, DialogContent, DialogTitle, IconButton, InputAdornment, List, ListItem, ListItemAvatar, ListItemText, MenuItem, Skeleton, Table, TableBody, TableCell, TableHead, TableRow, TextField, Tooltip, Typography } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import DeleteIcon from '@mui/icons-material/Delete';
 import BlockIcon from '@mui/icons-material/Block';
+import FlagIcon from '@mui/icons-material/Flag';
+import CloseIcon from '@mui/icons-material/Close';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import CardPopupModal from '../../components/card/CardPopupModal';
 import OnLoadingSkeletonBox from '../../components/OnLoadingSkeletonBox';
 import { useUsersProvider } from '../../providers/UsersProvider';
+import { getCardReports } from '../../services/apiService';
+
+const REASON_LABELS = {
+  spam: 'Spam',
+  harassment: 'Harassment',
+  nudity: 'Nudity or Sexual Content',
+  hate: 'Hate Speech',
+  violence: 'Violence',
+  misinformation: 'Misinformation',
+  other: 'Other',
+};
 
 
 export default function AdminCardsPanel() {
@@ -47,7 +60,34 @@ export default function AdminCardsPanel() {
 
 
   const [confirmCard, setConfirmCard] = useState(null);
- 
+
+  // reporter list modal
+  const [reportModalCardId, setReportModalCardId] = useState(null);
+  const [reporters, setReporters] = useState([]);
+  const [reportersLoading, setReportersLoading] = useState(false);
+  const [reportersError, setReportersError] = useState(null);
+
+  const openReporterModal = useCallback(async (cardId) => {
+    setReportModalCardId(cardId);
+    setReporters([]);
+    setReportersError(null);
+    setReportersLoading(true);
+    try {
+      const data = await getCardReports(cardId);
+      setReporters(data);
+    } catch (err) {
+      setReportersError(err.message || 'Failed to load reporters.');
+    } finally {
+      setReportersLoading(false);
+    }
+  }, []);
+
+  const closeReporterModal = useCallback(() => {
+    setReportModalCardId(null);
+    setReporters([]);
+    setReportersError(null);
+  }, []);
+
   // sort table
   const [sortConfig, setSortConfig] = useState({column: '', direction: 'asc'});
   
@@ -327,6 +367,7 @@ export default function AdminCardsPanel() {
                           <TableCell sx={headCellSx}>Delete</TableCell>
                           <TableCell sx={headCellSx}>Ban</TableCell>
                           <TableCell sx={headCellSx}>Status</TableCell>
+                          <TableCell sx={headCellSx}>Reports</TableCell>
                       </TableRow>
                   </TableHead>
                   <TableBody>
@@ -399,8 +440,8 @@ export default function AdminCardsPanel() {
                                       )}
                                   </TableCell>
                                   <TableCell>
-                                      <Chip 
-                                          label={card.status === 'banned' ? "Banned" : "Active"} 
+                                      <Chip
+                                          label={card.status === 'banned' ? "Banned" : "Active"}
                                           size='small'
                                           sx={{
                                               bgcolor: card.status === 'banned' ? 'error.main' : 'success.main',
@@ -409,6 +450,33 @@ export default function AdminCardsPanel() {
                                               fontSize: 11
                                           }}
                                       />
+                                  </TableCell>
+                                  <TableCell>
+                                      {card.reportCount > 0 ? (
+                                          <Button
+                                              size='small'
+                                              variant='contained'
+                                              color='warning'
+                                              startIcon={<FlagIcon sx={{fontSize: 14}}/>}
+                                              aria-label={`View ${card.reportCount} reporters`}
+                                              onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  openReporterModal(card._id);
+                                              }}
+                                              sx={{
+                                                  minWidth: 0,
+                                                  fontSize: 12,
+                                                  fontWeight: 700,
+                                                  px: 1,
+                                                  py: 0.25,
+                                                  lineHeight: 1.5,
+                                              }}
+                                          >
+                                              {card.reportCount}
+                                          </Button>
+                                      ) : (
+                                          <Typography fontSize={12} color='text.disabled'>0</Typography>
+                                      )}
                                   </TableCell>
                               </TableRow>
                           )
@@ -426,6 +494,99 @@ export default function AdminCardsPanel() {
             onClose = {() => setSelectedCardId(null)}
         />
       )}
+
+      {/* Reporter list modal */}
+      <Dialog
+          open={!!reportModalCardId}
+          onClose={closeReporterModal}
+          fullWidth
+          maxWidth='sm'
+          PaperProps={{
+              sx: {
+                  mx: {xs: 1, sm: 2},
+                  width: {xs: '100%', sm: 'auto'},
+              }
+          }}
+      >
+          <DialogTitle sx={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1}}>
+              <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
+                  <FlagIcon color='warning' fontSize='small'/>
+                  <Typography fontWeight={600} fontSize={16}>Reporters</Typography>
+              </Box>
+              <IconButton size='small' onClick={closeReporterModal} aria-label='Close reporters modal'>
+                  <CloseIcon fontSize='small'/>
+              </IconButton>
+          </DialogTitle>
+          <DialogContent dividers sx={{p: 0, maxHeight: {xs: '70dvh', sm: 480}, overflowY: 'auto'}}>
+              {reportersLoading && (
+                  <List disablePadding>
+                      {[1, 2, 3].map((i) => (
+                          <ListItem key={i} divider sx={{gap: 1.5, py: 1.5, px: 2}}>
+                              <Skeleton variant='circular' width={36} height={36}/>
+                              <Box sx={{flex: 1}}>
+                                  <Skeleton width='60%' height={18}/>
+                                  <Skeleton width='40%' height={14}/>
+                              </Box>
+                          </ListItem>
+                      ))}
+                  </List>
+              )}
+              {!reportersLoading && reportersError && (
+                  <Box sx={{p: 3, textAlign: 'center'}}>
+                      <Typography color='error' fontSize={13}>{reportersError}</Typography>
+                  </Box>
+              )}
+              {!reportersLoading && !reportersError && reporters.length === 0 && (
+                  <Box sx={{p: 3, textAlign: 'center'}}>
+                      <Typography color='text.secondary' fontSize={13}>No reports found.</Typography>
+                  </Box>
+              )}
+              {!reportersLoading && !reportersError && reporters.length > 0 && (
+                  <List disablePadding>
+                      {reporters.map((r) => (
+                          <ListItem
+                              key={r._id}
+                              divider
+                              sx={{gap: 0, py: 1.5, px: 2, alignItems: 'flex-start'}}
+                          >
+                              <ListItemAvatar sx={{minWidth: 48}}>
+                                  <Avatar
+                                      src={r.reporter?.profilePicture}
+                                      sx={{width: 36, height: 36}}
+                                  >
+                                      {r.reporter?.name?.[0]}
+                                  </Avatar>
+                              </ListItemAvatar>
+                              <ListItemText
+                                  primary={
+                                      <Typography fontSize={13} fontWeight={600}>
+                                          {r.reporter?.name} {r.reporter?.lastName}
+                                      </Typography>
+                                  }
+                                  secondary={
+                                      <Box component='span' sx={{display: 'flex', flexDirection: 'column', gap: 0.25, mt: 0.5}}>
+                                          <Chip
+                                              label={REASON_LABELS[r.reason] ?? r.reason}
+                                              size='small'
+                                              color='warning'
+                                              variant='outlined'
+                                              sx={{fontSize: 11, width: 'fit-content'}}
+                                          />
+                                          <Typography component='span' fontSize={11} color='text.secondary'>
+                                              {getTimeAgo(r.createdAt)}
+                                          </Typography>
+                                      </Box>
+                                  }
+                                  slotProps={{
+                                      secondary: { component: 'div' }
+                                  }}
+                              />
+                          </ListItem>
+                      ))}
+                  </List>
+              )}
+          </DialogContent>
+      </Dialog>
 
       {/* Confirmation Dialog */}
       {confirmCard && (

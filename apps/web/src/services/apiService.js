@@ -129,6 +129,7 @@ export const getCardLikes = (cardId, cursor, limit = 20) => {
     if (cursor) params.set('cursor', cursor);
     return httpRequest(`/cards/${cardId}/likes?${params}`, 'GET');
 };
+export const getCardReports = (cardId) => httpRequest(`/cards/${cardId}/reports`, 'GET');
 
 
 // Notifications Requests

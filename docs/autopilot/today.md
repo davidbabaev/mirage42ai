@@ -14,11 +14,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### T10 — Admin: report column + reporter list
-- What: In `AdminCardsPanel.jsx`, add a "Reports" column showing each post's report count (muted when 0); clicking a non-zero count opens a modal listing who reported and why (from `GET /cards/:id/reports`). Surface `post-reported` admin notifications in the admin's notification view.
-- Decisions: clicking the count opens a modal (loading/empty/error states); reporter rows show name + reason + time.
-- Done when: admin table shows report counts; clicking a count lists reporters + reasons; new reports appear as admin notifications; verified in browser at 390px and 1280px.
-- Type: visual
 
 ### T11 — Block user from chat 3-dot menu
 - What: Add a "Block user" item to the chat ⋯ menu in `ChatHeader.jsx` (alongside Profile + Delete chat) and add a ⋯ menu with Profile / Block / Delete to `DockedChatWindow.jsx` (currently has none). Reuse `useBlockUser().toggleBlock(otherUserId)`. Confirm before blocking (reuse `ConfirmationDialog`); on success show a toast and close/leave the conversation (it disappears from the list/dock per the block-hardening change).

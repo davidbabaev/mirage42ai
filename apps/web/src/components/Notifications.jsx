@@ -91,6 +91,9 @@ export default function Notifications({
               if (actionType === 'post-removed') {
                   return '/allcards'
               }
+              if (actionType === 'post-reported') {
+                  return `/allcards?card=${notification.whichCard}`
+              }
               return `/profiledashboard/${notificationSenderUser?._id}/profilemain`
           }
 
@@ -104,6 +107,8 @@ export default function Notifications({
           ? 'liked your comment'
           : notification.actionType === 'comment-reply'
           ? 'replied to your comment'
+          : notification.actionType === 'post-reported'
+          ? 'reported a post'
           : isSystem
           ? 'Your post was removed for violating community guidelines.'
           : `${notification.actionType}d your post`
