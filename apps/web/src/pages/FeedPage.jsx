@@ -304,7 +304,7 @@ export default function FeedPage() {
                                 </Button>
                             }
                             sx={{
-                                mt: 2,
+                                mt: {xs: 2, md: 0},
                                 mb: 2,
                                 bgcolor: 'background.paper',
                                 borderRadius: 3,
