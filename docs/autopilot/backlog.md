@@ -46,7 +46,7 @@ Mark items [done] when finished so they drop out of the active list.
 - Progress: T7 likes modal done, commit fca64f9.
 - Progress: T8 report backend done, commit 1dc213d.
 - Progress: T9 report UI done, commit 4994277.
-- Progress: T10 admin reports done, commit <sha>. FEATURE 3 complete.
+- Progress: T10 admin reports done, commit 49bf7be. FEATURE 3 complete.
 
 ### FEATURE 4 — Block user from the chat 3-dot menu
 - What: Add "Block user" to the chat conversation overflow (⋯) menu alongside the existing Profile and Delete-chat items, in BOTH the full chat (`ChatHeader.jsx`) and the docked chat window (`DockedChatWindow.jsx`, which currently has no ⋯ menu — add one for parity). Uses the existing block path; after blocking, the conversation closes/leaves the list (consistent with the block-hardening change that drops blocked conversations from `getChats`).
