@@ -163,7 +163,7 @@ export default function UserReusableCard({
             </Typography>
 
             <Typography fontSize={14} px={2} pt={1}>
-                {userObject?.aboutMe.slice(0, 70) + '...'}
+                {userObject?.aboutMe ? userObject.aboutMe.slice(0, 70) + '...' : ''}
             </Typography>
         </Box>
 

@@ -1,16 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useCardsProvider } from '../providers/CardsProvider'
 
 import useDebounce from '../hooks/useDebounce';
 import useFavoriteCards from '../hooks/useFavoriteCards';
+import { useCursorPagination } from '../hooks/useCursorPagination';
 import { CARD_CATEGORIES } from '../constants/cardsCategories';
+import { getCardsSearch } from '../services/apiService';
 import SearchIcon from '@mui/icons-material/Search';
 import { Avatar, Box, Button, Checkbox, Chip, Container, Grid, IconButton, InputAdornment, Paper, TextField, Typography } from '@mui/material';
 import CardItem from '../components/CardItem';
 import CardPopupModal from '../components/card/CardPopupModal';
+import InfiniteScroll from '../components/InfiniteScroll';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
-import ExpandCircleDownIcon from '@mui/icons-material/ExpandCircleDown';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import CloseIcon from '@mui/icons-material/Close';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
@@ -22,21 +23,21 @@ export default function AllCardsPage() {
 
     // control filter cards by creator
     const [creatorId, setCreatorId] = useState('')
-    
+
     // search cards by title/ text
     const [searchCard, setSearchCard] = useState('')
-    
-    const debounceSearchCard = useDebounce(searchCard, 2000);
-    
+
+    const debouncedSearchCard = useDebounce(searchCard, 400);
+
     // sort cards (newest/ oldest)
     const [dateSort, setDateSort] = useState('');
-    
+
     // favorite/ like cards
     const [favorites, setFavorites] = useState('')
-    
+
     // card categories/ tags
     const [categoriesFilter, setCategoriesFilter] = useState([]);
-    
+
     const [openCommentCardId, setOpenCommentCardId] = useState(null);
     const [selectedCardId, setSelectedCardId] = useState(null);
     // When a notification deep-link includes ?comment=<id>, the modal scrolls to
@@ -55,18 +56,17 @@ export default function AllCardsPage() {
 
     // Mobile:
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-    
 
     // controls the search input for users
     const [creatorSearch, setCreatorSearch] = useState('')
-    
-    const {registeredCards} = useCardsProvider();
-    const [count, setCount] = useState(10);
-    const {users} = useUsersProvider(); 
-    const {favoriteCards ,handleFavoriteCards, handleRemoveCard} = useFavoriteCards();
+
+    // Creator picker: sourced from UsersProvider (already loaded); filtered client-side
+    // by creatorSearch. This avoids an extra network call and keeps the picker instant.
+    const {users} = useUsersProvider();
+    const {favoriteCards, handleFavoriteCards, handleRemoveCard} = useFavoriteCards();
 
     const [showAllCategories, setShowAllCategories] = useState(false)
-    
+
     const handleCategoryToggle = (category) => {
         setCategoriesFilter((prev) => {
             const include = prev.includes(category)
@@ -126,67 +126,41 @@ export default function AllCardsPage() {
     if(favorites !== ''){
         activeFilters.push({
             label: 'Favorite Posts',
-            onDelete: () => setFavorites('') 
+            onDelete: () => setFavorites('')
         })
     }
 
-    
+    // --- Server-driven pagination ---
 
-    const filteredCards = useMemo(() => {
+    // Consolidated server params; changing any resets page 1 via fetcher identity change.
+    const cardParams = useMemo(
+        () => ({ search: debouncedSearchCard, sort: dateSort, creatorId, categories: categoriesFilter }),
+        [debouncedSearchCard, dateSort, creatorId, categoriesFilter]
+    );
 
-        // Step 1: Choose starting data based on favorites filter:
-        let result = 
-        favorites === 'myFavorites' ? [...favoriteCards] : [...registeredCards];
-        
-        if(creatorId !== ''){
-            result = result.filter(card => card.userId === creatorId)
-        }
+    const fetcher = useCallback(
+        (cursor) =>
+            getCardsSearch(cardParams, cursor, 10).then(r => ({
+                items: r.items ?? [],
+                nextCursor: r.nextCursor ?? null,
+            })),
+        [cardParams]
+    );
 
-        if(debounceSearchCard !== ''){
-            result = result.filter(card => {
-                const findCreator = users.find(u => card.userId === u._id)
-                return (findCreator?.name + ' ' + findCreator?.lastName).toLowerCase().includes(debounceSearchCard.toLowerCase()) 
-                ||
-                (card.title || '').toLowerCase().includes(debounceSearchCard.toLowerCase()) 
-                ||
-                (card.category || '').toLowerCase().includes(debounceSearchCard.toLowerCase()) 
-                ||
-                (card.content || '').toLowerCase().includes(debounceSearchCard.toLowerCase()) 
-            })
-        }
+    const { items, hasMore, loading, loadingMore, error, refresh, loadMore } =
+        useCursorPagination(fetcher);
 
-        if(dateSort !== ''){
-            if(dateSort === 'newest'){
-                result.sort((a,b) => b.createdAt.localeCompare(a.createdAt))
-            }
-            else if (dateSort === 'oldest'){
-                result.sort((a,b) => a.createdAt.localeCompare(b.createdAt))   
-            } 
-            else if(dateSort === 'most liked'){
-                result.sort((a,b) => b.likes.length - a.likes.length)
-            }
-            else if(dateSort === 'most commented'){
-                result.sort((a,b) => b.comments.length - a.comments.length)
-            }
-        }
-
-        if(categoriesFilter.length > 0){
-            result = result.filter(card => categoriesFilter.includes(card.category))
-        }
-
-
-
-        return result;
-    }, [creatorId, registeredCards, debounceSearchCard, dateSort, categoriesFilter, favorites, favoriteCards, users])
-    
-    const countedRegisterCards = filteredCards.slice(0, count)    
+    // Trigger page-1 fetch whenever params change or favorites switches to browse mode.
+    useEffect(() => {
+        if (favorites !== 'myFavorites') refresh();
+    }, [refresh, favorites]);
 
   return (
     <Container maxWidth="lg" sx={{py:3, pb: {xs: 20, md: 3}}}>
         <Grid container spacing={3}>
             {/* Sidebar */}
-            <Grid 
-                size={{xs: 12, md:4}} 
+            <Grid
+                size={{xs: 12, md:4}}
                 sx={{
                     position: {xs: 'fixed', md: 'sticky'},
                     top: {xs: 0, md: 10},
@@ -198,7 +172,7 @@ export default function AllCardsPage() {
                     bgcolor: {xs: 'background.default', md: 'transparent'},
                     zIndex: {xs: 1000, md: 'auto'},
                     p: {xs: 2, md:0},
-                    display: {xs: isFiltersOpen ? 'flex' : 'none', md: 'flex'}, 
+                    display: {xs: isFiltersOpen ? 'flex' : 'none', md: 'flex'},
                     flexDirection: 'column',
                     gap: 2,
                     pb: {xs: 4, md: 0},
@@ -245,7 +219,7 @@ export default function AllCardsPage() {
                                 {sort.label}
                             </Typography>
                         </Box>
-                        
+
                     ))}
                 </Paper>
 
@@ -264,55 +238,33 @@ export default function AllCardsPage() {
                     </Typography>
 
 
-                    {CARD_CATEGORIES.slice(0, showAllCategories ? CARD_CATEGORIES.length : 7).map((category) => {
-
-                        const countedPostsByCat = registeredCards.filter(card => card.category === category).length
-
-                        return(
-                            <Box 
-                                key={category} 
-                                onClick ={() => handleCategoryToggle(category)}
-                                sx={{
-                                    display: 'flex', 
-                                    alignItems: 'center',
-                                    borderRadius: 2,
-                                    bgcolor: categoriesFilter.includes(category) ? 'action.selected' : 'transparent',
-                                    cursor: 'pointer',
-                                    pr: 1,
-                                    my: 1,
-                                    opacity: countedPostsByCat === 0 ? 0.4 : 1,
-                                    pointerEvents: countedPostsByCat === 0 ? 'none' : 'auto'
-                                }}
-                            
+                    {CARD_CATEGORIES.slice(0, showAllCategories ? CARD_CATEGORIES.length : 7).map((category) => (
+                        <Box
+                            key={category}
+                            onClick={() => handleCategoryToggle(category)}
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                borderRadius: 2,
+                                bgcolor: categoriesFilter.includes(category) ? 'action.selected' : 'transparent',
+                                cursor: 'pointer',
+                                pr: 1,
+                                my: 1,
+                            }}
+                        >
+                            <Checkbox
+                                size='small'
+                                checked={categoriesFilter.includes(category)}
+                            />
+                            <Typography
+                                fontSize={14}
+                                color='text.secondary'
                             >
-                                <Checkbox
-                                    size='small'
-                                    checked={categoriesFilter.includes(category)}
-                                    disabled={countedPostsByCat < 1}
-                                    />
-                                <Box
-                                    sx={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        flex: 1,
-                                    }}
-                                >
-                                    <Typography
-                                        fontSize={14} 
-                                        color='text.secondary'
-                                    >
-                                        {category}
-                                    </Typography>
-
-                                    <Typography fontWeight={700} fontSize={13} color='text.disabled'>
-                                        {countedPostsByCat}
-                                    </Typography>
-                                </Box>
+                                {category}
+                            </Typography>
                         </Box>
-                        )
-                    })}
-                    <Button 
+                    ))}
+                    <Button
                         sx={{
                             border: '1px solid',
                             borderColor: 'primary',
@@ -377,14 +329,13 @@ export default function AllCardsPage() {
 
                     <Box
                         sx={{
-                            // top: 20,
                             maxHeight: 300,
                             overflow: 'auto',
                         }}
                     >
 
                         {filterCreators.map((userF) => (
-                            <Box 
+                            <Box
                                 key={userF._id}
                                 onClick={() => setCreatorId(userF._id === creatorId ? '' : userF._id)}
                                 sx={{
@@ -400,7 +351,7 @@ export default function AllCardsPage() {
                                     '&:hover': {bgcolor: 'action.hover'}
                                 }}
                                 >
-                                <Avatar 
+                                <Avatar
                                     src={userF.profilePicture}
                                     sx={{width: 34, height: 34}}
                                     />
@@ -505,10 +456,10 @@ export default function AllCardsPage() {
                             border: '1px solid',
                             borderColor: 'divider',
                             borderRadius: 5,
-                        }} 
+                        }}
                         variant='contained'
                         size='small'
-                        onClick={() => setIsFiltersOpen(!isFiltersOpen)}    
+                        onClick={() => setIsFiltersOpen(!isFiltersOpen)}
                     >
                         <CloseIcon color='divider'/>
                     </IconButton>
@@ -550,36 +501,36 @@ export default function AllCardsPage() {
                             borderColor: 'divider',
                             borderRadius: 5,
                             mb:1
-                        }} 
+                        }}
                         variant='contained'
                         size='small'
-                        onClick={() => setIsFiltersOpen(!isFiltersOpen)}    
+                        onClick={() => setIsFiltersOpen(!isFiltersOpen)}
                     >
                         <FilterListIcon color='divider'/>
                     </IconButton>
                 </Box>
 
-                <Typography 
+                <Typography
                     color='text.secondary'
                     fontSize={15}
                     mx={{xs: 1, md: 1}}
                     mt={{xs: 0, md: 1}}
                 >
-                    {filteredCards.length} Results
+                    {favorites === 'myFavorites' ? favoriteCards.length : items.length}{hasMore && favorites !== 'myFavorites' ? '+' : ''} Results
                 </Typography>
 
-                <Box 
+                <Box
                     sx={{
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
+                        display: 'flex',
+                        justifyContent: 'space-between',
                         py:1,
                     }}>
 
                     <Box sx={{
-                        display: 'flex', 
+                        display: 'flex',
                         justifyContent: 'start',
                         alignItems: {xs: 'flex-start', md: 'center'},
-                        gap: 1, 
+                        gap: 1,
                         flexWrap: 'wrap'
                     }}>
 
@@ -607,18 +558,52 @@ export default function AllCardsPage() {
                     </Button>
                 )}
 
-                {countedRegisterCards.map((card) => (
+                {/* Favorites mode: client-side list, no server pagination */}
+                {favorites === 'myFavorites' && favoriteCards.map((card) => (
                     <CardItem
                         key={card._id}
                         card={card}
                         onOpenCard={() => setSelectedCardId(card._id)}
                         openCommentCardId={openCommentCardId}
-                        setOpenCommentCardId = {setOpenCommentCardId}
-                        onRemoveSavedCard = {() => handleRemoveCard(card)}
-                        onSaveCard = {() => handleFavoriteCards(card)}
-                        isSavedCard = {favoriteCards.some(c => c._id === card._id)}
+                        setOpenCommentCardId={setOpenCommentCardId}
+                        onRemoveSavedCard={() => handleRemoveCard(card)}
+                        onSaveCard={() => handleFavoriteCards(card)}
+                        isSavedCard={favoriteCards.some(c => c._id === card._id)}
                     />
                 ))}
+
+                {/* Browse mode: server-paginated infinite scroll */}
+                {favorites !== 'myFavorites' && (
+                    <InfiniteScroll
+                        loading={loading}
+                        loadingMore={loadingMore}
+                        hasMore={hasMore}
+                        error={!!error}
+                        isEmpty={!loading && items.length === 0}
+                        onLoadMore={loadMore}
+                        onRetry={refresh}
+                        emptyState={
+                            <Box sx={{ textAlign: 'center', py: 5 }}>
+                                <Typography fontSize={14} color='text.secondary'>
+                                    No posts found.
+                                </Typography>
+                            </Box>
+                        }
+                    >
+                        {items.map((card) => (
+                            <CardItem
+                                key={card._id}
+                                card={card}
+                                onOpenCard={() => setSelectedCardId(card._id)}
+                                openCommentCardId={openCommentCardId}
+                                setOpenCommentCardId={setOpenCommentCardId}
+                                onRemoveSavedCard={() => handleRemoveCard(card)}
+                                onSaveCard={() => handleFavoriteCards(card)}
+                                isSavedCard={favoriteCards.some(c => c._id === card._id)}
+                            />
+                        ))}
+                    </InfiniteScroll>
+                )}
 
                 {selectedCardId && (
                     <CardPopupModal
@@ -626,24 +611,6 @@ export default function AllCardsPage() {
                         onClose={() => { setSelectedCardId(null); setHighlightCommentId(null); }}
                         highlightCommentId={highlightCommentId}
                     />
-                )}
-
-                {filteredCards.length > count &&(
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            width: '100%', 
-                            justifyContent: 'center'}}
-                    >
-                        <Button 
-                            onClick={() => setCount(count + 10)}
-                            endIcon={<ExpandCircleDownIcon/>} 
-                            variant='outlined'
-                            sx={{borderRadius: 5}}
-                            >
-                                Load More
-                        </Button>
-                    </Box>
                 )}
 
             </Grid>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import useDebounce from '../hooks/useDebounce';
 import useSelectedUsers from '../hooks/useSelectedUsers';
 import { Box, Button, Checkbox, Chip, Container, Grid, IconButton, InputAdornment, Paper, TextField, Typography } from '@mui/material';
@@ -6,35 +6,22 @@ import UsersPageSorts from '../components/UsersPageSorts';
 import SearchIcon from '@mui/icons-material/Search';
 import UserReusableCard from '../components/UserReusableCard';
 import { useCardsProvider } from '../providers/CardsProvider';
-import ExpandCircleDownIcon from '@mui/icons-material/ExpandCircleDown';
-import OnLoadingSkeletonBox from '../components/OnLoadingSkeletonBox';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import CloseIcon from '@mui/icons-material/Close';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import { useUsersProvider } from '../providers/UsersProvider';
 import { useAuth } from '../providers/AuthProvider';
+import { useCursorPagination } from '../hooks/useCursorPagination';
+import InfiniteScroll from '../components/InfiniteScroll';
+import { getUsersSearch, getUserCountries } from '../services/apiService';
 
 
 function UsersPage() {
 
-    const {users, loading} = useUsersProvider();
     const {user} = useAuth();
-
-    // Exclude the logged-in user from THIS page only (not the provider, whose
-    // full list backs follower counts and the own-profile route). Everything the
-    // page derives — country tallies, filters, results count, grid — uses this
-    // self-excluded base so all of them stay consistent. Guards anonymous users.
-    const usersList = useMemo(
-        () => users.filter(u => u._id !== user?._id),
-        [users, user?._id]
-    );
-    const {selectedUsers ,selectHandleUser, handleRemoveUser} = useSelectedUsers();
-    const [count, setCount] = useState(10);
+    const {selectedUsers, selectHandleUser, handleRemoveUser} = useSelectedUsers();
     const [search, setSearch] = useState('')
-    const debounceSearch = useDebounce(search, 2000);
+    const debouncedSearch = useDebounce(search, 400);
     const {registeredCards} = useCardsProvider();
-    
+
     // sorts
     const [ageSort, setAgeSort] = useState('');
     const [nameSort, setNameSort] = useState('');
@@ -45,28 +32,34 @@ function UsersPage() {
 
     // Mobile:
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-    
+
+    // Country options loaded once from server (replaces deriving from loaded users)
+    const [availableCountries, setAvailableCountries] = useState([]);
+
+    useEffect(() => {
+        getUserCountries()
+            .then(data => setAvailableCountries(data?.countries ?? []))
+            .catch(() => {});
+    }, []);
+
 
     const SORT_AGE = [
         {label: 'All', value: ''},
         {label: 'Youngest', value: 'youngest'},
         {label: 'Oldest', value: 'oldest'}
     ]
-    
+
     const SORT_NAME_AZ = [
         {label: 'All', value: ''},
         {label: 'A → Z', value: 'az'},
         {label: 'Z → A', value: 'za'}
     ]
-    
+
     const SORT_GENDER = [
         {label: 'All', value: ''},
         {label: 'Male', value: 'Male'},
         {label: 'Female', value: 'Female'}
     ]
-
-    const countries = [...new Set(usersList.map(user => user.address?.country.toLowerCase()))]
-    // remove doplicates from array, and we get new array by name countries that without duplicates
 
     const handleCountryToggle = (country) => {
         setCountriesFilter((prev) => {
@@ -78,34 +71,68 @@ function UsersPage() {
         })
     }
 
+    // Collapse ageSort + nameSort into a single `sort` value for the server query.
+    // Age selection wins if set; otherwise fall through to name sort.
+    // The UI already enforces mutual exclusivity (selecting one clears the other),
+    // so `ageSort || nameSort` reliably produces the correct single value.
+    const searchParams = useMemo(() => ({
+        search: debouncedSearch,
+        gender: genderFilter,
+        sort: ageSort || nameSort,
+        countries: countriesFilter,
+    }), [debouncedSearch, genderFilter, ageSort, nameSort, countriesFilter]);
+
+    const fetcher = useCallback(
+        (cursor) =>
+            getUsersSearch(searchParams, cursor, 15).then(r => ({
+                items: r.items ?? [],
+                nextCursor: r.nextCursor ?? null,
+            })),
+        [searchParams]
+    );
+
+    const { items, hasMore, loading, loadingMore, error, refresh, loadMore } = useCursorPagination(fetcher);
+
+    // When searchParams change, fetcher identity changes → refresh() changes identity →
+    // this effect fires and resets pagination to page 1 with the new params.
+    useEffect(() => {
+        refresh();
+    }, [refresh]);
+
+    // Exclude the logged-in user client-side (server may include self).
+    const displayUsers = useMemo(
+        () => items.filter(u => u._id !== user?._id),
+        [items, user?._id]
+    );
+
     const activeFilters = [];
 
     if(ageSort !== ''){
         activeFilters.push({
             label: ageSort,
-            onDelete: () => setAgeSort('') 
+            onDelete: () => setAgeSort('')
         })
     }
 
     if(nameSort !== ''){
         activeFilters.push({
             label: nameSort,
-            onDelete: () => setNameSort('') 
+            onDelete: () => setNameSort('')
         })
     }
 
     if(genderFilter !== ''){
         activeFilters.push({
             label: genderFilter,
-            onDelete: () => setGenderFilter('') 
+            onDelete: () => setGenderFilter('')
         })
     }
 
     if(countriesFilter.length > 0){
-        countriesFilter.forEach(country  => {
+        countriesFilter.forEach(country => {
             activeFilters.push({
                 label: country,
-                onDelete: () => handleCountryToggle(country) 
+                onDelete: () => handleCountryToggle(country)
             })
         })
     }
@@ -118,79 +145,12 @@ function UsersPage() {
         setSearch('')
     }
 
-    const filtred = useMemo(() => {
-        let result = usersList;
-
-        // country filter:
-        if(countriesFilter.length > 0){
-            result = result.filter(user => countriesFilter.includes(user?.address?.country.toLowerCase()))
-        }
-
-        // search by name;
-        result = result.filter((user) => {
-            return user?.name?.toLowerCase().includes(debounceSearch.toLowerCase())
-        });
-
-        // filter: Gender
-        if(genderFilter !== ''){
-            result = result.filter(user => user.gender === genderFilter)
-        }
-
-        // sorts:
-        result.sort((a,b) => {
-            let comparison = 0;
-
-            // age sort:
-            if(ageSort === 'youngest'){
-                comparison = a.age - b.age;
-            } else if(ageSort === 'oldest'){
-                comparison = b.age - a.age;
-            }
-
-            // name sort:
-            if(comparison === 0){
-                if(nameSort === 'az'){
-                    comparison = a.name.localeCompare(b.name);
-                } else if(nameSort === 'za'){
-                    comparison = b.name.localeCompare(a.name);
-                }
-            }
-
-            return comparison;
-        });
-
-        return result;
-    }, [debounceSearch, usersList, ageSort, nameSort, genderFilter, countriesFilter])
-
-
-    const filteredWithoutCountry = useMemo(() => {
-        let result = usersList;
-
-        // search by name;
-        result = result.filter((user) => {
-            return user?.name?.toLowerCase().includes(debounceSearch.toLowerCase())
-        });
-
-        // filter: Gender
-        if(genderFilter !== ''){
-            result = result.filter(user => user.gender === genderFilter)
-        }
-
-        return result
-
-    }, [usersList, debounceSearch, genderFilter])
-    
-    const visibleUsers = filtred.slice(0, count)
-    
-    if(loading) return <OnLoadingSkeletonBox/>
-    
-
     return(
         <Container maxWidth='lg' sx={{py:3, pb: 3}}>
             <Grid container spacing={3}>
 
                 {/* Side Bar */}
-                <Grid 
+                <Grid
                     size={{xs: 12, md: 4}}
                     sx={{
                         position: {xs: 'fixed', md: 'sticky'},
@@ -203,16 +163,16 @@ function UsersPage() {
                         bgcolor: {xs: 'background.default', md: 'transparent'},
                         zIndex: {xs: 1000, md:'auto'},
                         p: {xs: 2, md:0},
-                        display: {xs: isFiltersOpen ? 'flex' : 'none', md: 'flex'}, 
-                        // justifyContent: 'center', 
+                        display: {xs: isFiltersOpen ? 'flex' : 'none', md: 'flex'},
+                        // justifyContent: 'center',
                         flexDirection: 'column',
                         gap: 2,
                         pb: {xs: 4, md: 0},
-                        
+
                         // hide scrollbar visually but keep it functional
                         '&::-webkit-scrollbar': {display: 'none'}
                     }}
-                >   
+                >
                     {/* Sort Age*/}
                     <UsersPageSorts
                         style={{
@@ -223,11 +183,11 @@ function UsersPage() {
                         options = {SORT_AGE}
                         selectedValue = {ageSort}
                         onSelect = {(value) => {
-                            setAgeSort(value), 
+                            setAgeSort(value),
                             setNameSort('')
                         }}
                     />
-                    
+
                     {/* Sort */}
                     <UsersPageSorts
                         style={{
@@ -242,7 +202,7 @@ function UsersPage() {
                             setAgeSort('')
                         }}
                     />
-                    
+
                     {/* Sort */}
                     <UsersPageSorts
                         title = 'Sort by Gender'
@@ -260,56 +220,42 @@ function UsersPage() {
                             p: 2,
                         }}
                     >
-                        {countries.slice(0, 10).map((countryC) => {
-
-                            const countedUsersByCountry = filteredWithoutCountry.filter(u => u.address.country.toLowerCase() === countryC).length
-
-                            return(
-                                <Box 
-                                    key={countryC} 
-                                    onClick ={() => handleCountryToggle(countryC)}
+                        {availableCountries.slice(0, 10).map((countryC) => (
+                            <Box
+                                key={countryC}
+                                onClick={() => handleCountryToggle(countryC)}
+                                sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    borderRadius: 2,
+                                    bgcolor: countriesFilter.includes(countryC) ? 'action.selected' : 'transparent',
+                                    cursor: 'pointer',
+                                    pr: 1,
+                                    my: 1,
+                                }}
+                            >
+                                <Checkbox
+                                    size='small'
+                                    checked={countriesFilter.includes(countryC)}
+                                />
+                                <Box
                                     sx={{
-                                        display: 'flex', 
+                                        display: 'flex',
                                         alignItems: 'center',
-                                        borderRadius: 2,
-                                        bgcolor: countriesFilter.includes(countryC) ? 'action.selected' : 'transparent',
-                                        cursor: 'pointer',
-                                        pr: 1,
-                                        my: 1,
-                                        opacity: countedUsersByCountry === 0 ? 0.4 : 1,
-                                        pointerEvents: countedUsersByCountry === 0 ? 'none' : 'auto'
+                                        flex: 1,
                                     }}
-                                
                                 >
-                                    <Checkbox
-                                        size='small'
-                                        checked={countriesFilter.includes(countryC)}
-                                        disabled={countedUsersByCountry < 1}
-                                        />
-                                    <Box
-                                        sx={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'space-between',
-                                            flex: 1,
-                                        }}
+                                    <Typography
+                                        fontSize={14}
+                                        color='text.secondary'
                                     >
-                                        <Typography
-                                            fontSize={14} 
-                                            color='text.secondary'
-                                        >
-                                            {countryC}
-                                        </Typography>
-    
-                                        <Typography fontWeight={700} fontSize={13} color='text.disabled'>
-                                            {countedUsersByCountry}
-                                        </Typography>
-                                    </Box>
+                                        {countryC}
+                                    </Typography>
+                                </Box>
                             </Box>
-                            )
-                        })}
+                        ))}
                     </Paper>
-                    
+
                     <Box sx={{display: {xs: 'flex', md: 'none'}, gap: 1}}>
                         <Button
                             variant='contained'
@@ -331,17 +277,17 @@ function UsersPage() {
                                 border: '1px solid',
                                 borderColor: 'divider',
                                 borderRadius: 5,
-                            }} 
+                            }}
                             variant='contained'
                             size='small'
-                            onClick={() => setIsFiltersOpen(!isFiltersOpen)}    
+                            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
                         >
                             <CloseIcon color='divider'/>
                         </IconButton>
                     </Box>
                 </Grid>
-                
-                
+
+
 
                 <Grid size={{xs: 12, md:8}}>
 
@@ -376,36 +322,36 @@ function UsersPage() {
                                 borderColor: 'divider',
                                 borderRadius: 5,
                                 mb:1
-                            }} 
+                            }}
                             variant='contained'
                             size='small'
-                            onClick={() => setIsFiltersOpen(!isFiltersOpen)}    
+                            onClick={() => setIsFiltersOpen(!isFiltersOpen)}
                         >
                             <FilterListIcon color='divider'/>
                         </IconButton>
                     </Box>
 
-                    <Typography 
+                    <Typography
                         color='text.secondary'
                         fontSize={15}
                         mx={{xs: 1, md: 1}}
                         mt={{xs: 0, md: 1}}
                     >
-                        {filtred.length} Results
+                        {displayUsers.length} Results
                     </Typography>
 
                     <Box
                         sx={{
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            p:1, 
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            p:1,
                         }}
                     >
                         <Box
                             sx={{
-                                display: 'flex', 
-                                gap: 1, 
-                                alignItems: 'center', 
+                                display: 'flex',
+                                gap: 1,
+                                alignItems: 'center',
                                 flexWrap: 'wrap'
                             }}
                         >
@@ -432,52 +378,45 @@ function UsersPage() {
                         </Button>
                     )}
 
-                    
+
                     {/* Users List */}
-                    <Box
-                        sx={{
-                            display: 'grid', 
-                            // flexWrap: 'wrap',
-                            gridTemplateColumns: {xs: 'repeat(1, 1fr)', md:'repeat(2, 1fr)'},
-                            py: 3, 
-                            gap: 2,
-                            // width: '100%',
-                            // justifyContent: 'space-between'
-                        }}  
+                    <InfiniteScroll
+                        loading={loading}
+                        loadingMore={loadingMore}
+                        hasMore={hasMore}
+                        error={!!error}
+                        isEmpty={!loading && items.length === 0}
+                        onLoadMore={loadMore}
+                        onRetry={refresh}
+                        emptyState={
+                            <Box sx={{ textAlign: 'center', py: 6 }}>
+                                <Typography color='text.secondary'>No users found</Typography>
+                            </Box>
+                        }
                     >
-                        {visibleUsers.map((user) => {
-                            const myCardsCount = registeredCards.filter(card => card.userId === user?._id).length;
-                            return(
-                                <UserReusableCard
-                                    key={user._id}
-                                    userObject={user}
-                                    postsCount={myCardsCount}
-                                    onRemoveSaved={() => handleRemoveUser(user)}
-                                    onSave = {() => selectHandleUser(user)}
-                                    isSaved={selectedUsers.some(s => s._id === user._id)}
-                                />
-                            )
-                        })}
-                    </Box>
-
-
-                    {filtred.length > count &&(
                         <Box
                             sx={{
-                                display: 'flex',
-                                width: '100%', 
-                                justifyContent: 'center'}}
+                                display: 'grid',
+                                gridTemplateColumns: {xs: 'repeat(1, 1fr)', md:'repeat(2, 1fr)'},
+                                py: 3,
+                                gap: 2,
+                            }}
                         >
-                            <Button 
-                                onClick={() => setCount(count + 10)}
-                                endIcon={<ExpandCircleDownIcon/>} 
-                                variant='outlined'
-                                sx={{borderRadius: 5}}
-                                >
-                                    Load More
-                            </Button>
+                            {displayUsers.map((u) => {
+                                const myCardsCount = registeredCards.filter(card => card.userId === u?._id).length;
+                                return(
+                                    <UserReusableCard
+                                        key={u._id}
+                                        userObject={u}
+                                        postsCount={myCardsCount}
+                                        onRemoveSaved={() => handleRemoveUser(u)}
+                                        onSave={() => selectHandleUser(u)}
+                                        isSaved={selectedUsers.some(s => s._id === u._id)}
+                                    />
+                                )
+                            })}
                         </Box>
-                    )}
+                    </InfiniteScroll>
                 </Grid>
 
             </Grid>

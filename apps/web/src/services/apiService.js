@@ -153,6 +153,26 @@ export const getFollowers = (userId, cursor, limit = 15) =>
 export const getFollowing = (userId, cursor, limit = 15) =>
     httpRequest(`/users/${userId}/following?${pageParams(cursor, limit)}`, 'GET');
 
+// Server-driven search/sort/filter + pagination for the browse pages.
+// Array filters (countries, categories) are sent comma-joined. → { items, nextCursor }.
+export const getUserCountries = () => httpRequest('/users/countries', 'GET');
+export const getUsersSearch = (params = {}, cursor, limit = 15) => {
+    const extra = {};
+    if (params.search) extra.search = params.search;
+    if (params.gender) extra.gender = params.gender;
+    if (params.sort) extra.sort = params.sort;
+    if (params.countries?.length) extra.countries = params.countries.join(',');
+    return httpRequest(`/users/search?${pageParams(cursor, limit, extra)}`, 'GET');
+};
+export const getCardsSearch = (params = {}, cursor, limit = 10) => {
+    const extra = {};
+    if (params.search) extra.search = params.search;
+    if (params.sort) extra.sort = params.sort;
+    if (params.creatorId) extra.creatorId = params.creatorId;
+    if (params.categories?.length) extra.categories = params.categories.join(',');
+    return httpRequest(`/cards/search?${pageParams(cursor, limit, extra)}`, 'GET');
+};
+
 
 // Notifications Requests
 export const getNotifications = () => httpRequest(`/notifications`, 'GET');

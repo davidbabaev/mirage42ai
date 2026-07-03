@@ -51,22 +51,36 @@ vi.mock('../src/hooks/useFollowUser', () => ({
         toggleFollow: vi.fn(),
     }),
 }));
+// UsersPage now fetches its list server-side (getUsersSearch) instead of filtering
+// the provider array. Mock the two endpoints (resolved values set per-test, since
+// the factory is hoisted above the fixture consts). The page still excludes self
+// client-side (displayUsers), which is what this regression guards.
+vi.mock('../src/services/apiService', async (importOriginal) => ({
+    ...(await importOriginal()),
+    getUsersSearch: vi.fn(),
+    getUserCountries: vi.fn(),
+}));
 
 import UsersPage from '../src/pages/UsersPage';
 import UserReusableCard from '../src/components/UserReusableCard';
+import { getUsersSearch, getUserCountries } from '../src/services/apiService';
 
 afterEach(() => cleanup());
 
 describe('UsersPage — excludes the logged-in user', () => {
-    it('does not render the current user in the all-users grid', () => {
+    it('does not render the current user in the all-users grid', async () => {
+        getUsersSearch.mockResolvedValue({ items: [meUser, otherUser], nextCursor: null });
+        getUserCountries.mockResolvedValue({ countries: [] });
         renderWithRouter(<UsersPage />);
-        expect(screen.queryByText('Otherother Tester')).toBeInTheDocument();
+        expect(await screen.findByText('Otherother Tester')).toBeInTheDocument();
         expect(screen.queryByText('Mememe Tester')).not.toBeInTheDocument();
     });
 
-    it('the results count reflects self being excluded (1, not 2)', () => {
+    it('the results count reflects self being excluded (1, not 2)', async () => {
+        getUsersSearch.mockResolvedValue({ items: [meUser, otherUser], nextCursor: null });
+        getUserCountries.mockResolvedValue({ countries: [] });
         renderWithRouter(<UsersPage />);
-        expect(screen.getByText(/^\s*1 Results/)).toBeInTheDocument();
+        expect(await screen.findByText(/^\s*1 Results/)).toBeInTheDocument();
     });
 });
 
