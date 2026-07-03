@@ -20,16 +20,17 @@ Then work the tasks under "## Tasks" in order, top to bottom. For each task:
      c. The task passes only if the screenshots show the "Done when" is actually met.
      d. If you started the dev server yourself in step a, stop it once the screenshots are taken.
 4. If the check passes → commit just that task's changes with a clear message, then move to the next task.
-4b. After committing a passing task, update the tracking files:
+4b. MANDATORY CLOSE-OUT — the moment a task is committed, update the tracking files, in the SAME commit or immediately after. A task is NOT "done" until docs/autopilot/backlog.md reflects it; a committed task still sitting under "## Active" is a FAILURE, not a partial success.
     - Remove that task's block from docs/autopilot/today.md (it's finished).
-    - In docs/autopilot/backlog.md, find the matching item under "## Active" and move it to the "## Awaiting review" section, adding a line: "Built on branch <branch-name>, commit <short-sha> — awaiting review/merge."
-    - These tracking-file edits are bookkeeping; include them in the same task commit or a follow-up commit, but never skip them.
+    - In docs/autopilot/backlog.md, move the matching item OUT of "## Active". Because the branch is committed but not yet merged, move it to "## Awaiting review" and add: "Built on branch <branch-name>, commit <short-sha> — awaiting review/merge." (It moves on to "## Done" at merge time — see merge-instruction.md.) Never leave a committed task under "## Active".
+    - Include these edits in the same task commit or a follow-up commit — never skip them, and never start the next task while the previous one is still stale under "## Active".
 5. If the check fails → make ONE fix attempt, then re-check. If it still fails, STOP. Do not start the next task. Leave a short note of what failed and what you tried.
 
 Hard rules:
 - Work only on the autopilot branch you created in step 0. Never commit to main.
 - Never edit docs/master-plan.md.
 - Each commit contains one task's code changes plus the bookkeeping edits to docs/autopilot/today.md and docs/autopilot/backlog.md for that same task. Never combine TWO tasks' code changes into one commit.
+- A committed task that is still sitting under "## Active" in docs/autopilot/backlog.md is a FAILURE. The close-out in step 4b is mandatory: backlog.md must reflect every committed task before you move on.
 - Do not push; leave the branch local for me to review.
 - When a decision is ambiguous, decide it yourself using CLAUDE.md and existing codebase conventions as your guide, log the decision and your reasoning in the report, and continue. Only STOP for: a failing check you cannot fix in one attempt, a destructive/irreversible action, or a task that is technically impossible as written. Never stop merely because a choice is open — make it and record it.
 - Maintain a DECISIONS LOG in the final report: every judgment call made during the run, with one line of reasoning each, so the human can review all choices at merge time.
