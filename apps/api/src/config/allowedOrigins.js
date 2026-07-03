@@ -11,9 +11,11 @@
 // test-friendly.
 
 const DEV_ORIGIN = 'http://localhost:5173';
-// Canonical production front-end (Vercel). Baked in so the live SPA is allowed
-// regardless of the ALLOWED_ORIGINS env var; set ALLOWED_ORIGINS to add more.
-const PROD_ORIGIN = 'https://mirage42ai-web.vercel.app';
+// Canonical production front-end (custom domain). Baked in so the live SPA is
+// allowed regardless of the ALLOWED_ORIGINS env var; set ALLOWED_ORIGINS to add
+// any other still-live origins — the www subdomain, the previous Vercel URL, and
+// preview deploys.
+const PROD_ORIGIN = 'https://mirage42ai.com';
 
 function getAllowedOrigins() {
     const fromEnv = (process.env.ALLOWED_ORIGINS || '')
