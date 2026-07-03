@@ -3,7 +3,7 @@ const { createError } = require('../../utils/handleErrors');
 const normalizeCard = require('../helpers/normalizeCard');
 const Card = require('../models/Card')
 const Notification = require('../../notifications/models/Notifications');
-const { normalizeLimit, decodeCursor, runKeysetPage } = require('../../utils/cursorPagination');
+const { normalizeLimit, decodeCursor, encodeCursor, runKeysetPage } = require('../../utils/cursorPagination');
 const _ = require('lodash');
 
 // Ids whose content the requester must not see: users they blocked AND users
@@ -360,6 +360,89 @@ const getCardLikes = async (cardId, requesterId, isAdmin, opts = {}) => {
     };
 };
 
+// GET /cards/explore — cursor-paginated list of active public cards by recency.
+// Optional opts.userId restricts to a single author's active posts (profile grid).
+// Block-aware: hidden authors' posts are excluded on every page.
+const getCardsPage = async (requesterId, isAdmin, opts = {}) => {
+    const pageSize = normalizeLimit(opts.limit);
+    let decoded = null;
+    if (opts.cursor) {
+        decoded = decodeCursor(opts.cursor);
+        if (!decoded) throw createError(400, 'Invalid cursor');
+    }
+
+    const hidden = await getHiddenUserIds(requesterId);
+
+    // If filtering to a specific user and that user is blocked either way → empty
+    if (opts.userId && hidden.has(String(opts.userId))) {
+        return { items: [], nextCursor: null };
+    }
+
+    const baseFilter = {};
+    if (!isAdmin) baseFilter.status = 'active';
+
+    if (opts.userId) {
+        baseFilter.userId = opts.userId;
+    } else if (hidden.size) {
+        baseFilter.userId = { $nin: [...hidden] };
+    }
+
+    const { page, nextCursor } = await runKeysetPage(Card, baseFilter, decoded, pageSize);
+    const items = page.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
+
+    return { items, nextCursor };
+};
+
+// GET /cards/:id/comments — cursor-paginated embedded comments (newest first).
+// Mirrors getCardLikes visibility rules. Hidden users' comments are stripped before
+// paging so a blocked user's comment can never leak on any page. Replies are kept
+// intact (not paginated). Uses the same keyset scheme (encodeCursor / decodeCursor)
+// for a stable, dupe-free page sequence.
+const getCardComments = async (cardId, requesterId, isAdmin, opts = {}) => {
+    const card = await Card.findById(cardId);
+    if (!card) throw createError(404, 'Card not found');
+    if (!isAdmin && card.status !== 'active') throw createError(404, 'Card not found');
+
+    const hidden = await getHiddenUserIds(requesterId);
+    if (hidden.has(String(card.userId))) throw createError(404, 'Card not found');
+
+    const pageSize = normalizeLimit(opts.limit);
+    let decoded = null;
+    if (opts.cursor) {
+        decoded = decodeCursor(opts.cursor);
+        if (!decoded) throw createError(400, 'Invalid cursor');
+    }
+
+    // Filter hidden-user comments, then sort newest-first (createdAt desc, _id desc)
+    let comments = (card.comments || [])
+        .filter(c => !hidden.has(String(c.userId)))
+        .sort((a, b) => {
+            const tDiff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            if (tDiff !== 0) return tDiff;
+            const aid = String(a._id);
+            const bid = String(b._id);
+            return bid > aid ? -1 : bid < aid ? 1 : 0;
+        });
+
+    // Apply cursor: keep only comments strictly after the cursor key
+    if (decoded) {
+        const cursorTime = decoded.createdAt.getTime();
+        comments = comments.filter(c => {
+            const ct = new Date(c.createdAt).getTime();
+            if (ct < cursorTime) return true;
+            if (ct === cursorTime) return String(c._id) < decoded.id;
+            return false;
+        });
+    }
+
+    // Limit+1 trick to detect a following page without an extra query
+    const hasMore = comments.length > pageSize;
+    const page = comments.slice(0, pageSize);
+    const nextCursor = hasMore ? encodeCursor(page[page.length - 1]) : null;
+
+    return { items: page.map(c => c.toObject()), nextCursor };
+};
+
 const banCard = async (cardId) => {
     let card = await Card.findById(cardId);
     if(!card) throw createError(404, 'Card not found');
@@ -396,4 +479,6 @@ module.exports = {
     banCard,
     getCardLikes,
     getHiddenUserIds,
+    getCardsPage,
+    getCardComments,
 }

@@ -20,6 +20,9 @@ const {
     updateOnboarding,
     getSuggestedUsers,
     updateNotificationPrefs,
+    getUsersPage,
+    getFollowers,
+    getFollowing,
 } = require('../service/usersSvc');
 const { getRecentContacts } = require('../../chat/service/chatSvc');
 const validateUser = require('../validation/joi/validateUserWithJoi');
@@ -82,6 +85,20 @@ router.get('/users/suggested', auth, async (req, res) => {
     }
 })
 
+// GET /users/browse — cursor-paginated list of all users by recency (keyset).
+// Block-aware both directions. Must be before /users/:id so 'browse' isn't an id.
+router.get('/users/browse', auth, async (req, res) => {
+    try {
+        const result = await getUsersPage(req.user.userId, req.user.isAdmin, {
+            cursor: req.query.cursor,
+            limit: req.query.limit,
+        });
+        res.send(result);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
 // PATCH /users/me/notification-prefs — update per-type notification toggles for
 // the calling user only. Must be before /users/:id so 'me' is not captured as an id.
 router.patch('/users/me/notification-prefs', auth, async (req, res) => {
@@ -108,6 +125,34 @@ router.patch('/users/me/onboarding', auth, async (req, res) => {
         handleError(res, err);
     }
 })
+
+// GET /users/:id/followers — cursor-paginated list of a user's followers.
+// More-specific path than /users/:id; block-aware relative to the requester.
+router.get('/users/:id/followers', auth, async (req, res) => {
+    try {
+        const result = await getFollowers(req.params.id, req.user.userId, req.user.isAdmin, {
+            cursor: req.query.cursor,
+            limit: req.query.limit,
+        });
+        res.send(result);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+// GET /users/:id/following — cursor-paginated list of users the target follows.
+// More-specific path than /users/:id; block-aware relative to the requester.
+router.get('/users/:id/following', auth, async (req, res) => {
+    try {
+        const result = await getFollowing(req.params.id, req.user.userId, req.user.isAdmin, {
+            cursor: req.query.cursor,
+            limit: req.query.limit,
+        });
+        res.send(result);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
 
 router.get('/users/:id', auth, async (req, res) => {
     try{

@@ -110,6 +110,11 @@ const UserSchema = new mongoose.Schema({
 UserSchema.index({ name: 1, lastName: 1 });
 // Support "who blocked me" lookups used to hide blocked users' content both ways.
 UserSchema.index({ blocked: 1 });
+// Support keyset pagination of all users by recency (GET /users/browse).
+UserSchema.index({ createdAt: -1, _id: -1 });
+// Support keyset pagination of followers: users whose following array contains a
+// given id, sorted by recency (GET /users/:id/followers).
+UserSchema.index({ following: 1, createdAt: -1, _id: -1 });
 
 const User = mongoose.model('User', UserSchema);
 module.exports = User;

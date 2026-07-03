@@ -7,6 +7,7 @@ const { createError } = require('../../utils/handleErrors');
 const normalizeUser = require('../helpers/normalizeUser');
 const Card = require('../../cards/models/Card');
 const Notification = require('../../notifications/models/Notifications');
+const { normalizeLimit, decodeCursor, runKeysetPage } = require('../../utils/cursorPagination');
  
 const pickSafeUserFields = (user) => {
     return _.pick(user.toObject() , [
@@ -421,6 +422,106 @@ const getSuggestedUsers = async (requesterId, opts = {}) => {
     };
 };
 
+// GET /users/browse — cursor-paginated list of all users, newest-first (keyset).
+// Block-aware both directions: mirrors the getUsers filter pattern so hidden users
+// are never surfaced. Returns { items, nextCursor }.
+const getUsersPage = async (requesterId, isAdmin, opts = {}) => {
+    const pageSize = normalizeLimit(opts.limit);
+    let decoded = null;
+    if (opts.cursor) {
+        decoded = decodeCursor(opts.cursor);
+        if (!decoded) throw createError(400, 'Invalid cursor');
+    }
+
+    const baseFilter = {};
+    if (requesterId) {
+        const requester = await User.findById(requesterId);
+        const blockedByMe = requester?.blocked || [];
+        baseFilter._id = { $nin: blockedByMe };
+        baseFilter.blocked = { $ne: requesterId };
+    }
+
+    const { page, nextCursor } = await runKeysetPage(User, baseFilter, decoded, pageSize);
+    const items = page.map(user => projectUser(user, requesterId, isAdmin));
+
+    return { items, nextCursor };
+};
+
+// Helper: verify a target profile is accessible to the requester (mirrors getUser
+// block logic). Returns [target, requester] docs for reuse by the caller.
+const _resolveProfileAccess = async (targetId, requesterId) => {
+    const [target, requester] = await Promise.all([
+        User.findById(targetId),
+        requesterId ? User.findById(requesterId) : Promise.resolve(null),
+    ]);
+    if (!target) throw createError(404, 'User not found');
+    if (requester && String(targetId) !== String(requesterId)) {
+        const iBlocked = (requester.blocked || []).map(String).includes(String(targetId));
+        const theyBlocked = (target.blocked || []).map(String).includes(String(requesterId));
+        if (iBlocked || theyBlocked) throw createError(404, 'User not found');
+    }
+    return { target, requester };
+};
+
+// GET /users/:id/followers — paginated list of users who follow the target.
+// If the target profile is hidden from the requester (blocked either way) → 404.
+// Block-aware relative to the REQUESTER: hidden-either-way users are excluded.
+const getFollowers = async (targetId, requesterId, isAdmin, opts = {}) => {
+    const { requester } = await _resolveProfileAccess(targetId, requesterId);
+
+    const pageSize = normalizeLimit(opts.limit);
+    let decoded = null;
+    if (opts.cursor) {
+        decoded = decodeCursor(opts.cursor);
+        if (!decoded) throw createError(400, 'Invalid cursor');
+    }
+
+    // Followers = users whose `following` array contains targetId
+    const baseFilter = { following: String(targetId) };
+    if (requester) {
+        baseFilter._id = { $nin: requester.blocked || [] };
+        baseFilter.blocked = { $ne: requesterId };
+    }
+
+    const { page, nextCursor } = await runKeysetPage(User, baseFilter, decoded, pageSize);
+    const items = page.map(user => projectUser(user, requesterId, isAdmin));
+
+    return { items, nextCursor };
+};
+
+// GET /users/:id/following — paginated list of users the target follows.
+// If the target profile is hidden from the requester (blocked either way) → 404.
+// Block-aware relative to the REQUESTER: hidden-either-way users are excluded.
+const getFollowing = async (targetId, requesterId, isAdmin, opts = {}) => {
+    const { target, requester } = await _resolveProfileAccess(targetId, requesterId);
+
+    const pageSize = normalizeLimit(opts.limit);
+    let decoded = null;
+    if (opts.cursor) {
+        decoded = decodeCursor(opts.cursor);
+        if (!decoded) throw createError(400, 'Invalid cursor');
+    }
+
+    const allFollowingIds = (target.following || []).map(String);
+    if (!allFollowingIds.length) return { items: [], nextCursor: null };
+
+    // Filter out users blocked by the requester from the following list
+    const blockedByMe = requester ? (requester.blocked || []).map(String) : [];
+    const visibleIds = allFollowingIds.filter(id => !blockedByMe.includes(id));
+    if (!visibleIds.length) return { items: [], nextCursor: null };
+
+    const baseFilter = {
+        _id: { $in: visibleIds },
+        // Exclude users who blocked the requester
+        ...(requesterId ? { blocked: { $ne: requesterId } } : {}),
+    };
+
+    const { page, nextCursor } = await runKeysetPage(User, baseFilter, decoded, pageSize);
+    const items = page.map(user => projectUser(user, requesterId, isAdmin));
+
+    return { items, nextCursor };
+};
+
 // Allowlist of toggleable per-type notification preference keys. Any unknown
 // key in the request body is rejected so clients can't sneak in arbitrary
 // fields.
@@ -461,4 +562,7 @@ module.exports = {
     updateOnboarding,
     getSuggestedUsers,
     updateNotificationPrefs,
+    getUsersPage,
+    getFollowers,
+    getFollowing,
 };

@@ -23,6 +23,8 @@ const {
     getFeedCards,
     banCard,
     getCardLikes,
+    getCardsPage,
+    getCardComments,
 } = require('../service/cardsSvc');
 const { reportCard, getCardReports } = require('../service/reportSvc');
 const auth = require('../../auth/authService');
@@ -52,6 +54,21 @@ router.get('/cards/feed', auth, async (req,res) => {
     }
 })
 
+// GET /cards/explore — cursor-paginated active public cards by recency.
+// Optional ?userId= restricts to one author's posts (profile media grid).
+// Must be registered before /cards/:id so "explore" isn't captured as an id.
+router.get('/cards/explore', auth, async (req, res) => {
+    try {
+        const result = await getCardsPage(req.user.userId, req.user.isAdmin, {
+            cursor: req.query.cursor,
+            limit: req.query.limit,
+            userId: req.query.userId,
+        });
+        res.send(result);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
 
 router.post('/cards', auth, upload.single('media'), async (req, res) => {
     try{
@@ -79,6 +96,20 @@ router.post('/cards', auth, upload.single('media'), async (req, res) => {
         console.log(err.message);
     }
 })
+
+// GET /cards/:id/comments — cursor-paginated embedded comments for a card.
+// More specific path than /cards/:id, so registered before it.
+router.get('/cards/:id/comments', auth, async (req, res) => {
+    try {
+        const result = await getCardComments(req.params.id, req.user.userId, req.user.isAdmin, {
+            cursor: req.query.cursor,
+            limit: req.query.limit,
+        });
+        res.send(result);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
 
 router.get('/cards/:id', optionalAuth, async (req, res) => {
     try{
