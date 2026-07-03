@@ -33,7 +33,7 @@ let mongoServer, app;
 // B: user who posts popular content
 // C: user who follows B (has a following feed)
 // D: user used for block exclusion tests
-let tokenA, idA, tokenB, idB, tokenC, idC, tokenD, idD;
+let tokenA, idA, tokenB, idB, tokenC, tokenD, idD;
 let bCardId;
 
 const newCard = (token, title) =>
@@ -63,7 +63,7 @@ beforeAll(async () => {
     tokenB = rB.body.token; idB = rB.body.safeUser._id;
 
     const rC = await request(app).post('/users').send(mkUser('ob-c'));
-    tokenC = rC.body.token; idC = rC.body.safeUser._id;
+    tokenC = rC.body.token;
 
     const rD = await request(app).post('/users').send(mkUser('ob-d'));
     tokenD = rD.body.token; idD = rD.body.safeUser._id;

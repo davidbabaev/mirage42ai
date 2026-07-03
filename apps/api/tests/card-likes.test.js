@@ -31,10 +31,10 @@ const mkUser = (slug, over = {}) => ({
 let mongoServer, app;
 
 // Shared users + card for all tests
-let tokenOwner, idOwner;
+let tokenOwner;
 let tokenA, idA;
 let tokenB, idB;
-let tokenC, idC;
+let tokenC;
 let cardId;
 
 const newCard = (token, title) =>
@@ -71,7 +71,7 @@ beforeAll(async () => {
 
     // Register users
     const rOwner = await request(app).post('/users').send(mkUser('lk-owner', { name: 'Owner' }));
-    tokenOwner = rOwner.body.token; idOwner = rOwner.body.safeUser._id;
+    tokenOwner = rOwner.body.token;
 
     const rA = await request(app).post('/users').send(mkUser('lk-a', { name: 'Alice' }));
     tokenA = rA.body.token; idA = rA.body.safeUser._id;
@@ -80,7 +80,7 @@ beforeAll(async () => {
     tokenB = rB.body.token; idB = rB.body.safeUser._id;
 
     const rC = await request(app).post('/users').send(mkUser('lk-c', { name: 'Carol' }));
-    tokenC = rC.body.token; idC = rC.body.safeUser._id;
+    tokenC = rC.body.token;
 
     // Owner creates a card
     const cardRes = await newCard(tokenOwner, 'a liked post');

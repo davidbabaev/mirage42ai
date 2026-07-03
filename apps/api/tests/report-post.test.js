@@ -33,9 +33,9 @@ let Card, User, Notification;
 
 // Users
 let tokenReporter, idReporter;
-let tokenAuthor, idAuthor;
+let tokenAuthor;
 let tokenAdmin, idAdmin;
-let tokenOther, idOther;
+let tokenOther;
 
 // Card
 let cardId;
@@ -63,7 +63,7 @@ beforeAll(async () => {
 
     // Register users
     const rAuthor   = await request(app).post('/users').send(mk('rp-author'));
-    tokenAuthor = rAuthor.body.token; idAuthor = rAuthor.body.safeUser._id;
+    tokenAuthor = rAuthor.body.token;
 
     const rReporter = await request(app).post('/users').send(mk('rp-reporter'));
     tokenReporter = rReporter.body.token; idReporter = rReporter.body.safeUser._id;
@@ -73,7 +73,7 @@ beforeAll(async () => {
     await User.findByIdAndUpdate(idAdmin, { isAdmin: true });
 
     const rOther    = await request(app).post('/users').send(mk('rp-other'));
-    tokenOther = rOther.body.token; idOther = rOther.body.safeUser._id;
+    tokenOther = rOther.body.token;
 
     // Create a card via the API (cloudinary is stubbed)
     const cardRes = await request(app)

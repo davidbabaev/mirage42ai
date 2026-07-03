@@ -35,7 +35,7 @@ const mkUser = (slug, over = {}) => ({
 
 // Registered users
 let tokenA, tokenB, tokenC;
-let userAId, userBId, userCId;
+let userAId, userBId;
 // A's card; B's comment on A's card
 let cardIdA, commentIdB;
 
@@ -63,7 +63,7 @@ beforeAll(async () => {
     tokenB = regB.body.token; userBId = regB.body.safeUser._id;
 
     const regC = await request(app).post('/users').send(mkUser('np-c'));
-    tokenC = regC.body.token; userCId = regC.body.safeUser._id;
+    tokenC = regC.body.token;
 
     // A creates a card
     const card = await request(app)
@@ -124,8 +124,6 @@ describe('PATCH /users/me/notification-prefs', () => {
 
     it('only mutates the CALLER — B\'s prefs are unaffected when A patches', async () => {
         // Set A's likes to false (done above). B should still have all-true defaults.
-        const resB = await request(app)
-            .get(`/users/${userBId}`).set('auth-token', tokenB);
         // notificationPrefs not in public projection — check via a PATCH no-op on B's own account
         const patchB = await request(app)
             .patch('/users/me/notification-prefs').set('auth-token', tokenB)

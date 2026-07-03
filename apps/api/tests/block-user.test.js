@@ -118,7 +118,7 @@ describe('block user', () => {
 
 // New surfaces: blocked list endpoint + app-wide content hiding (posts + comments).
 describe('block hides content app-wide', () => {
-    let tokenX, tokenY, idX, idY, idZ, tokenZ, xCardId, zCardId;
+    let tokenX, tokenY, idZ, tokenZ, xCardId, zCardId;
 
     const newCard = (token, title) =>
         request(app).post('/cards').set('auth-token', token)
@@ -127,9 +127,9 @@ describe('block hides content app-wide', () => {
 
     beforeAll(async () => {
         const rX = await request(app).post('/users').send(mkUser('blk-x', { name: 'Xavier' }));
-        tokenX = rX.body.token; idX = rX.body.safeUser._id;
+        tokenX = rX.body.token;
         const rY = await request(app).post('/users').send(mkUser('blk-y', { name: 'Yara' }));
-        tokenY = rY.body.token; idY = rY.body.safeUser._id;
+        tokenY = rY.body.token;
         const rZ = await request(app).post('/users').send(mkUser('blk-z', { name: 'Zane' }));
         tokenZ = rZ.body.token; idZ = rZ.body.safeUser._id;
 
