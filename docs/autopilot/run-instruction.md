@@ -13,6 +13,10 @@ Then work the tasks under "## Tasks" in order, top to bottom. For each task:
 1. Diagnose first (read-only). Before changing anything, investigate the root cause of the task using search/explore subagents: find the relevant file(s) and WHY the current behavior is wrong. Do not edit during this step. If the root cause or approach is unclear, choose the most reasonable option that fits CLAUDE.md and the existing codebase patterns, record that choice in the final report, and proceed — do not stop to ask. Otherwise proceed to implement the fix based on what you found.
 2. Do the work described in "What".
 3. Check the "Done when" line:
+   - Lint gate (MANDATORY — all task types): run `npm run lint` and it MUST pass
+     CLEAN with zero errors before a task can be marked done. CI runs the same
+     lint and a lint failure BLOCKS deploys, so a task with a failing (or newly
+     dirtied) lint is NOT done — fix it before proceeding.
    - If Type is logic → run the test suite. The task passes only if tests are green, including a test that covers this change.
    - If Type is visual:
      a. Ensure the app is running: if http://localhost:5173/ is not already responding, start the dev server with `npm run dev` from the repo root, and wait until http://localhost:5173/ responds before continuing.
@@ -31,6 +35,7 @@ Hard rules:
 - Never edit docs/master-plan.md.
 - Each commit contains one task's code changes plus the bookkeeping edits to docs/autopilot/today.md and docs/autopilot/backlog.md for that same task. Never combine TWO tasks' code changes into one commit.
 - A committed task that is still sitting under "## Active" in docs/autopilot/backlog.md is a FAILURE. The close-out in step 4b is mandatory: backlog.md must reflect every committed task before you move on.
+- A task with a failing `npm run lint` is NOT done. Lint must be clean locally before commit; CI lint failures block deploys.
 - Do not push; leave the branch local for me to review.
 - When a decision is ambiguous, decide it yourself using CLAUDE.md and existing codebase conventions as your guide, log the decision and your reasoning in the report, and continue. Only STOP for: a failing check you cannot fix in one attempt, a destructive/irreversible action, or a task that is technically impossible as written. Never stop merely because a choice is open — make it and record it.
 - Maintain a DECISIONS LOG in the final report: every judgment call made during the run, with one line of reasoning each, so the human can review all choices at merge time.
