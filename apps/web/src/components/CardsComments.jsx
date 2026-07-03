@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '../providers/AuthProvider';
 import { Avatar, Box, Button, IconButton, TextField, Tooltip, Typography } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
@@ -10,12 +10,14 @@ import { useNavigate } from 'react-router-dom';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
+import InfiniteScroll from './InfiniteScroll';
+import { useCursorPagination } from '../hooks/useCursorPagination';
+import { getCardComments } from '../services/apiService';
 
-export default function CardsComments({card, users, addComment, removeComment, focusRef, closeOnNav, highlightCommentId}) {
+export default function CardsComments({card, users, addComment, removeComment, focusRef, closeOnNav, highlightCommentId, scrollRoot = null}) {
 
     const [commentText, setCommentText] = useState('');
     const {user: loggedInUser} = useAuth();
-    const [commentsCount, setCommentsCount] = useState(5);
     const [isLoading, setIsLoading] = useState(false)
     // ID of the comment currently being highlighted (background flash + outline).
     const [highlightedId, setHighlightedId] = useState(null)
@@ -28,36 +30,71 @@ export default function CardsComments({card, users, addComment, removeComment, f
     const [replyText, setReplyText] = useState('');
     const [isReplyLoading, setIsReplyLoading] = useState(false);
 
+    const cardId = card?._id;
 
-    // Scroll to + highlight a specific comment when `highlightCommentId` is set
-    // (e.g. opening a post via a comment-like / comment-reply notification).
+    // ── Paginated comments (newest-first) via GET /cards/:id/comments ───────────
+    const fetcher = useCallback(
+        (cursor) => getCardComments(cardId, cursor, 10).then(r => ({ items: r.items ?? [], nextCursor: r.nextCursor ?? null })),
+        [cardId]
+    );
+    const { items: comments, setItems, hasMore, loading, loadingMore, error, refresh, loadMore } = useCursorPagination(fetcher);
+
+    useEffect(() => { if (cardId) refresh(); }, [cardId, refresh]);
+
+    // ── Reconcile the loaded window with the authoritative card.comments ────────
+    // Optimistic mutations (add / like / reply / delete) flow through the provider
+    // and update card.comments. We mirror those into the paginated `comments`
+    // WITHOUT pulling the un-loaded older backlog: existing items are refreshed (or
+    // dropped if deleted), and only comments strictly NEWER than what we've already
+    // loaded (i.e. brand-new additions) are prepended. `newestSeen` is the ceiling
+    // of what we've accepted; `didInit` gates reconciliation until the first page
+    // has loaded so we never mistake the initial backlog for "new" comments.
+    const newestSeen = useRef('');
+    const didInit = useRef(false);
+
     useEffect(() => {
-        if (!highlightCommentId || !card?.comments) return
-
-        const allComments = [...card.comments].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        const idx = allComments.findIndex(c => c._id === highlightCommentId)
-
-        if (idx < 0) return // comment not found (deleted) — open post without error
-
-        // Ensure the target comment is within the visible slice.
-        setCommentsCount(prev => Math.max(prev, idx + 1))
-
-        setHighlightedId(highlightCommentId)
-
-        // Small delay lets the commentsCount update flush to the DOM before we scroll.
-        const scrollTimer = setTimeout(() => {
-            const el = commentRefs.current.get(highlightCommentId)
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }, 150)
-
-        // Remove the highlight after 2.2s (the CSS transition then fades it out).
-        const fadeTimer = setTimeout(() => setHighlightedId(null), 2200)
-
-        return () => {
-            clearTimeout(scrollTimer)
-            clearTimeout(fadeTimer)
+        if (!didInit.current && !loading) {
+            didInit.current = true;
+            newestSeen.current = comments[0]?.createdAt || '';
         }
-    }, [highlightCommentId]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [loading, comments]);
+
+    useEffect(() => {
+        if (!didInit.current) return;
+        const authoritative = card?.comments || [];
+        const byId = new Map(authoritative.map(c => [String(c._id), c]));
+        setItems(prev => {
+            const kept = prev
+                .filter(c => byId.has(String(c._id)))       // drop deleted
+                .map(c => byId.get(String(c._id)));          // refresh likes/replies
+            const prevIds = new Set(prev.map(c => String(c._id)));
+            const ceiling = prev[0]?.createdAt || newestSeen.current;
+            const added = authoritative
+                .filter(c => !prevIds.has(String(c._id)) && String(c.createdAt) > String(ceiling))
+                .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+            if (added.length) newestSeen.current = added[0].createdAt;
+            return added.length ? [...added, ...kept] : kept;
+        });
+    }, [card?.comments, setItems]);
+
+    // ── Deep-link: page until the highlighted comment is loaded, then scroll ────
+    useEffect(() => {
+        if (!highlightCommentId) return;
+        const present = comments.some(c => String(c._id) === String(highlightCommentId));
+        if (!present) {
+            // Not in the loaded window yet — pull the next page (repeats via this
+            // effect as `comments` grows) until found or the list is exhausted.
+            if (hasMore && !loadingMore && !loading) loadMore();
+            return;
+        }
+        setHighlightedId(highlightCommentId);
+        const scrollTimer = setTimeout(() => {
+            const el = commentRefs.current.get(highlightCommentId);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 150);
+        const fadeTimer = setTimeout(() => setHighlightedId(null), 2200);
+        return () => { clearTimeout(scrollTimer); clearTimeout(fadeTimer); };
+    }, [highlightCommentId, comments, hasMore, loadingMore, loading, loadMore]);
 
     const handleSubmit = async (e) => {
         try{
@@ -89,9 +126,6 @@ export default function CardsComments({card, users, addComment, removeComment, f
         }
     }
 
-
-    const countedComments = (card?.comments || []).sort((a,b) => b.createdAt.localeCompare(a.createdAt)).slice(0, commentsCount)
-
   return (
     <Box sx={{p:1}}>
         {loggedInUser && (
@@ -116,7 +150,7 @@ export default function CardsComments({card, users, addComment, removeComment, f
                             fontSize: 13
                         }
                     }}
-                />   
+                />
 
                 <Button
                     type='submit'
@@ -130,21 +164,28 @@ export default function CardsComments({card, users, addComment, removeComment, f
                 >
                     {isLoading ? "send.." : "Send"}
                 </Button>
-
-                
-            </Box>   
+            </Box>
         )}
 
         {/* Comments List */}
         <Box>
-            {countedComments.length === 0 && 
-                <Typography
-                    fontSize={12}
-                    color='text.secondary'
-                >ther'es no comments yet</Typography>
-            }
-
-            {countedComments.map((comment) => {
+            <InfiniteScroll
+                loading={loading}
+                loadingMore={loadingMore}
+                hasMore={hasMore}
+                error={!!error}
+                isEmpty={!loading && comments.length === 0}
+                onLoadMore={loadMore}
+                onRetry={refresh}
+                root={scrollRoot}
+                showEnd={false}
+                emptyState={
+                    <Typography fontSize={12} color='text.secondary' sx={{ py: 1 }}>
+                        There's no comments yet
+                    </Typography>
+                }
+            >
+            {comments.map((comment) => {
                 const userComment = users.find(u => u._id === comment.userId);
                 const isHighlighted = highlightedId === comment._id
 
@@ -182,12 +223,12 @@ export default function CardsComments({card, users, addComment, removeComment, f
                                         closeOnNav()
                                 }}
                                 />
-            
+
                                 <Box sx={{display: 'flex', flexDirection: 'column', gap: 0.5}}>
                                     <Typography component={'div'} fontWeight={600} fontSize={14} lineHeight={1.2}>
                                         {userComment?.name} {userComment?.lastName}
-                                        <Typography 
-                                            component='span' 
+                                        <Typography
+                                            component='span'
                                             color='text.secondary'
                                             fontSize={11}
                                             fontWeight={400}
@@ -195,19 +236,19 @@ export default function CardsComments({card, users, addComment, removeComment, f
                                             {isFollowByMe(userComment?._id) && ' · following'}
                                         </Typography>
                                     </Typography>
-            
+
                                     <Typography component={'div'} fontSize={11} color='text.secondary' lineHeight={0.9}>
                                         {userComment?.job}
                                     </Typography>
-            
+
                                     <Typography component={'div'} fontSize={11} color='text.secondary' lineHeight={0.9}>
                                         {getFollowersCount(userComment?._id)} followers · {getTimeAgo(comment.createdAt)}
                                     </Typography>
-            
+
                                 </Box>
                             </Box>
-            
-            
+
+
                          <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
                             {/* Right: like heart + count, then Follow / Delete */}
                             {loggedInUser && (
@@ -242,18 +283,18 @@ export default function CardsComments({card, users, addComment, removeComment, f
                                         await toggleFollow(userComment?._id)
                                     }}
                                     sx={{fontSize: 9, minWidth: 70, borderRadius: 5, py: 0.3,
-                                        '& .MuiButton-startIcon' : {mb: 0.2}, lineHeight: 0 
+                                        '& .MuiButton-startIcon' : {mb: 0.2}, lineHeight: 0
                                     }}
                                 >
                                     Follow
                                 </Button>
                             )}
 
-                            {loggedInUser && 
+                            {loggedInUser &&
                                 (loggedInUser._id === comment.userId || loggedInUser._id === card.userId || loggedInUser.isAdmin
                             ) && (
                                 <Tooltip title="Delete Comment">
-                                    <IconButton 
+                                    <IconButton
                                         size='small'
                                         onClick={() => removeComment(card._id, comment._id)}
                                         sx={{border: '1px solid', borderColor: 'text.secondary'}}
@@ -350,21 +391,7 @@ export default function CardsComments({card, users, addComment, removeComment, f
                     </Box>
                 )
             })}
-
-            {commentsCount <= (card?.comments || []).length && (
-                    <Button 
-                        size='small'
-                        sx={{
-                            fontSize: 11,
-                            border: '1px solid',
-                            borderRadius: 5,
-                            px:2
-                        }}
-                        onClick={() => setCommentsCount(commentsCount + 5)}
-                    >
-                        Read More..
-                    </Button>
-            )}
+            </InfiniteScroll>
         </Box>
 
     </Box>
