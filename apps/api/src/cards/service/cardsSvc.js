@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const User = require('../../users/models/User');
 const { createError } = require('../../utils/handleErrors');
 const normalizeCard = require('../helpers/normalizeCard');
@@ -5,6 +6,10 @@ const Card = require('../models/Card')
 const Notification = require('../../notifications/models/Notifications');
 const { normalizeLimit, decodeCursor, encodeCursor, runKeysetPage } = require('../../utils/cursorPagination');
 const _ = require('lodash');
+
+// Escape user input before using it in a RegExp so a search term can't inject
+// regex metacharacters (ReDoS / unintended matches).
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Ids whose content the requester must not see: users they blocked AND users
 // who blocked them (block is enforced both directions, like getUsers). Empty
@@ -46,7 +51,9 @@ const blockExistsBetween = async (aId, bId) => {
 }
 
 const pickSafeCardFields = (card) => {
-    return _.pick(card.toObject() ,[
+    // Accept both Mongoose documents (.toObject()) and plain aggregation results.
+    const obj = typeof card.toObject === 'function' ? card.toObject() : card;
+    return _.pick(obj, [
         "title",
         "content",
         "web",
@@ -61,7 +68,7 @@ const pickSafeCardFields = (card) => {
         "userId",
         "status",
         "reportCount"
-    ])
+    ]);
 }
 
 const createNewCard = async (card, userId) => {
@@ -462,6 +469,104 @@ const banCard = async (cardId) => {
     return pickSafeCardFields(card);
 }
 
+// GET /cards/search — OFFSET-cursor-paginated card search with filters and sort.
+// Block-aware: hidden authors' posts are excluded on every page.
+// Returns { items, nextCursor } where items are shaped via pickSafeCardFields +
+// stripBlockedComments — identical wire shape to getCardsPage.
+const getCardsSearch = async (requesterId, isAdmin, opts = {}) => {
+    const { search, categories, sort, creatorId, cursor, limit } = opts;
+    const hidden = await getHiddenUserIds(requesterId);
+
+    // ── Base filter ─────────────────────────────────────────────────────────
+    const baseFilter = {};
+    if (!isAdmin) baseFilter.status = 'active';
+
+    // userId filter: specific creator takes precedence over the hidden-set $nin.
+    // We use ObjectIds here so the same filter works in both find() and aggregate().
+    if (creatorId) {
+        if (hidden.has(String(creatorId))) return { items: [], nextCursor: null };
+        let creatorOid;
+        try { creatorOid = new mongoose.Types.ObjectId(String(creatorId)); }
+        catch { return { items: [], nextCursor: null }; }
+        baseFilter.userId = creatorOid;
+    } else if (hidden.size) {
+        const hiddenOids = [];
+        for (const id of hidden) {
+            try { hiddenOids.push(new mongoose.Types.ObjectId(id)); } catch { /* skip invalid */ }
+        }
+        if (hiddenOids.length) baseFilter.userId = { $nin: hiddenOids };
+    }
+
+    // ── Search filter ────────────────────────────────────────────────────────
+    // Matches title, content, category, OR creator name (name / lastName).
+    if (search && search.trim()) {
+        const rx = new RegExp(escapeRegex(search.trim()), 'i');
+        // Find userIds of creators whose name or lastName matches the search term.
+        const matchingUsers = await User.find(
+            { $or: [{ name: rx }, { lastName: rx }] }, '_id'
+        ).lean();
+        const matchingUserOids = matchingUsers.map(u => u._id);
+        baseFilter.$or = [
+            { title: rx },
+            { content: rx },
+            { category: rx },
+            { userId: { $in: matchingUserOids } },
+        ];
+    }
+
+    // ── Categories filter ────────────────────────────────────────────────────
+    if (categories && categories.trim()) {
+        const catList = categories.split(',').map(c => c.trim()).filter(Boolean);
+        if (catList.length) baseFilter.category = { $in: catList };
+    }
+
+    // ── OFFSET pagination ────────────────────────────────────────────────────
+    const lim = normalizeLimit(limit);
+    let skip = 0;
+    if (cursor) {
+        const raw = parseInt(Buffer.from(String(cursor), 'base64').toString('utf8'), 10);
+        if (!Number.isFinite(raw) || raw < 0) throw createError(400, 'Invalid cursor');
+        skip = raw;
+    }
+
+    // ── Sort + fetch ─────────────────────────────────────────────────────────
+    let page;
+    let hasMore;
+
+    if (sort === 'most liked' || sort === 'most commented') {
+        // Array-length sorts require an aggregation pipeline because MongoDB
+        // cannot $sort by array length in a plain find().
+        const sizeField = sort === 'most liked' ? 'lc' : 'cc';
+        const sizeExpr = sort === 'most liked'
+            ? { $size: '$likes' }
+            : { $size: '$comments' };
+        const pipeline = [
+            { $match: baseFilter },
+            { $addFields: { [sizeField]: sizeExpr } },
+            { $sort: { [sizeField]: -1, _id: -1 } },
+            { $skip: skip },
+            { $limit: lim + 1 },
+        ];
+        const raw = await Card.aggregate(pipeline);
+        hasMore = raw.length > lim;
+        page = hasMore ? raw.slice(0, lim) : raw;
+    } else {
+        let sortObj;
+        if (sort === 'oldest') sortObj = { createdAt: 1, _id: 1 };
+        else sortObj = { createdAt: -1, _id: -1 }; // 'newest' or default
+        const rows = await Card.find(baseFilter).sort(sortObj).skip(skip).limit(lim + 1);
+        hasMore = rows.length > lim;
+        page = hasMore ? rows.slice(0, lim) : rows;
+    }
+
+    const nextCursor = hasMore
+        ? Buffer.from(String(skip + lim)).toString('base64')
+        : null;
+
+    const items = page.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
+    return { items, nextCursor };
+};
+
 module.exports = {
     createNewCard,
     getCards,
@@ -481,4 +586,5 @@ module.exports = {
     getHiddenUserIds,
     getCardsPage,
     getCardComments,
+    getCardsSearch,
 }

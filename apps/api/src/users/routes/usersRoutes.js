@@ -23,6 +23,8 @@ const {
     getUsersPage,
     getFollowers,
     getFollowing,
+    getUsersSearch,
+    getUserCountriesList,
 } = require('../service/usersSvc');
 const { getRecentContacts } = require('../../chat/service/chatSvc');
 const validateUser = require('../validation/joi/validateUserWithJoi');
@@ -93,6 +95,35 @@ router.get('/users/browse', auth, async (req, res) => {
             cursor: req.query.cursor,
             limit: req.query.limit,
         });
+        res.send(result);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+// GET /users/search — OFFSET-paginated user search with name/gender/country/sort.
+// Block-aware both directions. Must be before /users/:id so 'search' isn't an id.
+router.get('/users/search', auth, async (req, res) => {
+    try {
+        const result = await getUsersSearch(req.user.userId, req.user.isAdmin, {
+            search: req.query.search,
+            gender: req.query.gender,
+            countries: req.query.countries,
+            sort: req.query.sort,
+            cursor: req.query.cursor,
+            limit: req.query.limit,
+        });
+        res.send(result);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+// GET /users/countries — sorted distinct country list visible to the requester.
+// Block-aware both directions. Must be before /users/:id so 'countries' isn't an id.
+router.get('/users/countries', auth, async (req, res) => {
+    try {
+        const result = await getUserCountriesList(req.user.userId);
         res.send(result);
     } catch (err) {
         handleError(res, err);

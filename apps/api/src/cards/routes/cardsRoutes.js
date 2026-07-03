@@ -25,6 +25,7 @@ const {
     getCardLikes,
     getCardsPage,
     getCardComments,
+    getCardsSearch,
 } = require('../service/cardsSvc');
 const { reportCard, getCardReports } = require('../service/reportSvc');
 const auth = require('../../auth/authService');
@@ -63,6 +64,24 @@ router.get('/cards/explore', auth, async (req, res) => {
             cursor: req.query.cursor,
             limit: req.query.limit,
             userId: req.query.userId,
+        });
+        res.send(result);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+// GET /cards/search — OFFSET-paginated card search with text/category/sort/creator filters.
+// Block-aware both directions. Must be before /cards/:id so 'search' isn't an id.
+router.get('/cards/search', auth, async (req, res) => {
+    try {
+        const result = await getCardsSearch(req.user.userId, req.user.isAdmin, {
+            search: req.query.search,
+            categories: req.query.categories,
+            sort: req.query.sort,
+            creatorId: req.query.creatorId,
+            cursor: req.query.cursor,
+            limit: req.query.limit,
         });
         res.send(result);
     } catch (err) {

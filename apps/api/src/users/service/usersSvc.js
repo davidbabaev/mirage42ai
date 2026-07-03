@@ -545,6 +545,92 @@ const updateNotificationPrefs = async (userId, prefs) => {
     return pickSafeUserFields(updated);
 };
 
+// GET /users/search — OFFSET-cursor-paginated user search with filters and sort.
+// Block-aware both directions (same filter as getUsers). Returns { items, nextCursor }.
+const getUsersSearch = async (requesterId, isAdmin, opts = {}) => {
+    const { search, gender, countries, sort, cursor, limit } = opts;
+
+    // Block filter: same as getUsers
+    const baseFilter = {};
+    if (requesterId) {
+        const requester = await User.findById(requesterId);
+        if (!requester) throw createError(404, 'User not found');
+        const blockedByMe = requester.blocked || [];
+        baseFilter._id = { $nin: blockedByMe };
+        baseFilter.blocked = { $ne: requesterId };
+    }
+
+    // Search: case-insensitive SUBSTRING match on `name` only
+    if (search && search.trim()) {
+        const rx = new RegExp(escapeRegex(search.trim()), 'i');
+        baseFilter.name = rx;
+    }
+
+    // Gender: exact equality
+    if (gender && gender.trim()) {
+        baseFilter.gender = gender.trim();
+    }
+
+    // Countries: comma-separated list, case-insensitive match against address.country
+    if (countries && countries.trim()) {
+        const countryList = countries.split(',').map(c => c.trim()).filter(Boolean);
+        if (countryList.length) {
+            baseFilter['address.country'] = {
+                $in: countryList.map(c => new RegExp('^' + escapeRegex(c) + '$', 'i')),
+            };
+        }
+    }
+
+    // OFFSET pagination
+    const lim = normalizeLimit(limit);
+    let skip = 0;
+    if (cursor) {
+        const raw = parseInt(Buffer.from(String(cursor), 'base64').toString('utf8'), 10);
+        if (!Number.isFinite(raw) || raw < 0) throw createError(400, 'Invalid cursor');
+        skip = raw;
+    }
+
+    // Sort
+    let sortObj;
+    switch (sort) {
+        case 'youngest': sortObj = { age: 1, _id: 1 }; break;
+        case 'oldest':   sortObj = { age: -1, _id: -1 }; break;
+        case 'az':       sortObj = { name: 1, _id: 1 }; break;
+        case 'za':       sortObj = { name: -1, _id: -1 }; break;
+        default:         sortObj = { createdAt: -1, _id: -1 }; break;
+    }
+
+    const rows = await User.find(baseFilter).sort(sortObj).skip(skip).limit(lim + 1);
+    const hasMore = rows.length > lim;
+    const page = hasMore ? rows.slice(0, lim) : rows;
+    const nextCursor = hasMore
+        ? Buffer.from(String(skip + lim)).toString('base64')
+        : null;
+
+    return {
+        items: page.map(user => projectUser(user, requesterId, isAdmin)),
+        nextCursor,
+    };
+};
+
+// GET /users/countries — sorted distinct list of address.country values visible
+// to the requester (block-aware both directions). Non-empty values only.
+const getUserCountriesList = async (requesterId) => {
+    const filter = { 'address.country': { $nin: [null, ''] } };
+    if (requesterId) {
+        const requester = await User.findById(requesterId);
+        if (!requester) throw createError(404, 'User not found');
+        const blockedByMe = requester.blocked || [];
+        filter._id = { $nin: blockedByMe };
+        filter.blocked = { $ne: requesterId };
+    }
+    const raw = await User.distinct('address.country', filter);
+    const sorted = raw
+        .filter(c => typeof c === 'string' && c.trim())
+        .sort((a, b) => a.localeCompare(b));
+    return { countries: sorted };
+};
+
 module.exports = {
     createNewUser,
     getUsers,
@@ -565,4 +651,6 @@ module.exports = {
     getUsersPage,
     getFollowers,
     getFollowing,
+    getUsersSearch,
+    getUserCountriesList,
 };
