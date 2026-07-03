@@ -28,6 +28,7 @@ Mark items [done] when finished so they drop out of the active list.
 - What: Replace "load more" buttons with auto-loading infinite scroll (e.g. 30 posts, then 30 more on scroll) with a loading spinner, on all list pages — feed, profiles, all users, all posts.
 - Type: phase-d (collides with planned cursor pagination)
 - Reference: none
+- Progress: MAIN FEED done (commit a2d50c1) — keyset cursor pagination + IntersectionObserver infinite scroll, with a reusable backend util (cursorPagination.js) and frontend hook (useCursorPagination) built to be adopted by the remaining pages. Still TODO: profiles, all-users, all-posts lists (adopt the same cursor pattern; each needs its endpoint to return { items, nextCursor } and its list to use useCursorPagination).
 - Notes: DO NOT build ad-hoc. This is the same work as Phase D cursor pagination — belongs there to avoid building it twice.
 
 ### Vercel preview URLs blocked by backend CORS
@@ -48,6 +49,9 @@ Mark items [done] when finished so they drop out of the active list.
 ## Done
 
 (finished items move here, newest on top)
+
+### Main-feed cursor pagination + infinite scroll — DONE
+- Committed on branch autopilot/2026-07-03 as a2d50c1 (Phase D). Keyset cursor (createdAt+_id, opaque base64url, limit-N+1 hasMore) replaces the all-at-once max-30 load; GET /cards/feed returns { cards, nextCursor }. Two Card indexes (verified IXSCAN, no COLLSCAN). Frontend: reusable useCursorPagination hook + IntersectionObserver sentinel, skeleton loader, and initial/loading-more/empty/end("You're all caught up")/error-retry states. Cold-start "Suggested for you" feed switched from in-app likes re-rank to recency (required for a stable cursor). Browser-verified at 390px & 1280px (1 request on load → scroll auto-loads page 2 → caught-up, no further requests). API 200 / web 161 tests green; API lint clean. Reusable pattern; profiles/all-users/all-posts lists still to adopt it (see Active "Infinite scroll across list pages").
 
 ### FEATURE 5 — Fullscreen, zoomable chat images — DONE
 - Merged to main as 4eb907f (T12). Chat image messages open in a fullscreen viewer with gradual scroll/pinch/double-tap zoom + pan (reused ZoomableImage), from both full chat and the dock; closes via X/backdrop/Esc.
