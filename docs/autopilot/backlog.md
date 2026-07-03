@@ -18,62 +18,6 @@ Mark items [done] when finished so they drop out of the active list.
 - A11y: stepper is keyboard navigable, focus moves to step heading on change, chips are toggle buttons with aria-pressed, Next/Skip ≥44px, reduced-motion respected.
 - Done-when: a brand-new account (both register paths) sees the wizard once; can skip straight through to a feed that shows popular posts (not blank); can pick interests + follow ≥1 suggested user + finish profile and land on a feed including those follows; re-login does NOT show the wizard again; correct at 390px and 1280px.
 
-### FEATURE 2 — Smarter notifications
-- Progress: T3 (delete bug + comment copy) done, commit 1ace22b.
-- Progress: T4 deep-link + comment anchor done, commit 0640575.
-- Progress: T5 notification settings done, commit ef90715. FEATURE 2 complete.
-- What: Four fixes + one addition on the existing notifications dropdown (`Notifications.jsx`). (Bug) The delete (trash) button navigates to the sender's profile because the click bubbles to the row — stop propagation so delete only deletes. (Copy) `comment` type renders "commentd your post" — fix to "commented on your post". (Deep-link) Clicking a like/comment notification about your post opens THAT post (not the sender profile). (Deep-link) Clicking a comment-reply / comment-like notification opens the post AND scrolls to + briefly highlights the specific comment. (Addition) Notification settings: per-type toggles like a real app.
-- Note: `comment-like` ("liked your comment") and `comment-reply` ("replied to your comment") notifications ALREADY exist on backend + frontend text — do NOT rebuild them; only add their deep-linking + the settings gate.
-- Reference: Instagram/X notifications — tap a like/comment notif → jump to the post; tap a reply notif → jump to the comment; per-type notification settings.
-- States: row hover/active, delete optimistic with rollback on failure, empty ("No notifications yet"), loading skeleton rows, error. Highlighted comment fades after ~2s.
-- Entry points: the bell dropdown in NavBar; deep-link opens the existing `CardPopupModal` via `/allcards?card=<whichCard>`; comment anchor via an added `?comment=<commentId>` param the modal reads to scroll/highlight.
-- Data/API: notifications already carry `whichCard`. For the comment anchor, persist the relevant `commentId` on comment-like/comment-reply notifications (add field) so the client can scroll to it. Settings: add `User.notificationPrefs` (per-type booleans, all default true); gate notification CREATION server-side on the recipient's prefs; `PATCH /users/me/notification-prefs`.
-- Permissions/security: a user only ever sees/deletes their own notifications (already enforced); deep-link respects block/visibility (a post hidden by block 404s as usual); settings mutate only the caller.
-- Responsive: 390px — dropdown becomes a full-width sheet; rows have comfortable tap targets, delete is a swipe-or-tap target ≥44px not overlapping the row tap. 1280px — anchored dropdown. Settings page works at both.
-- A11y: each row is a button with a label; delete is a separate labelled button; highlighted comment uses a non-color cue too.
-- Done-when: clicking the trash icon deletes WITHOUT navigating; a `comment` notification reads "commented on your post"; clicking a like/comment-on-your-post notif opens that post; clicking a comment-reply/comment-like notif opens the post scrolled to the highlighted comment; toggling a type off in settings stops new notifications of that type; correct at 390px and 1280px.
-
-### FEATURE 3 — Likes-count modal + report-a-post (+ admin)
-- What: (a) Make the likes count/avatars on a post clickable to open a modal listing everyone who liked it — each row: avatar, name, job, follower count, and a Follow button (or "Following" text when already followed), exactly like the `refs/likes-count-modal.png` and the comment user block. (b) Let any user report a post (reason picker); reports go to the admin as notifications and increment a per-post report count; the admin posts table gains a "Reports" column, and clicking the count shows WHO reported (and why).
-- Reference: Instagram likes list (tap "N likes" → user list with follow buttons); Instagram/X report flow (overflow → Report → reason → confirm + auto-close); admin moderation queue.
-- States: likes modal — loading skeleton rows, empty (0 likes → count not clickable / "No likes yet"), error, paginated scroll for large like counts (assume 100k+; never load all at once), optimistic follow from within the modal. Report — overflow menu item, reason dialog, submitting state, success toast + auto-close, "already reported" state (can't double-report). Admin — report-count column, 0 shows muted, reporter-list modal with loading/empty/error.
-- Entry points: likes — the "N likes" text + avatar cluster on `CardItem.jsx` and `CardDetailsModal.jsx` become a button. Report — a ⋯ overflow menu on the post (introduce if absent) with "Report post". Admin — `AdminCardsPanel.jsx` new column + clickable count.
-- Data/API: reuse `PeopleModal` for the likes list. Add `GET /cards/:id/likes?cursor=&limit=` → liker users (avatar, name, job, followersCount, isFollowing), block-aware, paginated (do NOT ship the client-side-only list for scale). Report: new `Report` model `{ cardId, reporterId, reason, createdAt }` (unique per reporter+card), `POST /cards/:id/report` (validated reason enum), `GET /cards/:id/reports` (admin-only, reporter identities), and a denormalized `reportCount` on the card or an aggregate; on report, create an admin-targeted Notification (new actionType `post-reported`).
-- Permissions/security: report endpoint authed, one report per user per post (dedupe server-side), reason validated against an allowlist (no injection); `GET /cards/:id/reports` and the reporter identities are admin-only (authorization check, not just auth); likes endpoint block-aware.
-- Responsive: 390px — likes modal full-width sheet, rows stack, follow button reachable; report reason dialog full-width. 1280px — centered dialogs. Admin table column visible/scrollable on small screens.
-- A11y: likes count is a labelled button ("View N likes"); follow buttons labelled; report reasons are a radio group; modals trap focus.
-- Done-when: clicking "N likes" opens a modal of likers with working follow/Following state; modal paginates and doesn't choke on many likers; a user can report a post via the overflow, picks a reason, sees success + auto-close, and cannot report the same post twice; the admin sees a Reports column with the count and can click it to see who reported and why; an admin notification appears on a new report; correct at 390px and 1280px.
-- Progress: T6 likes endpoint done, commit 9ee316f.
-- Progress: T7 likes modal done, commit fca64f9.
-- Progress: T8 report backend done, commit 1dc213d.
-- Progress: T9 report UI done, commit 4994277.
-- Progress: T10 admin reports done, commit 49bf7be. FEATURE 3 complete.
-
-### FEATURE 4 — Block user from the chat 3-dot menu
-- What: Add "Block user" to the chat conversation overflow (⋯) menu alongside the existing Profile and Delete-chat items, in BOTH the full chat (`ChatHeader.jsx`) and the docked chat window (`DockedChatWindow.jsx`, which currently has no ⋯ menu — add one for parity). Uses the existing block path; after blocking, the conversation closes/leaves the list (consistent with the block-hardening change that drops blocked conversations from `getChats`).
-- Reference: WhatsApp/Instagram/Messenger — block lives in the chat header overflow; blocking removes the thread and shows a confirmation.
-- States: confirmation dialog before block (reuse `ConfirmationDialog`), the action shows a brief pending state, success toast, then the chat view closes/empties. Unblock path not required here (managed in settings).
-- Entry points: ⋯ menu in `ChatHeader` (full chat) and a new ⋯ in `DockedChatWindow`.
-- Data/API: reuse `useBlockUser().toggleBlock(otherUserId)` → `PATCH /users/:id/block` (already block-aware everywhere). No new endpoint.
-- Permissions/security: block mutates only the caller's block list (already enforced server-side); cannot block self.
-- Responsive: 390px — full chat header ⋯ opens a touch-friendly menu; dock isn't shown on mobile (existing behavior) so the dock ⋯ is desktop-only. 1280px — both menus work. Confirmation dialog centered/legible at both.
-- A11y: ⋯ button labelled "More options"; menu items keyboard reachable; destructive Block styled as such with a confirm.
-- Done-when: from an open conversation (full chat AND dock), the ⋯ menu shows Block; choosing it confirms, blocks the user, closes the conversation, and the thread disappears from the list/dock; correct at 390px (full chat) and 1280px (full chat + dock).
-
-- Progress: T11 block-from-chat done, commit 4ba5fbe. FEATURE 4 complete.
-
-### FEATURE 5 — Fullscreen, zoomable chat images
-- What: Tapping/clicking an image message in chat opens it fullscreen with gradual zoom (scroll/pinch/double-tap) and pan, like WhatsApp — on mobile and desktop. Reuse the existing `ZoomableImage` (`react-zoom-pan-pinch`, already installed and used in the post-detail modal) inside a fullscreen MUI Dialog. Works in the full chat (`MessageList.jsx`) and the docked chat window.
-- Reference: WhatsApp/Telegram image viewer — dark backdrop, pinch/scroll zoom with limits, pan when zoomed, double-tap to zoom to point, swipe-down or tap-X / backdrop to dismiss.
-- States: tap target on the image bubble (cursor zoom-in on desktop), loading spinner while the full image loads, error fallback if it fails, smooth gradual zoom (not a binary toggle), reset on close.
-- Entry points: any image message bubble in `MessageList.jsx` and the dock's message list.
-- Data/API: none (client-only; image URL already present on the message).
-- Permissions/security: only renders images already visible in a conversation the user is part of (unchanged).
-- Responsive: 390px — fullscreen dialog edge-to-edge, pinch + double-tap zoom, swipe-down to dismiss, close button reachable, respects safe areas. 1280px — fullscreen/large dialog, scroll-to-zoom + double-click, click backdrop or X to close. Reduced-motion respected.
-- A11y: image has alt text; dialog traps focus; Esc closes; zoom controls reachable; close button ≥44px.
-- Done-when: clicking a chat image opens a fullscreen viewer; the image zooms GRADUALLY in/out (with limits) and pans when zoomed, via scroll+double-click on desktop and pinch+double-tap on mobile; closes via X/backdrop/Esc/swipe; works from full chat and dock; correct at 390px and 1280px.
-- Progress: T12 chat image zoom done, commit 4eb907f. FEATURE 5 complete.
-
 ### Infrastructure hardening (deployment task — do with Render staging/production)
 - What: Add network-level protection at the host: firewall rules, DDoS/WAF protection (e.g. Cloudflare in front), restrict inbound to required ports, lock down Atlas network access to known IPs.
 - Type: infrastructure (not a code task — done at deploy time, verified in the host dashboards)
@@ -104,6 +48,18 @@ Mark items [done] when finished so they drop out of the active list.
 ## Done
 
 (finished items move here, newest on top)
+
+### FEATURE 5 — Fullscreen, zoomable chat images — DONE
+- Merged to main as 4eb907f (T12). Chat image messages open in a fullscreen viewer with gradual scroll/pinch/double-tap zoom + pan (reused ZoomableImage), from both full chat and the dock; closes via X/backdrop/Esc.
+
+### FEATURE 4 — Block user from the chat 3-dot menu — DONE
+- Merged to main as 4ba5fbe (T11). "Block user" added to the chat overflow ⋯ menu in both ChatHeader and DockedChatWindow (new ⋯ for the dock); confirm → block → conversation closes and leaves the list/dock.
+
+### FEATURE 3 — Likes-count modal + report-a-post (+ admin) — DONE
+- Merged to main across T6–T10 (likes endpoint 9ee316f, likes modal fca64f9, report backend 1dc213d, report UI 4994277, admin reports 49bf7be). Clickable "N likes" → paginated likers modal with follow state; report-a-post with reason picker + dedupe; admin Reports column + reporter list + admin notification.
+
+### FEATURE 2 — Smarter notifications — DONE
+- Merged to main across T3–T5 (delete-bug + comment copy 1ace22b, deep-link + comment anchor 0640575, notification settings ef90715). Trash deletes without navigating; "commented on your post" copy; like/comment notifs deep-link to the post; reply/comment-like notifs scroll to + highlight the comment; per-type notification settings gate creation server-side.
 
 ### TASK A — External share OG/Twitter preview route — DONE
 - Merged to main as f2db9fc (public GET /s/card/:id serves post-specific OG + Twitter tags with image c_fill / video so_0 poster, then redirects humans to the SPA card). Real WhatsApp/LinkedIn crawler rendering remains a staging acceptance gate (localhost is crawler-unreachable).
