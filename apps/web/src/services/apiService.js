@@ -121,7 +121,12 @@ export const addComment = (id, cardData) => httpRequest(`/cards/${id}/comments`,
 export const removeComment = (id, commentId) => httpRequest(`/cards/${id}/comments/${commentId}`, 'PATCH');
 export const likeUnlikeComment = (id, commentId) => httpRequest(`/cards/${id}/comments/${commentId}/like`, 'PATCH');
 export const addReply = (id, commentId, replyData) => httpRequest(`/cards/${id}/comments/${commentId}/replies`, 'PATCH', replyData);
-export const getFeedCards = () => httpRequest(`/cards/feed`, 'GET');
+// Cursor-paginated feed → { cards, nextCursor }. Omit cursor for the first page.
+export const getFeedCards = (cursor, limit = 15) => {
+    const params = new URLSearchParams({ limit });
+    if (cursor) params.set('cursor', cursor);
+    return httpRequest(`/cards/feed?${params}`, 'GET');
+};
 export const banCard = (id) => httpRequest(`/cards/${id}/ban`, 'PATCH');
 export const reportCard = (id, reason) => httpRequest(`/cards/${id}/report`, 'POST', { reason });
 export const getCardLikes = (cardId, cursor, limit = 20) => {

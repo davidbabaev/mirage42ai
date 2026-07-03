@@ -219,48 +219,125 @@ describe('GET /users/suggested', () => {
     });
 });
 
-// ─── GET /cards/feed — popular fallback ────────────────────────────────────────
+// ─── GET /cards/feed — suggested/following feed (now { cards, nextCursor }) ─────
 
-describe('GET /cards/feed — popular fallback', () => {
+describe('GET /cards/feed — suggested fallback + following', () => {
+    it('returns a { cards, nextCursor } envelope', async () => {
+        const res = await request(app).get('/cards/feed').set('auth-token', tokenA);
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body.cards)).toBe(true);
+        expect(res.body.nextCursor === null || typeof res.body.nextCursor === 'string').toBe(true);
+    });
+
     it('user with 0 follows receives cards tagged isSuggested:true', async () => {
         // A follows nobody
         const res = await request(app).get('/cards/feed').set('auth-token', tokenA);
         expect(res.status).toBe(200);
-        // If any popular active cards exist, they must be flagged
-        if (res.body.length > 0) {
-            expect(res.body.every(c => c.isSuggested === true)).toBe(true);
+        // If any suggested active cards exist, they must be flagged
+        if (res.body.cards.length > 0) {
+            expect(res.body.cards.every(c => c.isSuggested === true)).toBe(true);
         }
     });
 
     it('user with follows receives their following feed (no isSuggested flag)', async () => {
-        // C follows B — should get B's posts, NOT the popular fallback
+        // C follows B — should get B's posts, NOT the suggested fallback
         const res = await request(app).get('/cards/feed').set('auth-token', tokenC);
         expect(res.status).toBe(200);
-        expect(res.body.some(c => c.isSuggested === true)).toBe(false);
+        expect(res.body.cards.some(c => c.isSuggested === true)).toBe(false);
         // C's feed includes B's post
-        expect(res.body.some(c => c._id === bCardId)).toBe(true);
+        expect(res.body.cards.some(c => c._id === bCardId)).toBe(true);
     });
 
-    it('popular fallback excludes the viewer\'s own posts', async () => {
+    it('suggested fallback excludes the viewer\'s own posts', async () => {
         // Post a card as A, then check A's feed does not include it (A follows nobody)
         await newCard(tokenA, 'A self post');
         const res = await request(app).get('/cards/feed').set('auth-token', tokenA);
         expect(res.status).toBe(200);
         // A's own posts must not appear in A's fallback feed
-        const ownPost = res.body.find(c => c.userId === idA);
+        const ownPost = res.body.cards.find(c => c.userId === idA);
         expect(ownPost).toBeUndefined();
     });
 
-    it('popular fallback excludes blocked authors (both directions)', async () => {
+    it('suggested fallback excludes blocked authors (both directions)', async () => {
         // A blocks B — B's card must not appear in A's fallback feed
         await request(app).patch(`/users/${idB}/block`).set('auth-token', tokenA);
 
         const res = await request(app).get('/cards/feed').set('auth-token', tokenA);
         expect(res.status).toBe(200);
-        const bCardPresent = res.body.some(c => String(c.userId) === idB);
+        const bCardPresent = res.body.cards.some(c => String(c.userId) === idB);
         expect(bCardPresent).toBe(false);
 
         // Cleanup: unblock
         await request(app).patch(`/users/${idB}/block`).set('auth-token', tokenA);
+    });
+
+    it('rejects a malformed cursor with 400', async () => {
+        const res = await request(app)
+            .get('/cards/feed?cursor=not-a-real-cursor')
+            .set('auth-token', tokenA);
+        expect(res.status).toBe(400);
+    });
+});
+
+// ─── GET /cards/feed — cursor pagination (keyset, no dupes/skips) ───────────────
+
+describe('GET /cards/feed — cursor pagination', () => {
+    let tokenE, idE, tokenF, tokenG;
+    const eCardIds = [];
+
+    // Page through an entire feed at the given limit, returning every card id seen.
+    const collectAllFeed = async (token, limit) => {
+        const ids = [];
+        let cursor;
+        for (let guard = 0; guard < 100; guard++) {
+            const url = `/cards/feed?limit=${limit}` + (cursor ? `&cursor=${encodeURIComponent(cursor)}` : '');
+            const res = await request(app).get(url).set('auth-token', token);
+            expect(res.status).toBe(200);
+            ids.push(...res.body.cards.map(c => String(c._id)));
+            if (!res.body.nextCursor) break;
+            cursor = res.body.nextCursor;
+        }
+        return ids;
+    };
+
+    beforeAll(async () => {
+        // E posts several cards; F follows only E → F's following feed is exactly
+        // E's cards (deterministic, isolated from other tests' cards). G follows
+        // nobody → G gets the suggested feed over all active posts.
+        const rE = await request(app).post('/users').send(mkUser('ob-e'));
+        tokenE = rE.body.token; idE = rE.body.safeUser._id;
+        const rF = await request(app).post('/users').send(mkUser('ob-f'));
+        tokenF = rF.body.token;
+        const rG = await request(app).post('/users').send(mkUser('ob-g'));
+        tokenG = rG.body.token;
+
+        for (let i = 0; i < 7; i++) {
+            const r = await newCard(tokenE, `E post ${i}`);
+            eCardIds.push(String(r.body._id));
+        }
+        await request(app).patch(`/users/${idE}/follow`).set('auth-token', tokenF);
+    }, 60_000);
+
+    it('honors the page limit and returns a next cursor when more remain', async () => {
+        const res = await request(app).get('/cards/feed?limit=3').set('auth-token', tokenF);
+        expect(res.status).toBe(200);
+        expect(res.body.cards.length).toBe(3);           // exactly one page
+        expect(typeof res.body.nextCursor).toBe('string'); // 7 > 3 → more remain
+    });
+
+    it('pages through the whole following feed with no duplicates, ending at null', async () => {
+        const ids = await collectAllFeed(tokenF, 3);
+        const unique = new Set(ids);
+        expect(unique.size).toBe(ids.length);            // no post repeated across pages
+        expect(unique.size).toBe(eCardIds.length);       // every one of E's 7 posts seen
+        for (const id of eCardIds) expect(unique.has(id)).toBe(true);
+    });
+
+    it('never leaks a blocked author across any page of the suggested feed', async () => {
+        // G (follows nobody) blocks E, then pages the entire suggested feed.
+        await request(app).patch(`/users/${idE}/block`).set('auth-token', tokenG);
+        const ids = await collectAllFeed(tokenG, 3);
+        for (const eId of eCardIds) expect(ids).not.toContain(eId);
+        await request(app).patch(`/users/${idE}/block`).set('auth-token', tokenG); // unblock
     });
 });

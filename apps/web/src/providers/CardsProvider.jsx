@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useCallback, useEffect, useState } from 'react'
 import { getAllCards, createCard, deleteCard, updateCard, likeUnlikeCard, addComment, removeComment, likeUnlikeComment, addReply, getFeedCards, banCard} from '../services/apiService';
+import { useCursorPagination } from '../hooks/useCursorPagination';
 import { useAuth } from './AuthProvider';
 
 const CardsContext = createContext();
@@ -9,8 +10,27 @@ export function CardsProvider({children}) {
     // state for saving cards (register cards)
 const [registeredCards, setRegisteredCards] = useState([]);
 
-const [feedCards, setFeedCards] = useState([]);
 const {isLoggedIn} = useAuth();
+
+// Cursor-paginated feed. The hook owns the accumulated `items` (exposed as
+// feedCards) plus loading/hasMore state; refresh() reloads from the top and
+// loadMore() appends the next page. In-place edits (like/comment/follow) still
+// go through setFeedCards, so the existing handlers below are unchanged.
+const feedFetcher = useCallback(
+    (cursor) => getFeedCards(cursor).then(r => ({ items: r.cards ?? [], nextCursor: r.nextCursor ?? null })),
+    []
+);
+const {
+    items: feedCards,
+    setItems: setFeedCards,
+    hasMore: feedHasMore,
+    loading: feedLoading,
+    loadingMore: feedLoadingMore,
+    error: feedError,
+    refresh: refreshFeedPages,
+    loadMore: loadMoreFeed,
+    reset: resetFeed,
+} = useCursorPagination(feedFetcher);
 
 const fetchCards = async () => {
     // Cards are only shown to signed-in users now (the public pages are walled),
@@ -26,6 +46,15 @@ const fetchCards = async () => {
     }
 }
 
+// Reload the feed from the first page. Kept as `refreshFeed` because several
+// screens call it after a mutation (post/delete/ban/edit). Guards on token so a
+// logged-out call is a no-op.
+const refreshFeed = useCallback(async () => {
+    const token = localStorage.getItem('auth-token')
+    if(!token) return;
+    await refreshFeedPages();
+}, [refreshFeedPages]);
+
 // Fetch cards + feed once authenticated, and re-fetch on login. On logout,
 // drop the previous user's data so it isn't left sitting in state.
 useEffect(() => {
@@ -34,23 +63,9 @@ useEffect(() => {
         refreshFeed();
     } else {
         setRegisteredCards([]);
-        setFeedCards([]);
+        resetFeed();
     }
 }, [isLoggedIn]);
-
-// can be called anytime you need to re-fetch
-const refreshFeed = async () => {
-    const token = localStorage.getItem('auth-token')
-    if(!token) return; //<- guard
-
-    try{
-        const response = await getFeedCards();
-        setFeedCards(response);
-    }
-    catch(err){
-        console.log(err.message);
-    }
-}
 
 // Drop an author's posts from the feed in place (e.g. on unfollow), so they
 // disappear instantly without a refetch or scroll reset.
@@ -290,6 +305,11 @@ const handleCardRegister = async (cardData) => {
         handleToggleCommentLike,
         handleAddReply,
         refreshFeed,
+        loadMoreFeed,
+        feedHasMore,
+        feedLoading,
+        feedLoadingMore,
+        feedError,
         removeAuthorFromFeed,
         addAuthorToFeed,
         feedCards,

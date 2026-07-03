@@ -70,5 +70,12 @@ const CardSchema = new mongoose.Schema({
     },
 })
 
+// Keyset-pagination indexes (createdAt desc, _id desc tiebreaker) so the feed
+// query is an index scan, never a full-collection scan.
+//   - global/suggested cold-start feed: recency across all active posts
+CardSchema.index({ createdAt: -1, _id: -1 });
+//   - following feed: recency within the set of followed authors
+CardSchema.index({ userId: 1, createdAt: -1, _id: -1 });
+
 const Card = mongoose.model('Card', CardSchema)
 module.exports = Card;

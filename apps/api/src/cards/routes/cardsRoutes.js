@@ -40,12 +40,15 @@ router.get('/cards', optionalAuth ,async (req, res) => {
 
 router.get('/cards/feed', auth, async (req,res) => {
     try{
-        const feedCards = await getFeedCards(req.user.userId, req.user.isAdmin)
-        res.send(feedCards) // <- send them back
+        // { cursor, limit } drive keyset pagination; returns { cards, nextCursor }.
+        const feed = await getFeedCards(req.user.userId, req.user.isAdmin, {
+            cursor: req.query.cursor,
+            limit: req.query.limit,
+        })
+        res.send(feed)
     }
     catch(err){
         handleError(res, err)
-        console.log(err.message);
     }
 })
 

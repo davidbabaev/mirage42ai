@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import CardItem from '../components/CardItem'
+import FeedCardSkeleton from '../components/FeedCardSkeleton'
 import { useCardsProvider } from '../providers/CardsProvider';
 import { useAuth } from '../providers/AuthProvider';
 import useFollowUser from '../hooks/useFollowUser';
@@ -23,8 +24,14 @@ import isProfileIncomplete from '../utils/isProfileIncomplete';
 
 export default function FeedPage() {
 
-    const {feedCards} = useCardsProvider();
-    const [count] = useState(50);
+    const {
+        feedCards,
+        loadMoreFeed,
+        feedHasMore,
+        feedLoading,
+        feedLoadingMore,
+        feedError,
+    } = useCardsProvider();
     const {user} = useAuth();
     const {users} = useUsersProvider();
     const{getFollowersCount, toggleFollow, isFollowByMe} = useFollowUser();
@@ -57,7 +64,26 @@ export default function FeedPage() {
 
     const myCardsCount = registeredCards.filter(card => card.userId === user?._id).length;
 
-    const countedRegisterCards = feedCards.slice(0, count)
+    // The full accumulated feed (paginated). No client-side cap — infinite scroll
+    // appends pages, and capping here would silently stop the feed.
+    const countedRegisterCards = feedCards;
+
+    // Infinite-scroll sentinel: a callback ref so the IntersectionObserver is
+    // (re)attached every time the sentinel mounts (it unmounts while a page is in
+    // flight, then remounts if more remain — this also auto-fills a short viewport).
+    const observerRef = useRef(null);
+    const sentinelRef = useCallback((node) => {
+        if (observerRef.current) {
+            observerRef.current.disconnect();
+            observerRef.current = null;
+        }
+        if (node) {
+            observerRef.current = new IntersectionObserver((entries) => {
+                if (entries[0]?.isIntersecting) loadMoreFeed();
+            }, { rootMargin: '400px' }); // prefetch just before the bottom
+            observerRef.current.observe(node);
+        }
+    }, [loadMoreFeed]);
 
     const friendsOfFriends = userFollowing.map((user) => {
         const somt = user.following;
@@ -389,6 +415,81 @@ export default function FeedPage() {
                             </React.Fragment>
                         );
                     })}
+
+                    {/* Initial load — skeletons shaped like feed cards */}
+                    {feedLoading && countedRegisterCards.length === 0 && (
+                        <Box aria-busy="true" aria-label="Loading feed">
+                            <FeedCardSkeleton />
+                            <FeedCardSkeleton />
+                            <FeedCardSkeleton />
+                        </Box>
+                    )}
+
+                    {/* Empty feed — nothing to show at all (distinct from end-of-feed) */}
+                    {!feedLoading && !feedError && countedRegisterCards.length === 0 && (
+                        <Paper
+                            elevation={0}
+                            sx={{
+                                borderRadius: 3,
+                                border: '0.5px solid',
+                                borderColor: 'divider',
+                                bgcolor: 'background.paper',
+                                textAlign: 'center',
+                                py: 6,
+                                px: 3,
+                            }}
+                        >
+                            <Typography fontWeight={700} gutterBottom>Your feed is empty</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Follow people or explore posts to fill your feed.
+                            </Typography>
+                        </Paper>
+                    )}
+
+                    {/* Error loading a page — inline retry, never a silent stall */}
+                    {feedError && (
+                        <Paper
+                            elevation={0}
+                            sx={{
+                                borderRadius: 3,
+                                border: '0.5px solid',
+                                borderColor: 'divider',
+                                bgcolor: 'background.paper',
+                                textAlign: 'center',
+                                py: 4,
+                                px: 3,
+                                mt: 2,
+                            }}
+                        >
+                            <Typography color="error" gutterBottom>
+                                Couldn't load the feed.
+                            </Typography>
+                            <Button
+                                variant="outlined"
+                                onClick={() => (countedRegisterCards.length ? loadMoreFeed() : refreshFeed())}
+                            >
+                                Retry
+                            </Button>
+                        </Paper>
+                    )}
+
+                    {/* Loading the next page */}
+                    {feedLoadingMore && <FeedCardSkeleton />}
+
+                    {/* Sentinel: scrolling it into view auto-loads the next page.
+                        Hidden while a page loads or after an error (no auto-retry loop). */}
+                    {feedHasMore && !feedLoadingMore && !feedError && (
+                        <Box ref={sentinelRef} sx={{ height: 1 }} />
+                    )}
+
+                    {/* End of feed */}
+                    {!feedHasMore && !feedLoading && !feedError && countedRegisterCards.length > 0 && (
+                        <Box sx={{ textAlign: 'center', py: 3 }}>
+                            <Typography variant="body2" fontWeight={600} color="text.secondary">
+                                You're all caught up
+                            </Typography>
+                        </Box>
+                    )}
 
                     {selectedCardId && (
                         <CardPopupModal
