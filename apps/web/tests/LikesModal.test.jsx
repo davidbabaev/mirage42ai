@@ -120,10 +120,12 @@ describe('LikesModal', () => {
         await waitFor(() => expect(screen.getByText('No likes yet.')).toBeInTheDocument());
     });
 
-    it('shows error state when fetch fails', async () => {
+    it('shows error state with a Retry affordance when fetch fails', async () => {
+        // The list now uses the shared InfiniteScroll error UI (friendly message +
+        // Retry), not the raw error string, so assert the Retry affordance.
         getCardLikesMock.mockRejectedValue(new Error('Network error'));
         renderLikesModal();
-        await waitFor(() => expect(screen.getByText('Network error')).toBeInTheDocument());
+        await waitFor(() => expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument());
     });
 
     it('calls toggleFollow when Follow button is clicked', async () => {

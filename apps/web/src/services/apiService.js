@@ -136,6 +136,23 @@ export const getCardLikes = (cardId, cursor, limit = 20) => {
 };
 export const getCardReports = (cardId) => httpRequest(`/cards/${cardId}/reports`, 'GET');
 
+// Cursor-paginated list endpoints → { items, nextCursor }. Omit cursor for page 1.
+const pageParams = (cursor, limit, extra = {}) => {
+    const params = new URLSearchParams({ limit, ...extra });
+    if (cursor) params.set('cursor', cursor);
+    return params.toString();
+};
+export const getExploreCards = (cursor, limit = 15, userId) =>
+    httpRequest(`/cards/explore?${pageParams(cursor, limit, userId ? { userId } : {})}`, 'GET');
+export const getCardComments = (cardId, cursor, limit = 15) =>
+    httpRequest(`/cards/${cardId}/comments?${pageParams(cursor, limit)}`, 'GET');
+export const getUsersBrowse = (cursor, limit = 15) =>
+    httpRequest(`/users/browse?${pageParams(cursor, limit)}`, 'GET');
+export const getFollowers = (userId, cursor, limit = 15) =>
+    httpRequest(`/users/${userId}/followers?${pageParams(cursor, limit)}`, 'GET');
+export const getFollowing = (userId, cursor, limit = 15) =>
+    httpRequest(`/users/${userId}/following?${pageParams(cursor, limit)}`, 'GET');
+
 
 // Notifications Requests
 export const getNotifications = () => httpRequest(`/notifications`, 'GET');
