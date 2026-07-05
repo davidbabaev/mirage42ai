@@ -22,6 +22,12 @@ Mark items [done] when finished so they drop out of the active list.
 - Still TODO (need their own order): chat message list (reverse/load-older scroll) + conversation list; admin panels (server-side paging — currently page client-side over admin-loaded data); notifications (backend hard-caps at 50, needs a cursor param). Longer-term: retire the global getAllCards/getAllUsers providers so nothing loads the full collection (kept for now to avoid breaking follower counts / admin / suggested).
 - Notes: DO NOT build ad-hoc. This is the same work as Phase D cursor pagination — belongs there to avoid building it twice.
 
+### Mobile-native post layout (Instagram/Facebook-style feed on mobile)
+- What: On mobile (<900px) feed posts render mobile-native like Instagram/Facebook — full-bleed edge-to-edge media, no card border or rounded corners, compact header, thin separator between posts. Desktop keeps the current bordered/rounded card in the centre column. One `CardItem`, responsive via MUI sx (no new component, no useMediaQuery — matches existing pattern).
+- Type: visual / feature
+- Reference: Instagram + Facebook mobile feeds (edge-to-edge cards, tighter chrome, media flush to screen edges).
+- Notes: full build order lives in today.md for the run. Media escapes the Container gutter on mobile only; desktop unchanged. Post modal is out of scope.
+
 ### Vercel preview URLs blocked by backend CORS
 - What: Vercel preview deployments get a unique, per-deploy hostname that isn't in the API's CORS allowlist, so the preview frontend can't call the backend (requests fail CORS).
 - Type: infrastructure / config
