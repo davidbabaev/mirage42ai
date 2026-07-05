@@ -501,8 +501,9 @@ export default function FeedPage() {
                 </Grid>
 
 
-                {/* Right column */}
-                <Grid size={{xs:12, md:3}}>
+                {/* Right column — desktop only; mobile uses the inline
+                    MobileSuggestions carousel injected in the feed instead. */}
+                <Grid size={{xs:12, md:3}} display={{xs: 'none', md: 'block'}}>
                     <Paper
                         elevation={0}
                         sx={{

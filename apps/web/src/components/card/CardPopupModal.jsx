@@ -50,15 +50,16 @@ export default function CardPopupModal({cardId, onClose, highlightCommentId}) {
                 position: 'absolute',
                 top: 9,
                 right: 3,
-                // m: 1,
-                  bgcolor: 'rgba(0,0,0,0.5)',
-                  color: 'white',
-                  p:0.5,
-                  '&:hover': {bgcolor: 'rgba(0,0,0,0.7)'}
-                // zIndex: 1100,
-                // '&:hover':{
-                //   bgcolor: 'background.paper'
-                // }
+                // Sit above the ZoomableImage: react-zoom-pan-pinch applies a
+                // CSS transform (new stacking context) + touchAction:'none' to
+                // its wrapper, which on mobile swallowed taps meant for this
+                // button. A positive z-index promotes the button above it so
+                // the tap (and hit-test) reaches the close button.
+                zIndex: 1102,
+                bgcolor: 'rgba(0,0,0,0.5)',
+                color: 'white',
+                p:0.5,
+                '&:hover': {bgcolor: 'rgba(0,0,0,0.7)'}
               }}
             >
               <CloseIcon/>

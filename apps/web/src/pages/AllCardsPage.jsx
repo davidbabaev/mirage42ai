@@ -468,7 +468,7 @@ export default function AllCardsPage() {
             </Grid>
 
 
-            <Grid size={{md:8}}>
+            <Grid size={{xs:12, md:8}}>
                 {/* main */}
                 <Box sx={{display: 'flex', gap:1}}>
 
