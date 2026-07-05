@@ -84,26 +84,30 @@ export default function CardItem({
     }
 
   return (
-        <Box sx={{
+        <Box sx={(theme) => ({
             // Mobile (xs): full-bleed, edge-to-edge post like the Instagram /
             // Facebook mobile feed. The 100vw + calc(50% - 50vw) break-out
             // escapes the Container/Grid horizontal gutter so the media runs
             // flush to both screen edges regardless of the parent padding.
-            // Desktop (md+): unchanged floating, bordered, rounded card.
+            // Desktop (md+): floating, bordered, rounded card.
             width: {xs: '100vw', md: '100%'},
             mx: {xs: 'calc(50% - 50vw)', md: 0},
             display: 'flex',
             flexDirection: 'column',
-            borderRadius: {xs: 0, md: 3},
-            border: {xs: 0, md: '0.5px solid'},
-            borderColor: 'divider',
-            // Mobile: a hairline between stacked full-bleed posts (IG-style)
-            // instead of the floating card gap. Desktop keeps the full border.
-            borderBottom: {xs: '1px solid', md: '0.5px solid'},
             bgcolor: 'background.paper',
-            my: {xs: 0, md: 2},
             overflow: 'hidden',
-          }}>
+            borderRadius: {xs: 0, md: 3},
+            // The divider colour is baked INTO the border shorthand so it never
+            // falls back to currentColor (which is white text colour in dark
+            // mode — that was the "white border" bug). Desktop: soft hairline
+            // all around. Mobile: edge-to-edge with only a soft separator line
+            // between posts (reads in both light and dark) plus a small
+            // IG/Facebook-style gap (mb below).
+            border: {xs: 'none', md: `0.5px solid ${theme.palette.divider}`},
+            borderBottom: {xs: `1px solid ${theme.palette.divider}`, md: `0.5px solid ${theme.palette.divider}`},
+            mt: {xs: 0, md: 2},
+            mb: {xs: 1, md: 2},
+          })}>
         <Box>
 
             {/* Creator flow */}

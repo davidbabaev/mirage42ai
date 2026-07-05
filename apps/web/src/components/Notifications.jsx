@@ -29,7 +29,7 @@ export default function Notifications({
   if(!notificationsValue || !users) return <p>Loading..</p>
 
   return (
-    <Box ref={setScrollEl} sx={{
+    <Box ref={setScrollEl} sx={(theme) => ({
       position: {xs: 'fixed',md:'absolute'},
       top: {xs: 56, md: '48px'},
       left: {xs: 0, md: 'auto'},
@@ -40,12 +40,13 @@ export default function Notifications({
       overflow: 'auto',
       overscrollBehavior: 'contain',
       bgcolor: 'background.paper',
-      border: {xs: 'none', md: '1px solid'},
+      // Colour baked into the shorthand so the responsive border never falls
+      // back to currentColor (white) in dark mode.
+      border: {xs: 'none', md: `1px solid ${theme.palette.divider}`},
       borderRadius: {xs: 0, md: 2},
-      // border: '1px solid',
-      borderColor: 'divider',
+      boxShadow: {md: 3},
       zIndex: 100,
-    }}>
+    })}>
       <Box sx={{
         px: 2,
         py: 1.5, 
