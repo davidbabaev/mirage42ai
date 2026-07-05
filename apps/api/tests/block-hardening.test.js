@@ -154,12 +154,12 @@ describe('Gap B — no notification across a block (third-party comment author)'
         await request(app).patch(`/cards/${oCard}/comments/${nCommentId}/like`).set('auth-token', R.token);
         const res = await notifsFor(N.token);
         expect(res.status).toBe(200);
-        expect(res.body.some(n => n.actionType === 'comment-like' && fromId(n) === R.id)).toBe(false);
+        expect(res.body.items.some(n => n.actionType === 'comment-like' && fromId(n) === R.id)).toBe(false);
     });
 
     it('a neutral user liking the same comment DOES notify the author (control)', async () => {
         await request(app).patch(`/cards/${oCard}/comments/${nCommentId}/like`).set('auth-token', U.token);
         const res = await notifsFor(N.token);
-        expect(res.body.some(n => n.actionType === 'comment-like' && fromId(n) === U.id)).toBe(true);
+        expect(res.body.items.some(n => n.actionType === 'comment-like' && fromId(n) === U.id)).toBe(true);
     });
 });

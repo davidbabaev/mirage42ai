@@ -1,32 +1,35 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom';
-import { useCardsProvider } from '../providers/CardsProvider';
 import getTimeAgo from '../utils/getTimeAgo';
-import { Avatar, Box, Button, IconButton, List, ListItem, ListItemAvatar, ListItemText, Typography } from '@mui/material';
+import { Avatar, Box, IconButton, List, ListItem, ListItemAvatar, ListItemText, Typography } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import GavelIcon from '@mui/icons-material/Gavel';
 import { useUsersProvider } from '../providers/UsersProvider';
+import InfiniteScroll from './InfiniteScroll';
 
 
 export default function Notifications({
-  notificationsValue, 
+  notificationsValue,
   handleDeleteNotificationValue,
-  onClose
+  onClose,
+  loading,
+  loadingMore,
+  hasMore,
+  error,
+  onLoadMore,
 }) {
 
   const {users} = useUsersProvider();
   const navigate = useNavigate();
-  const {registeredCards} = useCardsProvider();
 
-  const [countNotifications, setCountNotifications] = useState(6)
-
-  const countedListNotifcations = notificationsValue.slice(0, countNotifications)
+  // The scroll container becomes the IntersectionObserver root so the sentinel
+  // fires against the panel's own overflow, not the window.
+  const [scrollEl, setScrollEl] = useState(null);
 
   if(!notificationsValue || !users) return <p>Loading..</p>
 
   return (
-    <Box sx={{
+    <Box ref={setScrollEl} sx={{
       position: {xs: 'fixed',md:'absolute'},
       top: {xs: 56, md: '48px'},
       left: {xs: 0, md: 'auto'},
@@ -59,10 +62,25 @@ export default function Notifications({
         </Typography>
       </Box>
 
+      <InfiniteScroll
+        loading={loading}
+        loadingMore={loadingMore}
+        hasMore={hasMore}
+        error={!!error}
+        isEmpty={!loading && notificationsValue.length === 0}
+        onLoadMore={onLoadMore}
+        onRetry={onLoadMore}
+        root={scrollEl}
+        showEnd={false}
+        emptyState={
+          <Box sx={{ textAlign: 'center', py: 5, px: 2, color: 'text.secondary' }}>
+            <Typography variant="body2">No notifications yet.</Typography>
+          </Box>
+        }
+      >
       <List disablePadding>
-        {countedListNotifcations.map((notification) => {
+        {notificationsValue.map((notification) => {
           const notificationSenderUser = users.find(u => u._id === notification.fromUser)
-          const notificationOnCard = registeredCards.find(c => c._id === notification.whichCard)
 
           // Moderation notice: no actor (the moderator is intentionally hidden),
           // so it renders as a system message with a gavel icon and no profile link.
@@ -179,19 +197,8 @@ export default function Notifications({
             </ListItem>
           )
         })}
-
-        {notificationsValue.length > countNotifications && (
-          <Button 
-            variant='outlined' 
-            sx={{m:2, fontSize: 11, borderRadius: 5}} 
-            size='small'
-            startIcon={<KeyboardArrowDownIcon/>}
-            onClick={() => setCountNotifications(countNotifications + 6)}
-          >
-              More..
-            </Button>
-        )}
       </List>
+      </InfiniteScroll>
     </Box>
   )
 }

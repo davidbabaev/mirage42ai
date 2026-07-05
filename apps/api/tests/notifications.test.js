@@ -110,7 +110,7 @@ describe('comment-like / comment-reply notifications carry commentId', () => {
             .get('/notifications')
             .set('auth-token', tokenBob);
         expect(notifsRes.status).toBe(200);
-        const notif = notifsRes.body.find(n => n.actionType === 'comment-like');
+        const notif = notifsRes.body.items.find(n => n.actionType === 'comment-like');
         expect(notif).toBeTruthy();
         expect(notif.commentId).toBeTruthy();
         expect(String(notif.commentId)).toBe(String(commentId));
@@ -148,7 +148,7 @@ describe('comment-like / comment-reply notifications carry commentId', () => {
             .get('/notifications')
             .set('auth-token', tokenAlice);
         expect(notifsRes.status).toBe(200);
-        const notif = notifsRes.body.find(n => n.actionType === 'comment-reply');
+        const notif = notifsRes.body.items.find(n => n.actionType === 'comment-reply');
         expect(notif).toBeTruthy();
         expect(notif.commentId).toBeTruthy();
         expect(String(notif.commentId)).toBe(String(commentId));
@@ -180,8 +180,8 @@ describe('DELETE /notifications/:id auth boundary', () => {
             .get('/notifications')
             .set('auth-token', tokenBob);
         expect(notifsRes.status).toBe(200);
-        expect(Array.isArray(notifsRes.body)).toBe(true);
-        const notif = notifsRes.body.find(n => n.actionType === 'like');
+        expect(Array.isArray(notifsRes.body.items)).toBe(true);
+        const notif = notifsRes.body.items.find(n => n.actionType === 'like');
         expect(notif).toBeTruthy();
         const notifId = notif._id;
 

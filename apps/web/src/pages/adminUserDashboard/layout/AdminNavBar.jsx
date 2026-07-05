@@ -21,7 +21,13 @@ export default function AdminNavBar({onToggle}) {
         notifications,
         handleDeleteNotification,
         unreadCount,
-        handleMarkAsRead
+        handleMarkAsRead,
+        refreshNotifications,
+        loading: notificationsLoading,
+        loadingMore: notificationsLoadingMore,
+        hasMore: notificationsHasMore,
+        error: notificationsError,
+        loadMore: loadMoreNotifications,
     } = useNotifications();
 
     const ref = useRef(null);
@@ -80,9 +86,10 @@ export default function AdminNavBar({onToggle}) {
                                 onClick ={async() => {
                                 setIsNotificationsOpen(!isNotificationsOpen)
                                 if(!isNotificationsOpen){
-                                    await handleMarkAsRead()   
+                                    await handleMarkAsRead()
+                                    await refreshNotifications()
                                 }
-                                }} 
+                                }}
                             >
                                 <Badge badgeContent={unreadCount}>
                                     <NotificationsIcon />
@@ -90,12 +97,18 @@ export default function AdminNavBar({onToggle}) {
                             </IconButton>
 
                             {isNotificationsOpen && (
-                                <Notifications 
+                                <Notifications
                                     countValue = {unreadCount}
                                     notificationsValue = {notifications}
                                     handleDeleteNotificationValue = {handleDeleteNotification}
+                                    onClose={() => setIsNotificationsOpen(false)}
+                                    loading={notificationsLoading}
+                                    loadingMore={notificationsLoadingMore}
+                                    hasMore={notificationsHasMore}
+                                    error={notificationsError}
+                                    onLoadMore={loadMoreNotifications}
                                 />
-                            )}  
+                            )}
                         </Box>
                     </Box>
                     

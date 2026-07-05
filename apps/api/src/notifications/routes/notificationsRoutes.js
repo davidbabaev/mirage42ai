@@ -12,8 +12,9 @@ const {
 // get all notifications for logged-in user
 router.get('/notifications', auth, async (req,res) => {
     try{
-        let notifications = await getNotifications(req.user.userId);
-        res.send(notifications);
+        const { cursor, limit } = req.query;
+        const result = await getNotifications(req.user.userId, { cursor, limit });
+        res.send(result);
     }
     catch(err){
         handleError(res, err)

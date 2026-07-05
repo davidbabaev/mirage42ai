@@ -20,6 +20,10 @@ const NotificationSchema = new mongoose.Schema({
     commentId: mongoose.Schema.Types.ObjectId,
 })
 
+// Supports the keyset pagination query: filter by recipient, sort newest-first
+// on (createdAt, _id). Keeps the notifications list off a collection scan.
+NotificationSchema.index({ toUser: 1, createdAt: -1, _id: -1 });
+
 const Notification = mongoose.model('Notification', NotificationSchema);
 
 module.exports = Notification;

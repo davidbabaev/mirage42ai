@@ -175,7 +175,8 @@ export const getCardsSearch = (params = {}, cursor, limit = 10) => {
 
 
 // Notifications Requests
-export const getNotifications = () => httpRequest(`/notifications`, 'GET');
+export const getNotifications = (cursor, limit = 20) =>
+    httpRequest(`/notifications?${pageParams(cursor, limit)}`, 'GET');
 export const markNotificationsAsRead = () => httpRequest(`/notifications`, 'PATCH');
 export const deleteOneNotification = (id) => httpRequest(`/notifications/${id}`, 'DELETE');
 

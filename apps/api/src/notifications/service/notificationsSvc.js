@@ -1,12 +1,35 @@
 const Notification = require("../models/Notifications");
 const { createError } = require('../../utils/handleErrors');
+const { normalizeLimit, decodeCursor, runKeysetPage } = require('../../utils/cursorPagination');
 
-// user's nptifications bell
-const getNotifications = async (userId) => {
-    const notifications = await Notification.find({toUser: userId}).sort({createdAt: -1}).limit(50);
-    if(!notifications) throw createError(404, "Notifications not found")
+// user's notifications bell — cursor-paginated (keyset on createdAt+_id, newest
+// first). Replaces the old hard .limit(50) so older notifications are reachable
+// by scrolling. The first page (no cursor) also carries `unreadCount`, computed
+// server-side over ALL of the user's rows so the bell badge stays correct no
+// matter how far the panel is paginated.
+const getNotifications = async (userId, opts = {}) => {
+    const pageSize = normalizeLimit(opts.limit, 20, 50);
 
-    return notifications;
+    let decoded = null;
+    if (opts.cursor) {
+        decoded = decodeCursor(opts.cursor);
+        if (!decoded) throw createError(400, "Invalid notifications cursor");
+    }
+
+    const { page, nextCursor } = await runKeysetPage(
+        Notification,
+        { toUser: userId },
+        decoded,
+        pageSize,
+    );
+
+    // Only the first page needs the badge seed; deeper pages omit it to avoid an
+    // extra count query per scroll.
+    const unreadCount = decoded
+        ? undefined
+        : await Notification.countDocuments({ toUser: userId, isRead: false });
+
+    return { items: page, nextCursor, unreadCount };
 }
 
 const getNotification = async (notificationId) => {

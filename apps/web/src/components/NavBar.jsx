@@ -60,7 +60,13 @@ export default function NavBar() {
         notifications,
         handleDeleteNotification,
         unreadCount,
-        handleMarkAsRead
+        handleMarkAsRead,
+        refreshNotifications,
+        loading: notificationsLoading,
+        loadingMore: notificationsLoadingMore,
+        hasMore: notificationsHasMore,
+        error: notificationsError,
+        loadMore: loadMoreNotifications,
       } = useNotifications();
 
     const { totalUnread } = useChatList();
@@ -201,9 +207,12 @@ export default function NavBar() {
                                     onClick ={async() => {
                                     setIsNotificationsOpen(!isNotificationsOpen)
                                     if(!isNotificationsOpen){
-                                        await handleMarkAsRead()   
+                                        // Clear the badge first, then refresh the list newest-first
+                                        // so notifications that arrived this session surface at the top.
+                                        await handleMarkAsRead()
+                                        await refreshNotifications()
                                     }
-                                    }} 
+                                    }}
                                 >
                                     <Badge 
                                         badgeContent={unreadCount}
@@ -221,11 +230,16 @@ export default function NavBar() {
                                 </IconButton>
 
                                 {isNotificationsOpen && (
-                                    <Notifications 
+                                    <Notifications
                                         countValue = {unreadCount}
                                         notificationsValue = {notifications}
                                         handleDeleteNotificationValue = {handleDeleteNotification}
                                         onClose={() => setIsNotificationsOpen(false)}
+                                        loading={notificationsLoading}
+                                        loadingMore={notificationsLoadingMore}
+                                        hasMore={notificationsHasMore}
+                                        error={notificationsError}
+                                        onLoadMore={loadMoreNotifications}
                                     />
                                 )}  
                             </Box>

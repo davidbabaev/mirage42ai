@@ -79,7 +79,7 @@ describe('notify author when their post is banned/removed', () => {
             .send({ email: 'author.removed@example.com', password: 'Password1!' });
         const res = await request(app).get('/notifications').set('auth-token', login.body.token);
         expect(res.status).toBe(200);
-        const mine = res.body.find(n => n.actionType === 'post-removed' && n.whichCard === cardId);
+        const mine = res.body.items.find(n => n.actionType === 'post-removed' && n.whichCard === cardId);
         expect(mine).toBeTruthy();
     });
 
