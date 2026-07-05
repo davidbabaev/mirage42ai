@@ -85,14 +85,24 @@ export default function CardItem({
 
   return (
         <Box sx={{
-            width: '100%', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            borderRadius: 3,
-            border: '0.5px solid',
+            // Mobile (xs): full-bleed, edge-to-edge post like the Instagram /
+            // Facebook mobile feed. The 100vw + calc(50% - 50vw) break-out
+            // escapes the Container/Grid horizontal gutter so the media runs
+            // flush to both screen edges regardless of the parent padding.
+            // Desktop (md+): unchanged floating, bordered, rounded card.
+            width: {xs: '100vw', md: '100%'},
+            mx: {xs: 'calc(50% - 50vw)', md: 0},
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: {xs: 0, md: 3},
+            border: {xs: 0, md: '0.5px solid'},
             borderColor: 'divider',
+            // Mobile: a hairline between stacked full-bleed posts (IG-style)
+            // instead of the floating card gap. Desktop keeps the full border.
+            borderBottom: {xs: '1px solid', md: '0.5px solid'},
             bgcolor: 'background.paper',
-            my: 2
+            my: {xs: 0, md: 2},
+            overflow: 'hidden',
           }}>
         <Box>
 
