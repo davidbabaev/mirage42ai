@@ -16,7 +16,9 @@ Clear and rewrite it each day. Git keeps the history.
 
 Working top-down. One concern per commit; test-first for logic; browser-verify visual at 390/1280; full suite green before "done".
 
-### 1. Server-authoritative follower/following counts  [IN PROGRESS]
+> **Run status (2026-07-10):** DONE → #1 follower counts, #2 Vercel CORS, #3A chat message pagination, #7 favorites→API (each test-first + browser-verified at 390/1280). DEFERRED → #3B conversation-list pagination (own order; needs server-side totalUnread). QUEUED → #4 admin paging, #5 optimistic mutations, #6 retire global providers, #8 folder sweep, then Phase F (agents). All shipped on branch `autopilot/2026-07-10-favorites-api` (8 commits, awaiting review). api 303 green + lint clean; web 161 green. One small follow-up logged in the backlog: hide the save button on banned posts in CardItem.
+
+### 1. Server-authoritative follower/following counts  [DONE]
 - What: The API must return `followersCount` and `followingCount` on the standard user/profile response instead of the client counting the full `following` array. Closes the remaining piece of master-plan Phase D #14.
 - Decisions: `followingCount` = deduped `$size` of the `following` array; `followersCount` = `countDocuments({ following: id })` (or aggregation). Keep returning existing fields for now to avoid breaking callers; frontend profile switches to the server counts. Don't leak the full `following` array where only a count is needed (follow-up).
 - Done when: profile fetch returns both counts; the public profile UI renders them from the server fields (not `new Set(following).size`); counts are correct across follow/unfollow; API tests cover both counts; full suite green.
