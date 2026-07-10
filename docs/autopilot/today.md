@@ -12,13 +12,69 @@ Clear and rewrite it each day. Git keeps the history.
 - Type: logic | visual | feature
 -->
 
-## Tasks
+## Plan (2026-07-10) — recommended execution order
+
+Working top-down. One concern per commit; test-first for logic; browser-verify visual at 390/1280; full suite green before "done".
+
+### 1. Server-authoritative follower/following counts  [IN PROGRESS]
+- What: The API must return `followersCount` and `followingCount` on the standard user/profile response instead of the client counting the full `following` array. Closes the remaining piece of master-plan Phase D #14.
+- Decisions: `followingCount` = deduped `$size` of the `following` array; `followersCount` = `countDocuments({ following: id })` (or aggregation). Keep returning existing fields for now to avoid breaking callers; frontend profile switches to the server counts. Don't leak the full `following` array where only a count is needed (follow-up).
+- Done when: profile fetch returns both counts; the public profile UI renders them from the server fields (not `new Set(following).size`); counts are correct across follow/unfollow; API tests cover both counts; full suite green.
+- Type: logic
+
+### 2. Vercel preview URLs blocked by CORS
+- What: API CORS origin check also allows Vercel preview hostnames (`*.vercel.app` / per-branch preview URLs), not only the fixed production origin.
+- Decisions: match the Vercel preview pattern safely (exact suffix match, not a loose regex); keep the production origin as the canonical anchor.
+- Done when: a preview-style Origin passes CORS while an unknown origin is still rejected; covered by a test.
+- Type: logic / config
+
+### 3. Chat pagination — message list + conversation list
+- What: Paginate the chat message list (reverse / load-older on scroll-up) and the conversation list, reusing the cursor-pagination util + InfiniteScroll pattern. Next phase of the infinite-scroll epic.
+- Done when: opening a long thread loads a page of recent messages, scrolling up loads older; conversation list paginates; browser-verified at 390/1280; suite green.
+- Type: feature
+
+### 4. Admin panels — server-side paging
+- What: Move admin lists (users/cards/reports) off client-side paging over admin-loaded data to server-side pagination.
+- Done when: admin lists page from the server; suite green.
+- Type: logic
+
+### 5. Optimistic follow/like/comment mutations
+- What: Make follow/like/comment update in place with no refetch/scroll-jump (the real fix). Evaluate whether to adopt React Query (#15) or extend the current hooks.
+- Done when: actions reflect instantly, reconcile on server response, roll back on error; browser-verified.
+- Type: logic
+
+### 6. Retire global load-everything providers
+- What: Remove `getAllUsers`/`getAllCards` mount-time full-collection loads once counts (#1) are server-side; anything still depending on them migrates to scoped/paginated queries.
+- Done when: no provider loads a full collection on mount; suite green.
+- Type: logic
+
+### 7. Favorites → API (cross-device)
+- What: Move `useFavoriteCards` from localStorage to a server-persisted API.
+- Done when: favorites persist across devices/sessions; suite green.
+- Type: feature
+
+### 8. Folder / naming sweep
+- What: One restructure — misspellings, casing, "reusable components" naming. Done LAST, after the architecture settles.
+- Type: logic
+
+### 9. Network / infra hardening  (deploy-time, not app code)
+- What: Firewall / WAF (Cloudflare) / restrict inbound ports / lock Atlas network access. Verified in host dashboards.
+- Type: infrastructure
+
+### 10. TASK B — DMs fail after a long session  (DIAGNOSE-ONLY, separate session)
+- What: After a long session DMs silently fail until relogin. Likely token/socket-auth expiry. Diagnose, do not implement here.
+- Type: bug → diagnosis
+
+---
+
+## Phase F — Agents (the product vision; starts after the app-hardening items above)
+- 11. Data model (`kind`, personas, memory) + `apps/agents` skeleton + kill-switch.
+- 12. One text-only agent: heartbeat → decision loop → posts/comments/likes via public API.
+- 13. In-character DMs with memory + human-feeling delays.
+- 14. Consistent-face image pipeline → reference sets for 3 personas → admin approval queue.
+- 15. 3-agent pilot on staging.
 
 <!--
 DECISIONS LOG (this run) — maintained by the executor, reviewed at merge:
-- Infinite-scroll task scoped to NOTIFICATIONS (phase 4) only for this run; chat + admin deferred to their own orders per backlog's "each needs their own order" note. Keeps the run reviewable and avoids one giant multi-area commit.
-- Mobile post: single responsive CardItem via sx breakpoints (no useMediaQuery, no second component) to match the codebase's existing responsive convention.
-- Notifications NOT made read-time block-aware: the block feature already suppresses notifications at CREATION time (see block-hardening test), so the read endpoint was never block-filtered; adding it is a separable concern and would grow this diff. Deferred, behaviour preserved.
-- unreadCount split into its own state (was client-derived from the full 50-item array, which no longer exists under pagination). Server returns it on the first page over ALL rows; a monotonic token + optimistic clear on mark-read prevents a late first-page fetch from resurrecting a stale badge.
-- Infinite-scroll backlog item kept under "## Active" (not moved to Awaiting review): it is a multi-phase epic and phases 1–3 were handled the same way — a "Progress:" line + updated "Still TODO", staying Active until chat + admin are also done.
+- (to be filled as tasks are executed)
 -->
