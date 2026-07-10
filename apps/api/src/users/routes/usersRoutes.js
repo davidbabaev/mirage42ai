@@ -25,8 +25,11 @@ const {
     getFollowing,
     getUsersSearch,
     getUserCountriesList,
+    addFavorite,
+    removeFavorite,
 } = require('../service/usersSvc');
 const { getRecentContacts } = require('../../chat/service/chatSvc');
+const { getFavoriteCards } = require('../../cards/service/cardsSvc');
 const validateUser = require('../validation/joi/validateUserWithJoi');
 const validateLogin = require('../validation/joi/validateLoginWithJoi');
 const auth = require('../../auth/authService');
@@ -151,6 +154,39 @@ router.patch('/users/me/onboarding', auth, async (req, res) => {
             onboardingComplete: req.body.onboardingComplete,
         });
         res.send(updated);
+    }
+    catch(err){
+        handleError(res, err);
+    }
+})
+
+// Favorites (saved posts) for the calling user only. Server-persisted so saves
+// follow the user across devices. All under /users/me/... and declared BEFORE
+// /users/:id so 'me' is never captured as a user id.
+router.get('/users/me/favorites', auth, async (req, res) => {
+    try{
+        const cards = await getFavoriteCards(req.user.userId, req.user.userId, req.user.isAdmin);
+        res.send(cards);
+    }
+    catch(err){
+        handleError(res, err);
+    }
+})
+
+router.post('/users/me/favorites/:cardId', auth, async (req, res) => {
+    try{
+        const result = await addFavorite(req.user.userId, req.params.cardId);
+        res.send(result);
+    }
+    catch(err){
+        handleError(res, err);
+    }
+})
+
+router.delete('/users/me/favorites/:cardId', auth, async (req, res) => {
+    try{
+        const result = await removeFavorite(req.user.userId, req.params.cardId);
+        res.send(result);
     }
     catch(err){
         handleError(res, err);

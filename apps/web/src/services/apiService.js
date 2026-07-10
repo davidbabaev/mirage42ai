@@ -181,6 +181,11 @@ export const markNotificationsAsRead = () => httpRequest(`/notifications`, 'PATC
 export const deleteOneNotification = (id) => httpRequest(`/notifications/${id}`, 'DELETE');
 
 
+// favorites (saved posts) — server-persisted, cross-device
+export const getMyFavorites = () => httpRequest('/users/me/favorites', 'GET');
+export const addFavorite = (cardId) => httpRequest(`/users/me/favorites/${cardId}`, 'POST');
+export const removeFavorite = (cardId) => httpRequest(`/users/me/favorites/${cardId}`, 'DELETE');
+
 // chat requests
 export const getChats = () => httpRequest(`/chats`, 'GET');
 // Cursor-paginated conversation messages → { messages, nextCursor }. Omit cursor

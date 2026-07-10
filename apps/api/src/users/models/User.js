@@ -59,6 +59,14 @@ const UserSchema = new mongoose.Schema({
         }
     },
     following: [String],
+    // Card ids this user has bookmarked ("favorites"/saved posts). Server-persisted
+    // so saves follow the user across devices (replaces the old per-browser
+    // localStorage store). Owner-only: exposed in the safe projection, never public.
+    favorites: {
+        type: [mongoose.Schema.Types.ObjectId],
+        ref: 'Card',
+        default: [],
+    },
     // userIds this user has blocked. Stored one-directionally but enforced both
     // ways (neither party sees/messages the other). Never exposed in the public
     // projection — only in the owner's own (safe) projection.

@@ -93,6 +93,27 @@ const getCards = async (requesterId, isAdmin) => {
         return cards.map(card => stripBlockedComments(pickSafeCardFields(card), hidden))
 }
 
+// The caller's saved posts, hydrated fresh from the DB (so edits/bans reflect,
+// unlike the old localStorage snapshots). Non-admins see only still-active posts
+// and never a blocked author's post; comments from blocked users are stripped.
+// Returned in the user's save order (their favorites array order).
+const getFavoriteCards = async (userId, requesterId, isAdmin) => {
+        const user = await User.findById(userId);
+        if(!user) throw createError(401, 'User not found');
+        const favoriteIds = (user.favorites || []).map(String);
+        if(!favoriteIds.length) return [];
+
+        const hidden = await getHiddenUserIds(requesterId);
+        const filter = { _id: { $in: favoriteIds } };
+        if(!isAdmin) filter.status = 'active';
+        if(hidden.size) filter.userId = { $nin: [...hidden] };
+
+        const cards = await Card.find(filter);
+        const order = new Map(favoriteIds.map((id, i) => [id, i]));
+        cards.sort((a, b) => order.get(String(a._id)) - order.get(String(b._id)));
+        return cards.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
+}
+
 // Raw fetch for internal/owner operations (edit, delete, like, comment):
 // returns the Mongoose doc regardless of status.
 const getCard = async (cardId) => {
@@ -570,6 +591,7 @@ const getCardsSearch = async (requesterId, isAdmin, opts = {}) => {
 module.exports = {
     createNewCard,
     getCards,
+    getFavoriteCards,
     getCard,
     getPublicCard,
     updateCard,

@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const _ = require('lodash');
 const {generateUserPassword, comparePassword} = require('../helpers/bcrypt');
@@ -26,6 +27,7 @@ const pickSafeUserFields = (user) => {
         "createdAt",
         "_id",
         "following",
+        "favorites",
         "blocked",
         "isAdmin",
         "isBanned",
@@ -271,6 +273,29 @@ const blockUser = async (blockerId, targetId) => {
 
     const updated = await User.findById(blockerId);
     return pickSafeUserFields(updated);
+}
+
+// Bookmark a card for the calling user. Atomic $addToSet so repeat calls never
+// duplicate. Rejects an invalid id (400) or a card that isn't a real, active
+// post (404) — you can't save a banned/deleted/nonexistent post. Returns the
+// updated favorites id list so the client can reconcile.
+const addFavorite = async (userId, cardId) => {
+    if(!mongoose.isValidObjectId(cardId)) throw createError(400, 'Invalid post');
+    const card = await Card.findById(cardId);
+    if(!card || card.status !== 'active') throw createError(404, 'Post not found');
+    await User.updateOne({ _id: userId }, { $addToSet: { favorites: cardId } });
+    const user = await User.findById(userId);
+    return { favorites: (user.favorites || []).map(String) };
+}
+
+// Remove a bookmark. $pull is idempotent (removing an absent id is a no-op) and
+// intentionally does NOT require the card to still exist/be active, so a user can
+// always unsave a post that was since banned or deleted.
+const removeFavorite = async (userId, cardId) => {
+    if(!mongoose.isValidObjectId(cardId)) throw createError(400, 'Invalid post');
+    await User.updateOne({ _id: userId }, { $pull: { favorites: cardId } });
+    const user = await User.findById(userId);
+    return { favorites: (user.favorites || []).map(String) };
 }
 
 const deleteUser = async (deletedUserId) => {
@@ -670,6 +695,8 @@ module.exports = {
     pickSafeUserFields,
     followUser,
     blockUser,
+    addFavorite,
+    removeFavorite,
     // cardsFeed,
     banUser,
     promoteUserToAdmin,
