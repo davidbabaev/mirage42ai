@@ -24,12 +24,6 @@ Mark items [done] when finished so they drop out of the active list.
 - Not read-time block-aware (notifications): blocks are enforced at notification CREATION (block-hardening); the read endpoint was never block-filtered, so pagination preserved that. Read-time filtering is a separable follow-up if wanted.
 - Notes: DO NOT build ad-hoc. This is the same work as Phase D cursor pagination — belongs there to avoid building it twice.
 
-### Vercel preview URLs blocked by backend CORS
-- What: Vercel preview deployments get a unique, per-deploy hostname that isn't in the API's CORS allowlist, so the preview frontend can't call the backend (requests fail CORS).
-- Type: infrastructure / config
-- Reference: none
-- Notes: needs the API CORS origin check to also allow Vercel preview hostnames (e.g. match the `*.vercel.app` preview pattern / per-branch URLs) instead of only the fixed production origin. Keep on Active.
-
 ### TASK B — Messaging stops after a long session  [BACKLOG ONLY — DO NOT BUILD THIS RUN]
 - Type: bug → diagnose-only, handled in a separate session
 - Symptom: After a long logged-in session the user can't send DMs; sends silently fail until logout + relogin. Likely token expiry interacting with the socket/auth layer.
@@ -37,7 +31,13 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-(none)
+Branch `autopilot/2026-07-10-follower-counts` (not yet merged to main):
+
+### Server-authoritative follower/following counts — AWAITING REVIEW
+- Commit `0d566b8`. Counts computed in `projectUser` server-side instead of derived client-side from a fully-loaded users array. `followingCount` = deduped `$size` of the doc's `following` (free, always attached); `followersCount` via `countDocuments` on `GET /users/:id` and ONE aggregation over the result set on `GET /users` (no N+1). Profile UI reads `userProfile.followersCount/followingCount` with a graceful `??` fallback. Closes master-plan Phase D #14 counts-source piece. 3 new API tests; api 284 green + lint clean; browser-verified at 390/1280 (david: 7 followers / 4 following render; cross-checked against the raw follow graph).
+
+### Vercel preview URLs blocked by backend CORS — AWAITING REVIEW
+- Commit `512dadb`. Added shared `isOriginAllowed()` in `config/allowedOrigins.js` (static allowlist + optional project-scoped `PREVIEW_ORIGIN_REGEX`), used by BOTH the HTTP cors middleware and socket.io in function form so they can't drift. Scoped regex over blanket `*.vercel.app` deliberately (credentials enabled). Unset ⇒ no preview origins allowed; malformed regex ignored. Documented in `.env.example`. 6 new unit tests; api 290 green + lint clean; live-verified ACAO emitted for allowed origins, omitted for disallowed.
 
 ## Done
 
