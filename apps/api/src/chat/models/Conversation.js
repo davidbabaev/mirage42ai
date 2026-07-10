@@ -39,5 +39,12 @@ const ConversationSchema = new mongoose.Schema({
     lastMessage: LastMessageSchema,
 }, {timestamps: true})
 
+// The conversation list queries `{ $or: [{fromUser: me}, {toUser: me}] }` sorted
+// by updatedAt desc. Mongo can serve each $or branch from its own index, so a
+// compound index per side supports both the filter and the sort (and is what a
+// future keyset paginating the list by updatedAt will ride on).
+ConversationSchema.index({ fromUser: 1, updatedAt: -1 });
+ConversationSchema.index({ toUser: 1, updatedAt: -1 });
+
 const Conversation = mongoose.model('Conversation', ConversationSchema);
 module.exports = Conversation;
