@@ -71,7 +71,7 @@ const listIds = (token) =>
 const chatRow = (token, convId) =>
     request(app).get('/chats').set('auth-token', token).then(r => r.body.find(c => c._id === String(convId)));
 const messages = (token, convId) =>
-    request(app).get(`/messages/${convId}`).set('auth-token', token).then(r => r.body);
+    request(app).get(`/messages/${convId}`).set('auth-token', token).then(r => r.body.messages);
 
 describe('per-side chat delete (deletedAt timestamp — WhatsApp behavior)', () => {
     it('clears MY history on delete; the other user keeps the full history', async () => {

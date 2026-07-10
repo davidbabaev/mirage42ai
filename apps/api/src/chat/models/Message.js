@@ -41,5 +41,10 @@ const MessageSchema = new mongoose.Schema({
 
 }, {timestamps: true});
 
+// Keyset pagination of a conversation's messages sorts by (createdAt desc, _id
+// desc) within a conversationId. This compound index serves both the filter and
+// the sort so paging a busy thread is an index scan, not a collection scan.
+MessageSchema.index({ conversationId: 1, createdAt: -1, _id: -1 });
+
 const Message = mongoose.model('Message', MessageSchema);
 module.exports = Message;

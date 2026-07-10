@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import useChat from '../../hooks/useChat'
 import { useAuth } from '../../providers/AuthProvider';
 import { Alert, Box, Container, Grid, Snackbar } from '@mui/material';
@@ -113,6 +113,9 @@ export default function ChatPage() {
         handleOpenConversation,
         handleSendNewMessage,
         chatMessages,
+        loadOlderMessages,
+        hasOlderMessages,
+        loadingOlder,
         sendError,
         clearSendError
     } = useChat(
@@ -156,6 +159,8 @@ export default function ChatPage() {
     const isNearBottomRef = useRef(true);   // read inside the effect without re-subscribing
     const prevConvIdRef = useRef(undefined);
     const prevLenRef = useRef(0);
+    const prevLastIdRef = useRef(null);        // tail identity: distinguishes append from prepend
+    const pendingPrependHeightRef = useRef(null); // scrollHeight captured before an older-page load
 
     const scrollToBottom = (behavior = 'smooth') => {
         messageEndRef.current?.scrollIntoView({ behavior });
@@ -170,7 +175,25 @@ export default function ChatPage() {
         isNearBottomRef.current = near;
         setIsNearBottom(near);
         if (near) setHasNewBelow(false);
+
+        // Near the top → load the next-older page. Capture scrollHeight first so
+        // the layout effect can restore the position after the prepend.
+        if (c.scrollTop < 80 && hasOlderMessages && !loadingOlder) {
+            pendingPrependHeightRef.current = c.scrollHeight;
+            loadOlderMessages();
+        }
     };
+
+    // Anchor the viewport when older messages are prepended: keep the same message
+    // under the user's eyes by shifting scrollTop down by the inserted height.
+    // Runs before paint so there's no visible jump.
+    useLayoutEffect(() => {
+        const c = messageContainerRef.current;
+        if (!c || pendingPrependHeightRef.current == null) return;
+        const delta = c.scrollHeight - pendingPrependHeightRef.current;
+        if (delta > 0) c.scrollTop = c.scrollTop + delta;
+        pendingPrependHeightRef.current = null;
+    }, [chatMessages])
 
     useEffect(() => {
         const len = chatMessages.length;
@@ -180,6 +203,8 @@ export default function ChatPage() {
         // which updates before the messages do)
         const convId = chatMessages[0]?.conversationId;
         const convChanged = convId !== prevConvIdRef.current;
+        const lastId = chatMessages[len - 1]?._id;
+        const tailChanged = lastId !== prevLastIdRef.current;
 
         if (convChanged) {
             // fresh conversation: jump to the latest instantly
@@ -187,8 +212,9 @@ export default function ChatPage() {
             setHasNewBelow(false);
             setIsNearBottom(true);
             isNearBottomRef.current = true;
-        } else if (len > prevLenRef.current) {
-            // new message in the open chat
+        } else if (tailChanged && len > prevLenRef.current) {
+            // a new message appended at the tail (NOT an older-page prepend, which
+            // grows the list at the front and leaves the tail identity unchanged)
             const last = chatMessages[len - 1];
             const mine = last?.userId === user?._id;
             if (mine || isNearBottomRef.current) {
@@ -204,6 +230,7 @@ export default function ChatPage() {
 
         prevConvIdRef.current = convId;
         prevLenRef.current = len;
+        prevLastIdRef.current = lastId;
     }, [chatMessages, user?._id])
 
     useEffect(() => {
@@ -325,6 +352,7 @@ return (
                     endRef={messageEndRef}
                     isChatReady={isChatReady}
                     onScroll={handleMessagesScroll}
+                    loadingOlder={loadingOlder}
                 />
 
                 <ScrollToBottomButton

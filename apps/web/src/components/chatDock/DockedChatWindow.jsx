@@ -139,6 +139,7 @@ export default function DockedChatWindow({ otherUser, onClose }) {
                     endRef={t.endRef}
                     isChatReady={t.isChatReady}
                     onScroll={t.onScroll}
+                    loadingOlder={t.loadingOlder}
                 />
 
                 <ScrollToBottomButton

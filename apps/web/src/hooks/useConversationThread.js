@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import useChat from './useChat';
 import { useAuth } from '../providers/AuthProvider';
 import { useChatList } from '../providers/ChatProvider';
@@ -39,7 +39,8 @@ export default function useConversationThread(otherUser, active) {
         });
     }, [otherUser?._id, user?._id]);
 
-    const { handleOpenConversation, handleSendNewMessage, chatMessages, sendError, clearSendError } =
+    const { handleOpenConversation, handleSendNewMessage, chatMessages, loadOlderMessages,
+        hasOlderMessages, loadingOlder, sendError, clearSendError } =
         useChat(conversationId, onDeleted, onReceived);
 
     useEffect(() => {
@@ -82,32 +83,49 @@ export default function useConversationThread(otherUser, active) {
     const isNearBottomRef = useRef(true);
     const prevConvIdRef = useRef(undefined);
     const prevLenRef = useRef(0);
+    const prevLastIdRef = useRef(null);
+    const pendingPrependHeightRef = useRef(null);
 
     const scrollToBottom = (behavior = 'smooth') => { endRef.current?.scrollIntoView({ behavior }); setHasNewBelow(false); };
     const onScroll = () => {
         const c = containerRef.current; if (!c) return;
         const d = c.scrollHeight - c.scrollTop - c.clientHeight;
         const near = d < 120; isNearBottomRef.current = near; setIsNearBottom(near); if (near) setHasNewBelow(false);
+        if (c.scrollTop < 80 && hasOlderMessages && !loadingOlder) {
+            pendingPrependHeightRef.current = c.scrollHeight;
+            loadOlderMessages();
+        }
     };
+
+    // Preserve scroll position when older messages are prepended (see ChatPage).
+    useLayoutEffect(() => {
+        const c = containerRef.current;
+        if (!c || pendingPrependHeightRef.current == null) return;
+        const delta = c.scrollHeight - pendingPrependHeightRef.current;
+        if (delta > 0) c.scrollTop = c.scrollTop + delta;
+        pendingPrependHeightRef.current = null;
+    }, [chatMessages]);
 
     useEffect(() => {
         const len = chatMessages.length; if (len === 0) return;
         const convId = chatMessages[0]?.conversationId;
         const changed = convId !== prevConvIdRef.current;
+        const lastId = chatMessages[len - 1]?._id;
+        const tailChanged = lastId !== prevLastIdRef.current;
         if (changed) {
             endRef.current?.scrollIntoView({ behavior: 'auto' });
             setHasNewBelow(false); setIsNearBottom(true); isNearBottomRef.current = true;
-        } else if (len > prevLenRef.current) {
+        } else if (tailChanged && len > prevLenRef.current) {
             const last = chatMessages[len - 1];
             const mine = last?.userId === user?._id;
             if (mine || isNearBottomRef.current) scrollToBottom('smooth'); else setHasNewBelow(true);
         }
         requestAnimationFrame(() => setIsChatReady(true));
-        prevConvIdRef.current = convId; prevLenRef.current = len;
+        prevConvIdRef.current = convId; prevLenRef.current = len; prevLastIdRef.current = lastId;
     }, [chatMessages, user?._id]);
 
     return {
-        user, conversationId, chatMessages,
+        user, conversationId, chatMessages, loadingOlder,
         messageText, setMessageText, mediaFile, setMediaFile, previewMedia, fileInputRef,
         isEmojiOpen, setIsEmojiOpen, onEmojiClick, handleSend,
         isChatReady, containerRef, endRef, isNearBottom, hasNewBelow, scrollToBottom, onScroll,

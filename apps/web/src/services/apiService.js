@@ -183,7 +183,13 @@ export const deleteOneNotification = (id) => httpRequest(`/notifications/${id}`,
 
 // chat requests
 export const getChats = () => httpRequest(`/chats`, 'GET');
-export const getSingleChatMessages = (id) => httpRequest(`/messages/${id}`, 'GET');
+// Cursor-paginated conversation messages → { messages, nextCursor }. Omit cursor
+// for the newest page; pass nextCursor to load the next-older page (scroll-up).
+export const getSingleChatMessages = (id, { cursor, limit = 25 } = {}) => {
+    const params = new URLSearchParams({ limit });
+    if (cursor) params.set('cursor', cursor);
+    return httpRequest(`/messages/${id}?${params.toString()}`, 'GET');
+};
 export const deleteChat = (conversationId) => httpRequest(`/chats/${conversationId}`, 'DELETE');
 export const markChatRead = (conversationId) => httpRequest(`/chats/${conversationId}/read`, 'PATCH');
 export const uploadChatMedia = (formData) => httpRequestFormData('/chat/upload-media', 'POST', formData);

@@ -4,6 +4,7 @@ const User = require('../../users/models/User');
 const Card = require('../../cards/models/Card');
 const { getHiddenUserIds } = require('../../cards/service/cardsSvc');
 const {createError} = require('../../utils/handleErrors');
+const { normalizeLimit, decodeCursor, runKeysetPage } = require('../../utils/cursorPagination');
 const { default: mongoose } = require('mongoose');
 
 // Derive a still poster (a JPG frame) from a Cloudinary VIDEO url:
@@ -127,18 +128,31 @@ const createNewMessage = async (message, userId) => {
     }
 }
 
-// Per-user history: only messages newer than this user's delete cutoff. After
-// I delete, my thread is empty until new messages arrive; I never see the old
-// history. Passing no userId returns everything (used internally if needed).
-const getMessages = async (conversationId, userId) => {
-    const filter = { conversationId };
+// Per-user history, keyset-paginated newest-first. Returns one page of messages
+// in ASCENDING order (oldest-at-top, ready to render) plus `nextCursor` for the
+// NEXT-OLDER page — so the chat opens on the most recent messages and scrolling
+// up loads older ones. Only messages newer than this user's delete cutoff are
+// ever visible (per-side delete); the cutoff and the cursor coexist under $and.
+const getMessages = async (conversationId, userId, opts = {}) => {
+    const baseFilter = { conversationId };
     if (userId) {
         const conversation = await Conversation.findById(conversationId);
         const deletedAt = conversation?.deletedAt?.get(String(userId));
-        if (deletedAt) filter.createdAt = { $gt: deletedAt };
+        if (deletedAt) baseFilter.createdAt = { $gt: deletedAt };
     }
-    const messages = await Message.find(filter).sort({createdAt: 1})
-    return messages;
+
+    const limit = normalizeLimit(opts.limit, 25, 50);
+    const decoded = decodeCursor(opts.cursor);
+    // A non-null cursor that fails to decode is a client bug — fail fast rather
+    // than silently serving the latest page as if it were an older one.
+    if (opts.cursor && !decoded) throw createError(400, 'Invalid cursor');
+
+    // runKeysetPage sorts (createdAt desc, _id desc), so a page is the batch of
+    // messages OLDER than the cursor. Reverse to ascending for display; the
+    // cursor it returns points at the oldest message in the page = where the
+    // next (older) page continues.
+    const { page, nextCursor } = await runKeysetPage(Message, baseFilter, decoded, limit);
+    return { messages: page.slice().reverse(), nextCursor };
 }
 
 const getChats = async (userId) => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getSocket } from '../services/socketService';
 import { useAuth } from '../providers/AuthProvider';
 import { getSingleChatMessages, uploadChatMedia } from '../services/apiService';
@@ -13,19 +13,57 @@ function useChat(
     const [chatMessages, setChatMessages] = useState([]);
     const [sendError, setSendError] = useState(null);
 
+    // Reverse pagination: the thread opens on the newest page; `olderCursor` (the
+    // server's nextCursor) points at the next-OLDER page, loaded on scroll-up.
+    const [olderCursor, setOlderCursor] = useState(null);
+    const [loadingOlder, setLoadingOlder] = useState(false);
+    const loadingOlderRef = useRef(false); // guards against rapid re-triggers
+    const hasOlderMessages = !!olderCursor;
+
     const clearSendError = () => setSendError(null);
 
     const {user} = useAuth();
 
     const handleOpenConversation = async (id) => {
         try{
-            const response = await getSingleChatMessages(id);
-            setChatMessages(response);
+            const { messages, nextCursor } = await getSingleChatMessages(id);
+            setChatMessages(messages);
+            setOlderCursor(nextCursor);
         }
         catch(err){
            console.log(err.message);
         }
     }
+
+    // Fetch the next-older page and PREPEND it. Ignores the result if the user
+    // switched conversations mid-fetch, and de-dupes defensively (the keyset
+    // cursor already guarantees no overlap with what's loaded).
+    const loadOlderMessages = useCallback(async () => {
+        if(loadingOlderRef.current) return;
+        const cid = selectedConversationId;
+        const cursor = olderCursor;
+        if(!cid || !cursor) return;
+
+        loadingOlderRef.current = true;
+        setLoadingOlder(true);
+        try{
+            const { messages, nextCursor } = await getSingleChatMessages(cid, { cursor });
+            setChatMessages(prev => {
+                if(prev[0] && prev[0].conversationId !== cid) return prev; // stale
+                const known = new Set(prev.map(m => m._id));
+                const fresh = messages.filter(m => !known.has(m._id));
+                return [...fresh, ...prev];
+            });
+            setOlderCursor(nextCursor);
+        }
+        catch(err){
+            console.log(err.message);
+        }
+        finally{
+            loadingOlderRef.current = false;
+            setLoadingOlder(false);
+        }
+    }, [selectedConversationId, olderCursor]);
 
     const handleSendNewMessage = async (message) => {
         if(message.mediaFile){
@@ -138,6 +176,9 @@ function useChat(
         handleOpenConversation,
         handleSendNewMessage,
         chatMessages,
+        loadOlderMessages,
+        hasOlderMessages,
+        loadingOlder,
         sendError,
         clearSendError
     }

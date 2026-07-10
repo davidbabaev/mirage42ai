@@ -26,8 +26,12 @@ module.exports = (io) => {
     
     router.get('/messages/:conversationId', auth ,async (req,res) => {
         try{
-            const messages = await getMessages(req.params.conversationId, req.user.userId);
-            res.send(messages)
+            const { messages, nextCursor } = await getMessages(
+                req.params.conversationId,
+                req.user.userId,
+                { cursor: req.query.cursor, limit: req.query.limit },
+            );
+            res.send({ messages, nextCursor })
         }
         catch(err){
             handleError(res, err);

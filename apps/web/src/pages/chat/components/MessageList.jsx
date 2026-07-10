@@ -28,7 +28,7 @@ function dayLabel(dateStr) {
 
 // Scrollable message area: WhatsApp/IG-style grouped bubbles + day separators.
 // The parent owns the container/end refs, scroll tracking, and the reveal flag.
-export default function MessageList({ messages, currentUserId, otherUser, containerRef, endRef, isChatReady, onScroll }) {
+export default function MessageList({ messages, currentUserId, otherUser, containerRef, endRef, isChatReady, onScroll, loadingOlder }) {
     const [viewerSrc, setViewerSrc] = useState(null);
     const [viewerOpen, setViewerOpen] = useState(false);
     const openViewer = (url) => { setViewerSrc(url); setViewerOpen(true); };
@@ -54,6 +54,11 @@ export default function MessageList({ messages, currentUserId, otherUser, contai
                 backgroundSize: '22px 22px',
             })}
         >
+            {loadingOlder && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
+                    <CircularProgress size={22} />
+                </Box>
+            )}
             {messages.map((message, i) => {
                 const isSent = currentUserId === message.userId;
                 const hasCard = !!message.sharedCard?.cardId;
