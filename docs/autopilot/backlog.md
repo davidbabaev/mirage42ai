@@ -31,7 +31,17 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-Branch `autopilot/2026-07-10-follower-counts` (not yet merged to main):
+Branch `autopilot/2026-07-10-favorites-api` — a linear stack of the whole 2026-07-10 run (not yet merged to main; earlier branch names `…-follower-counts` / `…-chat-pagination` are ancestors in the same stack):
+
+### Chat MESSAGE pagination + reverse infinite scroll — AWAITING REVIEW
+- Commits `c02502e` (feature) + `fefc876` (conversation indexes). GET /messages/:id cursor-paginated `{messages,nextCursor}` (reuses the keyset util, reversed to ascending; deletedAt floor + cursor under $and); `{conversationId,createdAt,_id}` index. Frontend reverse infinite scroll: `useChat` prepends older pages, ChatPage + dock anchor scroll on prepend via useLayoutEffect, auto-scroll keys on tail identity. 4 new API tests; browser-verified at 390/1280 (35-msg thread, correct anchoring, no jumps).
+- Conversation-LIST pagination DEFERRED to its own order (needs server-side totalUnread so the nav badge isn't regressed; ChatProvider is load-bearing). Indexes `{fromUser,updatedAt}`+`{toUser,updatedAt}` added now (speed up the existing getChats query).
+
+### Favorites → server API (cross-device) — AWAITING REVIEW
+- Commit `04ac248`. `favorites:[ObjectId]` on User + `/users/me/favorites` POST/DELETE/GET (fresh hydrated cards, block/status-filtered). `useFavoriteCards` keeps its return shape (no consumer changes), fetches on login, optimistic add/remove with revert. 9 new API tests; browser-verified at 390/1280 — a save survives a localStorage wipe + reload (server-persistence proof).
+- FOLLOW-UP (small, separate): the save button still renders on a BANNED post (only admins see banned posts in-feed); clicking it 404s and the optimistic add reverts silently. Hide/disable the save button when `card.status !== 'active'` in CardItem. Not a favorites-feature bug — works correctly for all active posts.
+
+Branch `autopilot/2026-07-10-follower-counts` (ancestor commits in the stack above):
 
 ### Server-authoritative follower/following counts — AWAITING REVIEW
 - Commit `0d566b8`. Counts computed in `projectUser` server-side instead of derived client-side from a fully-loaded users array. `followingCount` = deduped `$size` of the doc's `following` (free, always attached); `followersCount` via `countDocuments` on `GET /users/:id` and ONE aggregation over the result set on `GET /users` (no N+1). Profile UI reads `userProfile.followersCount/followingCount` with a graceful `??` fallback. Closes master-plan Phase D #14 counts-source piece. 3 new API tests; api 284 green + lint clean; browser-verified at 390/1280 (david: 7 followers / 4 following render; cross-checked against the raw follow graph).
