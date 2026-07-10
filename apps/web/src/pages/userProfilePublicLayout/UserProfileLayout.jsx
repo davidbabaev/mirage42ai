@@ -171,7 +171,7 @@ export default function UserProfileLayout() {
                             fontWeight={600}
                             fontSize={{xs: 13, md:16}}
                         >
-                            {getFollowersCount(userProfile?._id)}
+                            {userProfile?.followersCount ?? getFollowersCount(userProfile?._id)}
                         </Typography>
 
                         <Typography 
@@ -196,7 +196,7 @@ export default function UserProfileLayout() {
                             fontWeight={600}
                             fontSize={{xs: 13, md:16}}
                         >
-                            {new Set(userProfile?.following || []).size}
+                            {userProfile?.followingCount ?? new Set(userProfile?.following || []).size}
                         </Typography>
 
                         <Typography 
@@ -258,7 +258,7 @@ export default function UserProfileLayout() {
                             fontWeight={600}
                             fontSize={{xs: 13, md:16}}
                         >
-                            {getFollowersCount(userProfile?._id)}
+                            {userProfile?.followersCount ?? getFollowersCount(userProfile?._id)}
                         </Typography>
 
                         <Typography 
@@ -283,7 +283,7 @@ export default function UserProfileLayout() {
                             fontWeight={600}
                             fontSize={{xs: 13, md:16}}
                         >
-                            {new Set(userProfile?.following || []).size}
+                            {userProfile?.followingCount ?? new Set(userProfile?.following || []).size}
                         </Typography>
 
                         <Typography 

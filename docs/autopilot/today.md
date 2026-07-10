@@ -76,5 +76,5 @@ Working top-down. One concern per commit; test-first for logic; browser-verify v
 
 <!--
 DECISIONS LOG (this run) — maintained by the executor, reviewed at merge:
-- (to be filled as tasks are executed)
+- Task 1 (follower counts): computed server-side in `projectUser`. `followingCount` = deduped `$size` of the doc's `following` (free, always attached). `followersCount` = one `countDocuments` on the single endpoint and ONE aggregation over the result set on the list endpoint (getSuggestedUsers pattern — no N+1). Attached to BOTH `GET /users/:id` and each `GET /users` entry, because the profile page resolves `userProfile` from the global users list, not a dedicated single fetch — so counts had to ride the list to reach the profile without a data-flow rewrite. Frontend reads `userProfile?.followersCount/followingCount` with a graceful `??` fallback to the old client derivation (non-breaking if the field is ever absent). Followers/following LIST endpoints (getFollowers/getFollowing) intentionally NOT given followersCount (kept undefined so no wrong 0 is injected); they still get the free followingCount. Retiring the global users provider is a separate task (#6).
 -->

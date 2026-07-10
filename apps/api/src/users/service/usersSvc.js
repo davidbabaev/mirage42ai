@@ -59,9 +59,33 @@ const pickPublicUserFields = (user) => {
 }
 
 // Full fields for admins and for a user's own record; public fields otherwise.
-const projectUser = (user, requesterId, isAdmin) => {
+// `extra.followersCount` (when the caller has computed it) is attached so counts
+// are server-authoritative instead of derived client-side from a fully-loaded
+// user list. `followingCount` is always computable from the doc itself (the
+// deduped size of `following`), so it's attached unconditionally.
+const projectUser = (user, requesterId, isAdmin, extra = {}) => {
     const isSelf = requesterId && String(user._id) === String(requesterId);
-    return (isAdmin || isSelf) ? pickSafeUserFields(user) : pickPublicUserFields(user);
+    const base = (isAdmin || isSelf) ? pickSafeUserFields(user) : pickPublicUserFields(user);
+    base.followingCount = new Set((user.following || []).map(String)).size;
+    if (extra.followersCount !== undefined) base.followersCount = extra.followersCount;
+    return base;
+}
+
+// Followers of a user = other users whose `following` array contains their id
+// (there is no stored `followers` array). One aggregation counts followers for a
+// whole set of ids at once — no N+1 when projecting a list.
+const countFollowersFor = async (userIds) => {
+    const ids = userIds.map(String);
+    if (!ids.length) return {};
+    const rows = await User.aggregate([
+        { $match: { following: { $in: ids } } },
+        { $unwind: '$following' },
+        { $match: { following: { $in: ids } } },
+        { $group: { _id: '$following', count: { $sum: 1 } } },
+    ]);
+    const map = {};
+    for (const row of rows) map[String(row._id)] = row.count;
+    return map;
 }
 
 // MongoDB operation
@@ -141,7 +165,10 @@ const getUsers = async (requesterId, isAdmin, opts = {}) => {
         }
 
         const users = await query;
-        return users.map(user => projectUser(user, requesterId, isAdmin))
+        const followerMap = await countFollowersFor(users.map(u => u._id));
+        return users.map(user => projectUser(user, requesterId, isAdmin, {
+            followersCount: followerMap[String(user._id)] || 0,
+        }))
 }
 
 // The requester's own blocked list, with just enough to render a settings row
@@ -168,7 +195,8 @@ const getUser = async (userId, requesterId, isAdmin) => {
             const theyBlocked = (user.blocked || []).map(String).includes(String(requesterId));
             if(iBlocked || theyBlocked) throw createError(404, "User not found")
         }
-        return projectUser(user, requesterId, isAdmin)
+        const followersCount = await User.countDocuments({ following: String(userId) });
+        return projectUser(user, requesterId, isAdmin, { followersCount })
 }
 
 const updateUser = async (userId, content) => {

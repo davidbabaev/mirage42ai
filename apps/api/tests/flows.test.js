@@ -210,6 +210,35 @@ describe('GET /users gating + field projection', () => {
     });
 });
 
+describe('server-authoritative follower/following counts', () => {
+    // By this point in the suite user A follows user B (the follow flow above),
+    // so B has exactly 1 follower and A follows exactly 1 person.
+    it('GET /users/:id returns numeric followersCount + followingCount', async () => {
+        const b = await request(app).get(`/users/${userBId}`).set('auth-token', tokenA);
+        expect(b.status).toBe(200);
+        expect(typeof b.body.followersCount).toBe('number');
+        expect(typeof b.body.followingCount).toBe('number');
+        // B is followed by A, and follows nobody.
+        expect(b.body.followersCount).toBe(1);
+        expect(b.body.followingCount).toBe(0);
+    });
+
+    it('counts reflect the actual follow graph (A follows B)', async () => {
+        const a = await request(app).get(`/users/${userAId}`).set('auth-token', tokenA);
+        expect(a.status).toBe(200);
+        // A follows exactly one person (B) and has no followers.
+        expect(a.body.followingCount).toBe(1);
+        expect(a.body.followersCount).toBe(0);
+    });
+
+    it('the list endpoint carries the same counts per user', async () => {
+        const res = await request(app).get('/users').set('auth-token', tokenA);
+        const b = res.body.find(u => u._id === userBId);
+        expect(b.followersCount).toBe(1);
+        expect(b.followingCount).toBe(0);
+    });
+});
+
 describe('chat unread + last-message preview + mark-read', () => {
     let tokenB;
     let conversationId;
