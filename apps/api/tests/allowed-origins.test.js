@@ -5,9 +5,9 @@
 // NOT leak that dev origin into a production allowlist.
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { getAllowedOrigins, DEV_ORIGIN, PROD_ORIGIN } from '../src/config/allowedOrigins.js';
+import { getAllowedOrigins, isOriginAllowed, DEV_ORIGIN, PROD_ORIGIN } from '../src/config/allowedOrigins.js';
 
-const ENV_KEYS = ['ALLOWED_ORIGINS', 'NODE_ENV'];
+const ENV_KEYS = ['ALLOWED_ORIGINS', 'NODE_ENV', 'PREVIEW_ORIGIN_REGEX'];
 let saved;
 
 beforeEach(() => {
@@ -69,5 +69,44 @@ describe('getAllowedOrigins', () => {
         process.env.NODE_ENV = 'production';
         process.env.ALLOWED_ORIGINS = 'https://a.com,,https://b.com,';
         expect(getAllowedOrigins()).toEqual([PROD_ORIGIN, 'https://a.com', 'https://b.com']);
+    });
+});
+
+describe('isOriginAllowed (static list + configurable preview pattern)', () => {
+    beforeEach(() => {
+        process.env.NODE_ENV = 'production';
+        delete process.env.ALLOWED_ORIGINS;
+        delete process.env.PREVIEW_ORIGIN_REGEX;
+    });
+
+    it('allows an exact origin from the static allowlist', () => {
+        expect(isOriginAllowed(PROD_ORIGIN)).toBe(true);
+    });
+
+    it('allows requests with no Origin header (non-browser / same-origin)', () => {
+        expect(isOriginAllowed(undefined)).toBe(true);
+    });
+
+    it('rejects an unknown origin when no preview pattern is set', () => {
+        expect(isOriginAllowed('https://evil.example.com')).toBe(false);
+        // A Vercel preview is NOT allowed by default — only when opted in via regex.
+        expect(isOriginAllowed('https://mirage42-abc123-team.vercel.app')).toBe(false);
+    });
+
+    it('allows a preview origin matching PREVIEW_ORIGIN_REGEX', () => {
+        process.env.PREVIEW_ORIGIN_REGEX = '^https://mirage42[a-z0-9-]*\\.vercel\\.app$';
+        expect(isOriginAllowed('https://mirage42-abc123-team.vercel.app')).toBe(true);
+        expect(isOriginAllowed('https://mirage42-git-feature-x-team.vercel.app')).toBe(true);
+    });
+
+    it('the preview pattern is scoped: a different vercel.app project is still rejected', () => {
+        process.env.PREVIEW_ORIGIN_REGEX = '^https://mirage42[a-z0-9-]*\\.vercel\\.app$';
+        expect(isOriginAllowed('https://someone-else-app.vercel.app')).toBe(false);
+    });
+
+    it('an invalid regex in the env is ignored (no crash, preview matching off)', () => {
+        process.env.PREVIEW_ORIGIN_REGEX = '([unclosed';
+        expect(isOriginAllowed('https://mirage42-abc.vercel.app')).toBe(false);
+        expect(isOriginAllowed(PROD_ORIGIN)).toBe(true);
     });
 });

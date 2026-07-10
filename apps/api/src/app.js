@@ -17,7 +17,7 @@ const cookieParser = require('cookie-parser');
 
 
 const corsPolicyMiddleware = require('./middlewares/cors');
-const { getAllowedOrigins } = require('./config/allowedOrigins');
+const { isOriginAllowed } = require('./config/allowedOrigins');
 const { generalLimiter } = require('./middlewares/rateLimit');
 const app = express();
 
@@ -62,11 +62,12 @@ const server = http.createServer(app);
 
 const {Server} = require('socket.io');
 const io = new Server(server, {
-    // Same allowlist as the HTTP CORS middleware (see config/allowedOrigins).
-    // No credentials here: the socket authenticates via a JWT in the handshake
-    // auth payload (chatSocket.js), not via the refresh cookie.
+    // Same origin policy as the HTTP CORS middleware (see config/allowedOrigins),
+    // including per-deploy preview origins. No credentials here: the socket
+    // authenticates via a JWT in the handshake auth payload (chatSocket.js), not
+    // via the refresh cookie.
     cors: {
-        origin: getAllowedOrigins(),
+        origin: (origin, cb) => cb(null, isOriginAllowed(origin)),
     }
 })
 

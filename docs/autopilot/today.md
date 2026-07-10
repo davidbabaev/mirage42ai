@@ -22,7 +22,7 @@ Working top-down. One concern per commit; test-first for logic; browser-verify v
 - Done when: profile fetch returns both counts; the public profile UI renders them from the server fields (not `new Set(following).size`); counts are correct across follow/unfollow; API tests cover both counts; full suite green.
 - Type: logic
 
-### 2. Vercel preview URLs blocked by CORS
+### 2. Vercel preview URLs blocked by CORS  [DONE]
 - What: API CORS origin check also allows Vercel preview hostnames (`*.vercel.app` / per-branch preview URLs), not only the fixed production origin.
 - Decisions: match the Vercel preview pattern safely (exact suffix match, not a loose regex); keep the production origin as the canonical anchor.
 - Done when: a preview-style Origin passes CORS while an unknown origin is still rejected; covered by a test.
@@ -76,5 +76,6 @@ Working top-down. One concern per commit; test-first for logic; browser-verify v
 
 <!--
 DECISIONS LOG (this run) — maintained by the executor, reviewed at merge:
+- Task 2 (Vercel preview CORS): added a shared `isOriginAllowed(origin)` in `config/allowedOrigins.js` used by BOTH the HTTP cors middleware and the socket.io cors (function form, so they can't drift). It allows exact static-allowlist origins plus origins matching an optional `PREVIEW_ORIGIN_REGEX` env. Chose a CONFIGURABLE, project-scoped regex over a blanket `*.vercel.app`: with `credentials:true`, reflecting every vercel.app origin would let any site on that platform make credentialed requests. Unset ⇒ no preview origins allowed (no behavior change for anyone not opting in). Invalid regex is caught and ignored (no crash, matching off). Requests with no Origin (curl/server-to-server/same-origin) still allowed. Documented in `.env.example`. 6 new unit tests; live-verified the function-form middleware still emits ACAO for allowed origins and omits it for disallowed.
 - Task 1 (follower counts): computed server-side in `projectUser`. `followingCount` = deduped `$size` of the doc's `following` (free, always attached). `followersCount` = one `countDocuments` on the single endpoint and ONE aggregation over the result set on the list endpoint (getSuggestedUsers pattern — no N+1). Attached to BOTH `GET /users/:id` and each `GET /users` entry, because the profile page resolves `userProfile` from the global users list, not a dedicated single fetch — so counts had to ride the list to reach the profile without a data-flow rewrite. Frontend reads `userProfile?.followersCount/followingCount` with a graceful `??` fallback to the old client derivation (non-breaking if the field is ever absent). Followers/following LIST endpoints (getFollowers/getFollowing) intentionally NOT given followersCount (kept undefined so no wrong 0 is injected); they still get the free followingCount. Retiring the global users provider is a separate task (#6).
 -->

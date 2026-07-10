@@ -33,4 +33,33 @@ function getAllowedOrigins() {
     return [...new Set(origins)];
 }
 
-module.exports = { getAllowedOrigins, DEV_ORIGIN, PROD_ORIGIN };
+// Vercel (and similar) preview deploys get a UNIQUE hostname per deploy/branch,
+// so they can never be listed statically in ALLOWED_ORIGINS. Instead the
+// operator sets PREVIEW_ORIGIN_REGEX to a pattern SCOPED TO THEIR PROJECT, e.g.
+//   ^https://mirage42[a-z0-9-]*\.vercel\.app$
+// A scoped regex (not a blanket *.vercel.app) is deliberate: with credentials
+// enabled, allowing every vercel.app origin would let any site on that platform
+// make credentialed requests. Unset ⇒ no preview origins are allowed.
+function getPreviewOriginRegex() {
+    const raw = (process.env.PREVIEW_ORIGIN_REGEX || '').trim();
+    if (!raw) return null;
+    try {
+        return new RegExp(raw);
+    } catch {
+        // A malformed pattern must not crash CORS or silently allow everything —
+        // treat it as "no preview matching configured".
+        return null;
+    }
+}
+
+// The single origin decision shared by the HTTP cors middleware and socket.io.
+// Requests with no Origin header (curl, server-to-server, same-origin) are
+// allowed — CORS only governs cross-origin browser requests.
+function isOriginAllowed(origin) {
+    if (!origin) return true;
+    if (getAllowedOrigins().includes(origin)) return true;
+    const rx = getPreviewOriginRegex();
+    return rx ? rx.test(origin) : false;
+}
+
+module.exports = { getAllowedOrigins, isOriginAllowed, DEV_ORIGIN, PROD_ORIGIN };
