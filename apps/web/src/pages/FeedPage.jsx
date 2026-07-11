@@ -194,7 +194,7 @@ export default function FeedPage() {
                                     fontWeight={600}
                                     fontSize={14}
                                 >
-                                    {getFollowersCount(user?._id)}
+                                    {getFollowersCount(user)}
                                 </Typography>
 
                                 <Typography 
@@ -581,7 +581,7 @@ export default function FeedPage() {
                                         </Typography>
                 
                                         <Typography component={'div'} fontSize={11} color='text.secondary' lineHeight={0.9}>
-                                            {getFollowersCount(userF?._id)} followers
+                                            {getFollowersCount(userF)} followers
                                         </Typography>
                                     </Box>
                                 </Box>

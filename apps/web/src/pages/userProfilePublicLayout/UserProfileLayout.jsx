@@ -171,7 +171,7 @@ export default function UserProfileLayout() {
                             fontWeight={600}
                             fontSize={{xs: 13, md:16}}
                         >
-                            {userProfile?.followersCount ?? getFollowersCount(userProfile?._id)}
+                            {userProfile?.followersCount ?? getFollowersCount(userProfile)}
                         </Typography>
 
                         <Typography 
@@ -258,7 +258,7 @@ export default function UserProfileLayout() {
                             fontWeight={600}
                             fontSize={{xs: 13, md:16}}
                         >
-                            {userProfile?.followersCount ?? getFollowersCount(userProfile?._id)}
+                            {userProfile?.followersCount ?? getFollowersCount(userProfile)}
                         </Typography>
 
                         <Typography 

@@ -282,7 +282,7 @@ return (
                                     </Typography>
 
                                     <Typography component={'div'} fontSize={11} color='text.secondary' lineHeight={0.9}>
-                                        {getFollowersCount(person?._id)} followers
+                                        {getFollowersCount(person)} followers
                                     </Typography>
 
                             </Box>
@@ -351,7 +351,7 @@ return (
                                     </Typography>
 
                                     <Typography component={'div'} fontSize={11} color='text.secondary' lineHeight={0.9}>
-                                        {getFollowersCount(person?._id)} followers
+                                        {getFollowersCount(person)} followers
                                     </Typography>
 
                                 </Box>

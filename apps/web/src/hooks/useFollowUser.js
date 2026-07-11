@@ -54,9 +54,18 @@ function useFollowUser() {
         return new Set(foundUser?.following || []).size
     }
 
-    const getFollowersCount = (userId) => {
+    // Takes the user OBJECT: prefer the server-computed `followersCount` (attached
+    // to every user response) so no global users scan is needed. Falls back to
+    // scanning the loaded users array by id only when the server count is absent
+    // (e.g. the logged-in user's own object from login, which omits it) — that
+    // fallback disappears once the global users load is retired.
+    const getFollowersCount = (userOrId) => {
+        if (userOrId && typeof userOrId === 'object') {
+            if (typeof userOrId.followersCount === 'number') return userOrId.followersCount;
+            userOrId = userOrId._id;
+        }
         if(!users) return 0;
-        return users.filter(userU => (userU.following || []).includes(userId)).length;
+        return users.filter(userU => (userU.following || []).includes(userOrId)).length;
     }
 
   return {toggleFollow, isFollowByMe, getFollowingCount, getFollowersCount} 

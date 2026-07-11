@@ -187,7 +187,7 @@ export default function UserReusableCard({
                     fontWeight={600}
                     fontSize={14}
                 >
-                    {getFollowersCount(userObject?._id)}
+                    {getFollowersCount(userObject)}
                 </Typography>
 
                 <Typography 

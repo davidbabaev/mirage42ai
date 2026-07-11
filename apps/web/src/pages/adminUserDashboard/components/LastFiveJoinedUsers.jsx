@@ -73,7 +73,7 @@ export default function LastFiveJoinedUsers() {
                                 </Typography>
         
                                 <Typography component={'div'} fontSize={11} color='text.secondary' lineHeight={0.9}>
-                                    {getFollowersCount(userF?._id)} followers · Joined {getTimeAgo(userF?.createdAt)} 
+                                    {getFollowersCount(userF)} followers · Joined {getTimeAgo(userF?.createdAt)} 
                                 </Typography>
         
                             </Box>

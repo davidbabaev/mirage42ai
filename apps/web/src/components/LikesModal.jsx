@@ -125,7 +125,7 @@ export default function LikesModal({ open, onClose, cardId, likeCount }) {
                                         {u.job}
                                     </Typography>
                                     <Typography fontSize={11} color='text.secondary'>
-                                        {getFollowersCount(u._id)} followers
+                                        {getFollowersCount(u)} followers
                                     </Typography>
                                 </Box>
                                 {u._id !== user?._id && (

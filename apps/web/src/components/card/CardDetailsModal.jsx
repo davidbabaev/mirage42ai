@@ -190,7 +190,7 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
                         </Typography>
 
                         <Typography component={'div'} fontSize={11} color='text.secondary' lineHeight={0.9}>
-                            {getFollowersCount(creator?._id)} followers · {getTimeAgo(currentCard.createdAt)}
+                            {getFollowersCount(creator)} followers · {getTimeAgo(currentCard.createdAt)}
                         </Typography>
 
                     </Box>

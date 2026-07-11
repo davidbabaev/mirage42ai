@@ -150,7 +150,7 @@ export default function CardItem({
                         </Typography>
 
                         <Typography component={'div'} fontSize={11} color='text.secondary' lineHeight={0.9}>
-                            {getFollowersCount(creator?._id)} followers · {getTimeAgo(card.createdAt)}
+                            {getFollowersCount(creator)} followers · {getTimeAgo(card.createdAt)}
                         </Typography>
 
                     </Box>

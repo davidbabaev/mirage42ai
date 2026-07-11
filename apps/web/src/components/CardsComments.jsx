@@ -242,7 +242,7 @@ export default function CardsComments({card, users, addComment, removeComment, f
                                     </Typography>
 
                                     <Typography component={'div'} fontSize={11} color='text.secondary' lineHeight={0.9}>
-                                        {getFollowersCount(userComment?._id)} followers · {getTimeAgo(comment.createdAt)}
+                                        {getFollowersCount(userComment)} followers · {getTimeAgo(comment.createdAt)}
                                     </Typography>
 
                                 </Box>

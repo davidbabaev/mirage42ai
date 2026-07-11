@@ -83,7 +83,7 @@ export default function PeopleModal({ open, onClose, title, users = [], mode = '
                                     {u.name} {u.lastName}
                                 </Typography>
                                 <Typography noWrap fontSize={12} color='text.secondary' sx={{ maxWidth: '100%' }}>{u.job}</Typography>
-                                <Typography fontSize={11} color='text.secondary'>{getFollowersCount(u._id)} followers</Typography>
+                                <Typography fontSize={11} color='text.secondary'>{getFollowersCount(u)} followers</Typography>
                                 <Button
                                     fullWidth
                                     size='small'

@@ -113,7 +113,7 @@ export default function UserProfileFollowers() {
                 </Typography>
 
                 <Typography component={'div'} fontSize={11} color='text.secondary' lineHeight={0.9}>
-                  {getFollowersCount(follower?._id)} followers
+                  {getFollowersCount(follower)} followers
                 </Typography>
               </Box>
 
