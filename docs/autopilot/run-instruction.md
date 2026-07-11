@@ -41,3 +41,65 @@ Hard rules:
 - Maintain a DECISIONS LOG in the final report: every judgment call made during the run, with one line of reasoning each, so the human can review all choices at merge time.
 
 When the run ends (list finished, or stopped on a failure), report: which branch you worked on, which tasks passed and committed, and anything that stopped you.
+
+## Decision authority (default: decide and continue)
+
+You have full authority to make product, design, and architectural decisions
+on the autopilot branch without asking David. The branch is quarantined and
+David reviews every decision at the merge gate — that review IS the approval.
+Do not use guardrails as a reason to stop mid-run.
+
+Resolve every fork yourself, in this order:
+1. If master-plan.md states a direction, that IS the decision. Take the
+   smallest incremental step toward it. Do not ask.
+2. If master-plan is silent, follow the convention a top production app in
+   this category (Instagram / LinkedIn / WhatsApp) would use.
+3. If both are silent, pick the most reversible option that keeps the diff
+   reviewable.
+
+Record every non-trivial decision in the decisions log (what you chose, the
+alternatives, one line of why). Logging REPLACES asking — it's how David vetoes
+at review instead of blocking you mid-run.
+
+Never present a numbered menu of options for anything rules 1–3 already answer.
+If you're about to ask "which approach should I take," you already have the
+answer above. Pick it and continue.
+
+## Guardrail 7 (rescoped) — the ONLY things you stop and ask about
+
+Stop and ask David ONLY before an action git cannot undo:
+- deleting or mutating production data (Atlas), or a destructive prod migration
+- deleting Cloudinary assets
+- changing production env vars, DNS / Cloudflare, or Render / Vercel settings
+- force-pushing, or anything touching `main`
+- editing master-plan.md (never touch it)
+
+Large or structural CODE changes are NOT a reason to stop. They live on the
+quarantined branch and are caught at review. Decide, log, continue.
+
+## Starting a run — do NOT clean the tree
+
+Never stop because the working tree is dirty at the start of a run. A dirty
+tree is just the starting point, not a problem to fix.
+
+To begin, branch off the current state exactly as it is:
+
+    git checkout -b autopilot/YYYY-MM-DD
+
+`checkout -b` carries any uncommitted changes onto the new branch. Nothing is
+lost and nothing lands on main. You do NOT need a clean tree first, and you
+must NOT try to create one by committing to main or reverting files.
+
+### master-plan.md is radioactive — leave it exactly as-is
+If docs/master-plan.md has uncommitted changes, those are David's. Do not
+stage it, do not commit it, do not revert it, do not stash it. Ignore its
+dirty state completely and never include it in any commit you make. If a
+`git add` would ever touch it, exclude it explicitly.
+
+### Your own files
+Your bookkeeping and work files (today.md, backlog.md, run-instruction.md, the
+decisions log, and all app code) get committed to the autopilot branch as
+normal. Commit those freely — they're on the quarantined branch, not main.
+
+There is no pre-run "clear the tree" step. Branch, then work. The only things
+that still make you stop are the irreversible actions in Guardrail 7.
