@@ -122,15 +122,15 @@ export default function CardDetailsPage() {
                 <p>|</p>
                 {!currentCard.category ? (<p>Category: Don't Have Yet</p>) : (<p>Category: {currentCard.category}</p>)}
                 <p>|</p>
-                <p>{getLikeCount(currentCard._id)} likes</p>
+                <p>{getLikeCount(currentCard)} likes</p>
                 <p>|</p>
-                <p>{countComments(currentCard._id)} comments</p>
+                <p>{countComments(currentCard)} comments</p>
                 <p>|</p>
 
                 <div>
                     {user ? (
                         <button onClick={() => toggleLike(currentCard._id)}>
-                            {isLikeByMe(currentCard._id) ? "Unlike" : "Like"}
+                            {isLikeByMe(currentCard) ? "Unlike" : "Like"}
                         </button>
                     ):(
                         <button onClick={() => setIsOpen(true)}>Like</button>

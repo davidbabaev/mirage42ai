@@ -17,10 +17,14 @@ const removeComment = (cardId, commentId) => {
   return handleRemoveComment(cardId, commentId)
 }
 
-const countComments = (cardId) => {
-  const card = registeredCards.find(c => c._id === cardId)
-  const count = (card?.comments || []).length
-  return count
+// Takes the card object; prefers the CardsProvider overlay (so an added/removed
+// comment reflects everywhere) and falls back to the card's own embedded
+// comments — works even when the card isn't in the overlay / after the global
+// getAllCards load is retired.
+const countComments = (card) => {
+  if(!card) return 0;
+  const c = registeredCards.find(x => x._id === card._id) || card;
+  return (c?.comments || []).length
 }
 
   return {addComment, countComments, removeComment}

@@ -18,10 +18,11 @@ Working top-down. One concern per commit; test-first for logic; browser-verify v
 
 **Goal of this run:** kill the two unbounded mount-time loads — `getAllUsers` (`GET /users` → ALL users) and `getAllCards` (`GET /cards` → ALL cards / `registeredCards`) — WITHOUT regressions. Strategy = server-embed the sub-objects each consumer needs, endpoint-by-endpoint, so the app stays green at every step; only remove the global loads in the LAST task, once nothing reads them. Full blocker list lives in `backlog.md` ("Infinite scroll" epic). Do NOT big-bang this.
 
-### 6. Decouple like/comment count hooks + profile resolution from the global arrays
-- What: refactor `useLikedCards` / `useCommentsCards` so `isLikeByMe` / `getLikeCount` / `countComments` read from the card object (feedCards already carries `likes`/`comments`) rather than `registeredCards.find`. Profile sub-routes (`UserProfileLayout/Main/About/Media/Followers`) resolve the subject via `getSingleUser(id)` instead of `users.find`. `UserProfileMain` posts tab uses paginated `getExploreCards(cursor,limit,userId)`. `addAuthorToFeed` (follow) fetches the followed user's posts via the user-posts endpoint instead of splicing from `registeredCards`.
-- Done when: like/comment counts, profiles, and follow-adds-posts all work with both global arrays empty; tests updated; browser-verified; suite green.
+### 6b. Profile resolution + posts tab off the global arrays  [remaining part of slice 6]
+- What: Profile sub-routes (`UserProfileLayout/Main/About/Media/Followers`) resolve the subject via `getSingleUser(id)` instead of `users.find`. `UserProfileMain` posts tab uses paginated `getExploreCards(cursor,limit,userId)`. `addAuthorToFeed` (follow) fetches the followed user's posts via the user-posts endpoint instead of splicing from `registeredCards`. `useFollowUser.getFollowersCount`/`isFollowByMe` read from the user object (server `followersCount` + `user.following`) instead of scanning the global `users` array.
+- Done when: profiles + follow state + follow-adds-posts work with both global arrays empty; browser-verified; suite green.
 - Type: logic
+- NOTE: the count-hook half of slice 6 (useLikedCards/useCommentsCards → card-object) shipped separately.
 
 ### 7. Adopt React Query for the feed + REMOVE the global loads
 - What: add `@tanstack/react-query`; migrate the feed to `useInfiniteQuery` (load-more, 20–30/page); with tasks 1–6 done, DELETE the `getAllUsers`/`getAllCards` mount-time loads from UsersProvider/CardsProvider (and the now-dead client-side join/filter code — master-plan #16). Admin analytics (`useAnalytics`) moves to server aggregation endpoints (or is explicitly scoped out for this run if too big).

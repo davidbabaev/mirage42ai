@@ -33,12 +33,15 @@ vi.mock('../src/providers/AuthProvider', () => ({
 import { CardsProvider } from '../src/providers/CardsProvider';
 import useLikedCards from '../src/hooks/useLikedCards';
 
+// The count hooks now take the card OBJECT (they resolve the overlay by _id,
+// falling back to the card's own arrays); toggleLike still takes the id.
+const CARD_REF = { _id: 'card1' };
 function Harness() {
     const { isLikeByMe, getLikeCount, toggleLike } = useLikedCards();
     return (
         <div>
-            <span data-testid="count">{getLikeCount('card1')}</span>
-            <span data-testid="liked">{isLikeByMe('card1') ? 'yes' : 'no'}</span>
+            <span data-testid="count">{getLikeCount(CARD_REF)}</span>
+            <span data-testid="liked">{isLikeByMe(CARD_REF) ? 'yes' : 'no'}</span>
             <button data-testid="like" onClick={() => toggleLike('card1')}>like</button>
         </div>
     );

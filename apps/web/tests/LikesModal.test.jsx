@@ -35,8 +35,9 @@ vi.mock('../src/providers/UsersProvider', () => ({
 vi.mock('../src/hooks/useLikedCards', () => ({
     default: () => ({
         toggleLike: vi.fn(),
-        isLikeByMe: (id) => id === 'card1',
-        getLikeCount: (id) => (id === 'card1' ? 3 : 0),
+        // hooks now take the card object (not an id)
+        isLikeByMe: (card) => card?._id === 'card1',
+        getLikeCount: (card) => (card?._id === 'card1' ? 3 : 0),
     }),
 }));
 vi.mock('../src/hooks/useCommentsCards', () => ({

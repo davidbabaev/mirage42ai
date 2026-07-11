@@ -313,10 +313,10 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
                     mb: 1
                 }}>
                     {/* left: overlapping avatars + likes count — clickable when >0 */}
-                    {getLikeCount(currentCard._id) > 0 ? (
+                    {getLikeCount(currentCard) > 0 ? (
                         <Box
                             component='button'
-                            aria-label={`View ${getLikeCount(currentCard._id)} likes`}
+                            aria-label={`View ${getLikeCount(currentCard)} likes`}
                             onClick={() => setIsLikesModalOpen(true)}
                             sx={{
                                 display: 'flex', alignItems: 'center', gap: 1,
@@ -343,7 +343,7 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
                             </Box>
                             {/* Count */}
                             <Typography component='span' fontSize={13} color='text.secondary'>
-                                {getLikeCount(currentCard._id)} likes
+                                {getLikeCount(currentCard)} likes
                             </Typography>
                         </Box>
                     ) : (
@@ -354,7 +354,7 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
 
                     {/* Right */}
                     <Typography component={'div'} fontSize={13} color='text.secondary'>
-                        {countComments(currentCard._id)} comments
+                        {countComments(currentCard)} comments
                     </Typography>
                 </Box>
 
@@ -376,10 +376,10 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
                     {/* Like */}
                     <Button
                         size='small'
-                        startIcon={isLikeByMe(currentCard._id) ? <ThumbUpIcon/> : <ThumbUpOffAltIcon/>}
+                        startIcon={isLikeByMe(currentCard) ? <ThumbUpIcon/> : <ThumbUpOffAltIcon/>}
                         onClick={() => toggleLike(currentCard._id)}
                     >
-                        {isLikeByMe(currentCard._id) ? "Unlike" : "Like"}
+                        {isLikeByMe(currentCard) ? "Unlike" : "Like"}
                     </Button>
 
                     {/* Comment */}
@@ -410,7 +410,7 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
                         open={isLikesModalOpen}
                         onClose={() => setIsLikesModalOpen(false)}
                         cardId={currentCard._id}
-                        likeCount={getLikeCount(currentCard._id)}
+                        likeCount={getLikeCount(currentCard)}
                     />
                 )}
 

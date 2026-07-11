@@ -305,10 +305,10 @@ export default function CardItem({
                 pt: 1
             }}>
                 {/* left: overlapping avatars + likes count — clickable when >0 */}
-                {getLikeCount(card._id) > 0 ? (
+                {getLikeCount(card) > 0 ? (
                     <Box
                         component='button'
-                        aria-label={`View ${getLikeCount(card._id)} likes`}
+                        aria-label={`View ${getLikeCount(card)} likes`}
                         onClick={() => setIsLikesModalOpen(true)}
                         sx={{
                             display: 'flex', alignItems: 'center', gap: 1,
@@ -335,7 +335,7 @@ export default function CardItem({
                         </Box>
                         {/* Count */}
                         <Typography component='span' fontSize={13} color='text.secondary'>
-                            {getLikeCount(card._id)} likes
+                            {getLikeCount(card)} likes
                         </Typography>
                     </Box>
                 ) : (
@@ -346,7 +346,7 @@ export default function CardItem({
 
                 {/* Right */}
                 <Typography component={'div'} fontSize={13} color='text.secondary'>
-                    {countComments(card._id)} comments
+                    {countComments(card)} comments
                 </Typography>
             </Box>
 
@@ -382,10 +382,10 @@ export default function CardItem({
                 {/* Like */}
                 <Button
                     size='small'
-                    startIcon={isLikeByMe(card._id) ? <ThumbUpIcon/> : <ThumbUpOffAltIcon/>}
+                    startIcon={isLikeByMe(card) ? <ThumbUpIcon/> : <ThumbUpOffAltIcon/>}
                     onClick={() => isLoggedIn ? toggleLike(card._id) : setIsLoginPopupOpen(true)}
                 >
-                    {isLikeByMe(card._id) ? "Unlike" : "Like"}
+                    {isLikeByMe(card) ? "Unlike" : "Like"}
                 </Button>
 
                 {/* Comment */}
@@ -419,7 +419,7 @@ export default function CardItem({
                     open={isLikesModalOpen}
                     onClose={() => setIsLikesModalOpen(false)}
                     cardId={card._id}
-                    likeCount={getLikeCount(card._id)}
+                    likeCount={getLikeCount(card)}
                 />
             )}
             

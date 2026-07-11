@@ -5,21 +5,29 @@ function useLikedCards() {
     const {user} = useAuth();
     const {registeredCards, handleToggleLike} = useCardsProvider();
 
+    // Resolve the authoritative version of a card: prefer the CardsProvider
+    // overlay (registeredCards — carries optimistic like state so a like reflects
+    // on EVERY surface), and fall back to the card's own embedded arrays. Taking
+    // the card object (not just an id) means these work even when the card isn't
+    // in the overlay — and after the global getAllCards load is retired.
+    const resolve = (card) => {
+        if (!card) return null;
+        return registeredCards.find(c => c._id === card._id) || card;
+    };
+
     const toggleLike = (cardId) => {
         if(!user) return;
         handleToggleLike(cardId)
     }
 
-    const isLikeByMe = (cardId) => {
-        const card = registeredCards.find(card => card._id === cardId);
-        if(!card && !user) return false;
-        return (card?.likes || []).includes(user?._id);
+    const isLikeByMe = (card) => {
+        const c = resolve(card);
+        return (c?.likes || []).includes(user?._id);
     }
 
-    const getLikeCount = (cardId) => {
-        const card = registeredCards.find(c => c._id === cardId)
-        const likeCount = (card?.likes || []).length;
-        return likeCount;
+    const getLikeCount = (card) => {
+        const c = resolve(card);
+        return (c?.likes || []).length;
     }
 
     return{toggleLike, isLikeByMe, getLikeCount}
