@@ -62,7 +62,7 @@ export default function FeedPage() {
 
     const {registeredCards} = useCardsProvider();
 
-    const myCardsCount = registeredCards.filter(card => card.userId === user?._id).length;
+    const myCardsCount = user?.postsCount ?? registeredCards.filter(card => card.userId === user?._id).length;
 
     // The full accumulated feed (paginated). No client-side cap — infinite scroll
     // appends pages, and capping here would silently stop the feed.

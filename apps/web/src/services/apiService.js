@@ -112,7 +112,7 @@ export const updateNotificationPrefs = (prefs) => httpRequest('/users/me/notific
 
 // Cards Requests
 export const getAllCards = () => httpRequest('/cards', 'GET');
-// export const getCard = (id) => httpRequest(`/cards/${id}`, 'GET');
+export const getCard = (id) => httpRequest(`/cards/${id}`, 'GET');
 export const createCard = (cardData) => httpRequestFormData('/cards', 'POST', cardData);
 export const updateCard = (id ,cardData) => httpRequestFormData(`/cards/${id}`, 'PUT', cardData);
 export const deleteCard = (id) => httpRequest(`/cards/${id}`, 'DELETE');

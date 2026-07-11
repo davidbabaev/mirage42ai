@@ -4,8 +4,9 @@ import { useCardsProvider } from '../providers/CardsProvider';
 import { useAuth } from '../providers/AuthProvider';
 import useFavoriteCards from '../hooks/useFavoriteCards';
 import CardsComments from '../components/CardsComments';
+import { getCard } from '../services/apiService';
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import useLikedCards from '../hooks/useLikedCards';
 import LoginPopup from '../components/LoginPopup';
@@ -18,7 +19,7 @@ import { useUsersProvider } from '../providers/UsersProvider';
 export default function CardDetailsPage() {
 
     const {id} = useParams();
-    const {registeredCards} = useCardsProvider()
+    const {registeredCards, feedCards} = useCardsProvider()
     const {favoriteCards, handleFavoriteCards} = useFavoriteCards();
     const {users} = useUsersProvider();
     const {user} = useAuth();
@@ -32,12 +33,42 @@ export default function CardDetailsPage() {
 
     const {toggleLike, isLikeByMe, getLikeCount} = useLikedCards()
 
-    const currentCard = registeredCards.find((card) => card._id === id);
-    
-        if(!currentCard){
-            return <OnLoadingSkeletonBox/>
+    // Prefer a live card from local state so optimistic updates keep working.
+    const localCard =
+        registeredCards.find((card) => card._id === id) ||
+        feedCards.find((card) => card._id === id);
+
+    // Fallback fetch when the card isn't in local state (deep-link / not yet loaded).
+    const [fetchedCard, setFetchedCard] = useState(null);
+    const [fetchLoading, setFetchLoading] = useState(false);
+    const [fetchError, setFetchError] = useState(null);
+
+    useEffect(() => {
+        if (localCard) {
+            setFetchedCard(null);
+            setFetchError(null);
+            return;
         }
-    
+        let cancelled = false;
+        setFetchLoading(true);
+        setFetchError(null);
+        getCard(id)
+            .then((card) => { if (!cancelled) setFetchedCard(card); })
+            .catch((err) => { if (!cancelled) setFetchError(err.message || 'Not found'); })
+            .finally(() => { if (!cancelled) setFetchLoading(false); });
+        return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id]);
+
+    const currentCard = localCard || fetchedCard;
+
+    if (!currentCard) {
+        if (fetchError) {
+            return <p style={{ padding: 20, color: 'gray' }}>This post could not be loaded.</p>;
+        }
+        return <OnLoadingSkeletonBox />;
+    }
+
     const creator = users.find((userC) => userC._id === currentCard.userId)
     
   return (

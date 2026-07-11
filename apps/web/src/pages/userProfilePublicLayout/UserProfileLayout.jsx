@@ -56,7 +56,7 @@ export default function UserProfileLayout() {
     
     const navigate = useNavigate();
 
-    const postsAmount = registeredCards.filter((card) => card.userId === id).length
+    const postsAmount = userProfile?.postsCount ?? registeredCards.filter((card) => card.userId === id).length
 
     // A user I've blocked is hidden everywhere else; reaching their profile (only
     // possible from the Blocked-users settings list) shows the locked placeholder.

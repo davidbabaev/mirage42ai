@@ -33,7 +33,7 @@ export default function DashboardLayout() {
 
     const {getFollowersCount} = useFollowUser();
     const {registeredCards, refreshFeed, fetchCards} = useCardsProvider();
-    const postsAmount = registeredCards.filter((card) => card.userId === user._id).length
+    const postsAmount = user?.postsCount ?? registeredCards.filter((card) => card.userId === user._id).length
 
     if(!user){
         return <OnLoadingSkeletonBox/>

@@ -403,7 +403,7 @@ function UsersPage() {
                             }}
                         >
                             {displayUsers.map((u) => {
-                                const myCardsCount = registeredCards.filter(card => card.userId === u?._id).length;
+                                const myCardsCount = u?.postsCount ?? registeredCards.filter(card => card.userId === u?._id).length;
                                 return(
                                     <UserReusableCard
                                         key={u._id}

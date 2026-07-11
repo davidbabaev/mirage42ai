@@ -61,15 +61,17 @@ const pickPublicUserFields = (user) => {
 }
 
 // Full fields for admins and for a user's own record; public fields otherwise.
-// `extra.followersCount` (when the caller has computed it) is attached so counts
-// are server-authoritative instead of derived client-side from a fully-loaded
-// user list. `followingCount` is always computable from the doc itself (the
-// deduped size of `following`), so it's attached unconditionally.
+// `extra.followersCount` and `extra.postsCount` (when the caller has computed
+// them) are attached so counts are server-authoritative instead of derived
+// client-side from a fully-loaded user list. `followingCount` is always
+// computable from the doc itself (the deduped size of `following`), so it's
+// attached unconditionally.
 const projectUser = (user, requesterId, isAdmin, extra = {}) => {
     const isSelf = requesterId && String(user._id) === String(requesterId);
     const base = (isAdmin || isSelf) ? pickSafeUserFields(user) : pickPublicUserFields(user);
     base.followingCount = new Set((user.following || []).map(String)).size;
     if (extra.followersCount !== undefined) base.followersCount = extra.followersCount;
+    if (extra.postsCount !== undefined) base.postsCount = extra.postsCount;
     return base;
 }
 
@@ -167,9 +169,20 @@ const getUsers = async (requesterId, isAdmin, opts = {}) => {
         }
 
         const users = await query;
-        const followerMap = await countFollowersFor(users.map(u => u._id));
+        const userIds = users.map(u => u._id);
+        const followerMap = await countFollowersFor(userIds);
+
+        // One aggregation for active post counts — no N+1.
+        const postsAgg = await Card.aggregate([
+            { $match: { status: 'active', userId: { $in: userIds } } },
+            { $group: { _id: '$userId', n: { $sum: 1 } } },
+        ]);
+        const postsMap = {};
+        for (const row of postsAgg) postsMap[String(row._id)] = row.n;
+
         return users.map(user => projectUser(user, requesterId, isAdmin, {
             followersCount: followerMap[String(user._id)] || 0,
+            postsCount: postsMap[String(user._id)] || 0,
         }))
 }
 
@@ -197,8 +210,11 @@ const getUser = async (userId, requesterId, isAdmin) => {
             const theyBlocked = (user.blocked || []).map(String).includes(String(requesterId));
             if(iBlocked || theyBlocked) throw createError(404, "User not found")
         }
-        const followersCount = await User.countDocuments({ following: String(userId) });
-        return projectUser(user, requesterId, isAdmin, { followersCount })
+        const [followersCount, postsCount] = await Promise.all([
+            User.countDocuments({ following: String(userId) }),
+            Card.countDocuments({ userId, status: 'active' }),
+        ]);
+        return projectUser(user, requesterId, isAdmin, { followersCount, postsCount })
 }
 
 const updateUser = async (userId, content) => {
@@ -660,8 +676,21 @@ const getUsersSearch = async (requesterId, isAdmin, opts = {}) => {
         ? Buffer.from(String(skip + lim)).toString('base64')
         : null;
 
+    // Embed active post counts server-side (one aggregation over the page, no
+    // N+1) so the browse grid shows real counts without scanning a global cards
+    // array — same as getUsers.
+    const pageIds = page.map(u => u._id);
+    const postsAgg = await Card.aggregate([
+        { $match: { status: 'active', userId: { $in: pageIds } } },
+        { $group: { _id: '$userId', n: { $sum: 1 } } },
+    ]);
+    const postsMap = {};
+    for (const row of postsAgg) postsMap[String(row._id)] = row.n;
+
     return {
-        items: page.map(user => projectUser(user, requesterId, isAdmin)),
+        items: page.map(user => projectUser(user, requesterId, isAdmin, {
+            postsCount: postsMap[String(user._id)] || 0,
+        })),
         nextCursor,
     };
 };

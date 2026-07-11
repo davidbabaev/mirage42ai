@@ -24,7 +24,7 @@ export default function SelectedPage() {
         {!selectedUsers[0] && (<Typography color='text.secondary'>You didn't selected users yet</Typography>)}
 
         {selectedUsers.map((selected) => {
-            const myCardsCount = registeredCards.filter(card => card.userId === selected?._id).length;
+            const myCardsCount = selected?.postsCount ?? registeredCards.filter(card => card.userId === selected?._id).length;
 
             return(
                 <UserReusableCard

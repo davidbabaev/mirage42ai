@@ -2,8 +2,9 @@ import { useCardsProvider } from '../../providers/CardsProvider';
 import { useAuth } from '../../providers/AuthProvider';
 import useFavoriteCards from '../../hooks/useFavoriteCards';
 import CardsComments from '../CardsComments';
+import { getCard } from '../../services/apiService';
 
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import useLikedCards from '../../hooks/useLikedCards';
 import useCommentsCards from '../../hooks/useCommentsCards';
@@ -30,7 +31,7 @@ import { useUsersProvider } from '../../providers/UsersProvider';
 
 export default function CardDetailsModal({cardId, onClose, highlightCommentId}) {
 
-        const {registeredCards} = useCardsProvider()
+        const {registeredCards, feedCards} = useCardsProvider()
         const {favoriteCards, handleFavoriteCards} = useFavoriteCards();
         const {users} = useUsersProvider();
         const {user} = useAuth();
@@ -44,20 +45,60 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
         const [toast, setToast] = useState('');
         const theme = useTheme();
 
+        // Fallback fetch: used when the card isn't already in local state (e.g.
+        // deep-linked / opened before the full card list has loaded).
+        const [fetchedCard, setFetchedCard] = useState(null);
+        const [fetchLoading, setFetchLoading] = useState(false);
+        const [fetchError, setFetchError] = useState(null);
 
         const [, setIsLoginPopupOpen] = useState(false);
         const {addComment, countComments, removeComment} = useCommentsCards();
         const navigate = useNavigate();
 
         const inputRef = useRef(null);
-    
+
         const {toggleLike, isLikeByMe, getLikeCount} = useLikedCards()
-    
-        const currentCard = registeredCards.find((card) => card._id === cardId);
-        
-            if(!currentCard){
-                return <OnLoadingSkeletonBox/>
+
+        // Prefer a live card from local state (registeredCards or feedCards) so
+        // optimistic-like updates for already-loaded cards keep working.
+        const localCard =
+            registeredCards.find((card) => card._id === cardId) ||
+            feedCards.find((card) => card._id === cardId);
+
+        // When there is no local card, fire a one-shot fetch. The effect re-runs
+        // only when cardId changes, so it doesn't loop.
+        useEffect(() => {
+            if (localCard) {
+                setFetchedCard(null);
+                setFetchError(null);
+                return;
             }
+            let cancelled = false;
+            setFetchLoading(true);
+            setFetchError(null);
+            getCard(cardId)
+                .then((card) => { if (!cancelled) setFetchedCard(card); })
+                .catch((err) => { if (!cancelled) setFetchError(err.message || 'Not found'); })
+                .finally(() => { if (!cancelled) setFetchLoading(false); });
+            return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [cardId]);
+
+        const currentCard = localCard || fetchedCard;
+
+        if (!currentCard) {
+            if (fetchError) {
+                return (
+                    <Box sx={{ p: 4, textAlign: 'center' }}>
+                        <Typography color="text.secondary">
+                            This post could not be loaded.
+                        </Typography>
+                    </Box>
+                );
+            }
+            if (fetchLoading) return <OnLoadingSkeletonBox />;
+            return <OnLoadingSkeletonBox />;
+        }
         
         const creator = users.find((userC) => userC._id === currentCard.userId)
 
