@@ -3,7 +3,7 @@ import useChat from '../../hooks/useChat'
 import { useAuth } from '../../providers/AuthProvider';
 import { Alert, Box, Container, Grid, Snackbar } from '@mui/material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useUsersProvider } from '../../providers/UsersProvider';
+import { getSingleUser } from '../../services/apiService';
 import { useUI } from '../../providers/UIProvider';
 import { useChatList } from '../../providers/ChatProvider';
 import ConversationList from './components/ConversationList';
@@ -22,7 +22,6 @@ export default function ChatPage() {
     const [messageText, setMessageText] = useState('');
     const navigate = useNavigate();
     const {user} = useAuth();
-    const {users} = useUsersProvider();
     const {setIsChatOpen} = useUI();
     const {conversations, hasMore, loadingMore, loadMore, markRead, deleteConversation, setActiveConversationId} = useChatList();
 
@@ -241,12 +240,7 @@ export default function ChatPage() {
     const toUserId = searchParams.get('to')
 
     useEffect(() => {
-        if(!toUserId){
-            return;
-        }
-
-        // wait until we have data before deciding
-        if(users.length === 0) return;
+        if(!toUserId) return;
 
         const conversation = conversations.find(c =>
             (c.fromUser === user._id && c.toUser === toUserId) ||
@@ -254,29 +248,28 @@ export default function ChatPage() {
         )
 
         if(conversation){
-            const otherUserTo = users.find(u => u._id === toUserId)
-
+            // Partner is embedded on the conversation by the server.
             setIsChatReady(false);
-
             setSelectedChat({
                 conversationId: conversation._id,
-                otherUser: otherUserTo
+                otherUser: conversation.otherUser
             })
-
             handleOpenConversation(conversation._id)
             setSearchParams({}, {replace: true})
-        }
-        else{
-            const otherNewUserTo = users.find(u => u._id === toUserId);
-
-            setSelectedChat({
-                conversationId: null,
-                otherUser: otherNewUserTo
-            })
+            return;
         }
 
+        // No loaded conversation with this user yet — fetch just that user to open
+        // a fresh chat (fetch once; the server resurfaces any existing conversation
+        // on the first send). Avoids scanning a global users array.
+        if(selectedChat?.otherUser?._id === toUserId) return;
+        let cancelled = false;
+        getSingleUser(toUserId)
+            .then(u => { if(!cancelled) setSelectedChat({ conversationId: null, otherUser: u }); })
+            .catch(() => {});
+        return () => { cancelled = true; };
 
-    }, [toUserId, conversations, user, users])
+    }, [toUserId, conversations, user, selectedChat?.otherUser?._id])
 
     const handleSelectChat = (chat, otherUser) => {
         setIsChatReady(false);
@@ -307,7 +300,6 @@ return (
         }}>
         <ConversationList
             conversationsList={conversations}
-            users={users}
             currentUserId={user._id}
             selectedConversationId={selectedChat?.conversationId}
             onSelectChat={handleSelectChat}

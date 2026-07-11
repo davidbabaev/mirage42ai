@@ -4,7 +4,6 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useChatDock } from '../../providers/ChatDockProvider';
 import { useChatList } from '../../providers/ChatProvider';
-import { useUsersProvider } from '../../providers/UsersProvider';
 import { useAuth } from '../../providers/AuthProvider';
 import { usePresence } from '../../providers/PresenceProvider';
 import OnlineBadge from '../OnlineBadge';
@@ -28,7 +27,6 @@ function previewText(lastMessage, currentUserId) {
 export default function MessagingBar() {
     const { openChat, openUser, barOpen, toggleBar } = useChatDock();
     const { conversations, totalUnread, hasMore, loadingMore, loadMore } = useChatList();
-    const { users } = useUsersProvider();
     const { user } = useAuth();
     const { isOnline } = usePresence();
 
@@ -89,8 +87,8 @@ export default function MessagingBar() {
                         )}
                     >
                         {conversations.map((chat) => {
-                            const otherUserId = chat.fromUser === currentUserId ? chat.toUser : chat.fromUser;
-                            const otherUser = users.find((u) => u._id === otherUserId);
+                            // Partner is embedded on the conversation by the server (no global users scan).
+                            const otherUser = chat.otherUser;
                             if (!otherUser) return null; // hidden (e.g. blocked) — skip
                             const unread = chat.unreadCount || 0;
                             const hasUnread = unread > 0;

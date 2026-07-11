@@ -231,9 +231,36 @@ const getChats = async (userId, opts = {}) => {
         Conversation, conversationBaseFilter(userId), decoded, limit, 'updatedAt'
     );
 
-    const conversations = (await Promise.all(
+    const enriched = (await Promise.all(
         page.map((chat) => enrichConversation(chat, userId, hidden))
     )).filter(Boolean);
+
+    // Embed the OTHER participant per row (one query for the whole page, no N+1)
+    // so the client renders the partner's name/avatar without scanning a global
+    // users array. matches the notifications sender-embed + chatSvc pattern.
+    const otherIdOf = (c) => (String(c.fromUser) === String(userId) ? String(c.toUser) : String(c.fromUser));
+    const otherIds = [...new Set(enriched.map(otherIdOf))];
+    // Fields the chat UI renders: avatar + name (list/dock) and job + city (header).
+    const users = otherIds.length
+        ? await User.find({ _id: { $in: otherIds } }, 'name lastName profilePicture job address')
+        : [];
+    const byId = new Map(users.map(u => [String(u._id), u]));
+    const conversations = enriched.map((c) => {
+        const u = byId.get(otherIdOf(c));
+        return {
+            ...c,
+            otherUser: u
+                ? {
+                    _id: u._id,
+                    name: u.name,
+                    lastName: u.lastName,
+                    profilePicture: u.profilePicture || '',
+                    job: u.job || '',
+                    address: u.address || {},
+                }
+                : null,
+        };
+    });
 
     const result = { conversations, nextCursor };
     if (!decoded) result.totalUnread = await getTotalUnread(userId, hidden);

@@ -20,7 +20,6 @@ function previewText(lastMessage, currentUserId) {
 // via onSelectChat(chat, otherUser).
 export default function ConversationList({
     conversationsList,
-    users,
     currentUserId,
     selectedConversationId,
     onSelectChat,
@@ -76,8 +75,8 @@ export default function ConversationList({
                     )}
                 >
                 {conversationsList.map((chat) => {
-                    const otherUserId = chat.fromUser === currentUserId ? chat.toUser : chat.fromUser
-                    const otherUser = users.find(u => u._id === otherUserId)
+                    // Partner is embedded on the conversation by the server (no global users scan).
+                    const otherUser = chat.otherUser
                     const isActive = selectedConversationId === chat._id;
                     const unread = chat.unreadCount || 0;
                     const hasUnread = unread > 0;

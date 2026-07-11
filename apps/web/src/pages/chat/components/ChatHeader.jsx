@@ -47,7 +47,7 @@ export default function ChatHeader({ otherUser, onBack, onViewProfile, onDeleteC
                 <Typography fontSize={12} color='text.secondary'>
                     {otherUser?.job}
                     {' ' + '󠁯ㆍ' + ' '}
-                    {otherUser?.address.city}
+                    {otherUser?.address?.city}
                 </Typography>
             </Box>
 

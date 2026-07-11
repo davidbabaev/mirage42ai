@@ -80,6 +80,16 @@ describe('conversation-list pagination (keyset by updatedAt, newest first)', () 
         expect(p.nextCursor).toBeTruthy();
     });
 
+    it('embeds the other participant per row (no global users scan needed)', async () => {
+        const p = await listPage();
+        for (const c of p.conversations) {
+            expect(c.otherUser).toBeTruthy();
+            expect(String(c.otherUser._id)).toBe(other(c));
+            expect(c.otherUser).toHaveProperty('name');
+            expect(c.otherUser).toHaveProperty('profilePicture');
+        }
+    });
+
     it('totalUnread on the first page counts ALL conversations, not just the page', async () => {
         const p = await listPage();
         // 10 rows on the page, but the badge total spans all N unread threads.
