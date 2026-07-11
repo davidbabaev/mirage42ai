@@ -18,16 +18,26 @@ Working top-down. One concern per commit; test-first for logic; browser-verify v
 
 **Goal of this run:** kill the two unbounded mount-time loads — `getAllUsers` (`GET /users` → ALL users) and `getAllCards` (`GET /cards` → ALL cards / `registeredCards`) — WITHOUT regressions. Strategy = server-embed the sub-objects each consumer needs, endpoint-by-endpoint, so the app stays green at every step; only remove the global loads in the LAST task, once nothing reads them. Full blocker list lives in `backlog.md` ("Infinite scroll" epic). Do NOT big-bang this.
 
-### 6b. Profile resolution + posts tab off the global arrays  [remaining part of slice 6]
-- What: Profile sub-routes (`UserProfileLayout/Main/About/Media/Followers`) resolve the subject via `getSingleUser(id)` instead of `users.find`. `UserProfileMain` posts tab uses paginated `getExploreCards(cursor,limit,userId)`. `addAuthorToFeed` (follow) fetches the followed user's posts via the user-posts endpoint instead of splicing from `registeredCards`. `useFollowUser.getFollowersCount`/`isFollowByMe` read from the user object (server `followersCount` + `user.following`) instead of scanning the global `users` array.
-- Done when: profiles + follow state + follow-adds-posts work with both global arrays empty; browser-verified; suite green.
-- Type: logic
-- NOTE: the count-hook half of slice 6 (useLikedCards/useCommentsCards → card-object) shipped separately.
+### 7. REMOVE the global loads — remaining inventory (the actual deletion)
+DONE so far (this run): all sub-object embeds (notification sender, conversation participant, feed likePreview, comment/reply authors, postsCount, GET /cards/:id) + count hooks read the card object (6a) + getFollowersCount reads the user object (6b-part). Each was safe/additive — the global arrays are STILL loaded, so nothing is removed yet.
 
-### 7. Adopt React Query for the feed + REMOVE the global loads
-- What: add `@tanstack/react-query`; migrate the feed to `useInfiniteQuery` (load-more, 20–30/page); with tasks 1–6 done, DELETE the `getAllUsers`/`getAllCards` mount-time loads from UsersProvider/CardsProvider (and the now-dead client-side join/filter code — master-plan #16). Admin analytics (`useAnalytics`) moves to server aggregation endpoints (or is explicitly scoped out for this run if too big).
-- Done when: NO provider loads a full collection on mount (verify the network tab on login shows no `GET /users` / `GET /cards`); suite green; browser-verified 390/1280.
-- Type: logic
+REMAINING before `getAllCards` (registeredCards) can be removed:
+- **Card-author embed** (NOT yet done — discovered during slice 6): CardItem/CardDetailsModal/CardDetailsPage do `users.find(card.userId)` for the POST AUTHOR on every card. Embed `creator {_id,name,lastName,profilePicture,job}` on card payloads (like likePreview) and read it. This is BOTH a users-array AND per-card consumer — the single biggest remaining one.
+- **Overlay-upsert mechanism**: handleToggleLike/handleAddComment/etc. currently `.map` registeredCards (update-in-place). With registeredCards empty they must UPSERT the card so the overlay (6a) reflects optimistic like/comment on non-feed surfaces. Requires toggleLike/mutations to pass the card object.
+- **Posts tab** (UserProfileMain) + **MyCardsSection**: render a user's cards from `registeredCards.filter(userId)` → migrate to paginated `getExploreCards(cursor,limit,userId)`.
+- **Own-user postsCount/followersCount**: the logged-in user object (login's pickSafeUserFields) omits them → own sidebar/dashboard falls back to the global arrays. Deliver them (add to pickSafeUserFields or a fresh getSingleUser(me) on login).
+- **addAuthorToFeed** (follow): splices the followed user's posts from registeredCards → refetch the feed (or a user-posts endpoint) instead.
+
+REMAINING before `getAllUsers` (users) can be removed:
+- Card-author embed (above) removes the biggest one.
+- **Profile resolution** (UserProfileLayout/Main/About/Media/Followers): resolve the subject via `getSingleUser(id)` instead of `users.find`.
+- **AllCardsPage creator filter**: async `searchUsers(q)` instead of client-filtering the full users list.
+- **PYMK / mutual friends** (FeedPage, UserProfileMain): `users.filter(following ids)` → a suggestions/mutual endpoint (getSuggestedUsers exists; mutual needs getFollowing intersection).
+- **toggleFollow optimistic update**: uses `syncUser` to patch the users array → needs a user-overlay equivalent so follow counts still reflect cross-surface.
+- **Admin analytics** (useAnalytics): 13 passes over the full users+cards arrays → dedicated server analytics endpoints, OR make the admin OverView panel fetch getAllUsers/getAllCards ON DEMAND (admin-only, panel mount) so the providers no longer load them for everyone at app mount.
+
+FINALLY: once every consumer above is migrated, delete the mount-time `getAllUsers`/`getAllCards` from UsersProvider/CardsProvider (registeredCards becomes the empty-start mutation overlay). Verify the network tab on login shows NO `GET /users` / `GET /cards`. Master-plan #15/#16 also want React Query (`useInfiniteQuery` feed) — optional; the overlay approach above achieves #4 (no full-collection mount load) without it, and is more reversible.
+- Type: logic — this is a large coordinated change; do it as its own focused session (the embeds/decoupling groundwork above is already committed on autopilot/2026-07-11-2).
 
 ---
 
