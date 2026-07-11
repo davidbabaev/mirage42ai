@@ -59,7 +59,12 @@ export default function CardItem({
 
     const creator = users.find(u => u._id === card.userId);
 
-    const getLikesUsers = users.filter((u) => card.likes.includes(u._id)).slice(0,4)
+    // Use server-embedded likePreview when available (feed cards) to avoid
+    // scanning the global users array. Fall back to the users array for non-feed
+    // surfaces (explore, profile grid) that don't yet carry the embed.
+    const getLikesUsers = card.likePreview != null
+        ? card.likePreview.slice(0, 4)
+        : users.filter((u) => card.likes.includes(u._id)).slice(0, 4);
 
     const cardRef = useRef(null);
 

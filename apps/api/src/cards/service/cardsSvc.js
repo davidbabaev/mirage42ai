@@ -269,6 +269,46 @@ const removeComment = async (cardId, commentId) => {
     return pickSafeCardFields(saveComment)
 }
 
+// Attach a `likePreview` array (first n liker objects) to each plain card object
+// so feed cards carry avatar data without scanning the global users array.
+// One User.find for the union of the first-n like-ids across the whole page
+// (no N+1). Cards are already plain JS objects at this point (pickSafeCardFields
+// already called toObject + _.pick), so we spread rather than mutate.
+const attachLikePreview = async (cards, n = 4) => {
+    // Collect the first n like-ids from each card, deduped across all cards.
+    const idSet = new Set();
+    for (const card of cards) {
+        for (const id of (card.likes || []).slice(0, n)) {
+            idSet.add(String(id));
+        }
+    }
+
+    if (!idSet.size) {
+        return cards.map(card => ({ ...card, likePreview: [] }));
+    }
+
+    const likers = await User.find(
+        { _id: { $in: [...idSet] } },
+        'name lastName profilePicture'
+    ).lean();
+
+    const byId = new Map(likers.map(u => [String(u._id), u]));
+
+    return cards.map(card => {
+        const preview = (card.likes || [])
+            .slice(0, n)
+            .map(id => byId.get(String(id)))
+            .filter(Boolean)
+            .map(u => ({
+                _id: u._id,
+                name: u.name,
+                lastName: u.lastName,
+                profilePicture: u.profilePicture || '',
+            }));
+        return { ...card, likePreview: preview };
+    });
+};
+
 // Cursor-paginated feed. Returns { cards, nextCursor } where nextCursor is an
 // opaque keyset cursor (createdAt + _id) or null at the end. opts: { cursor, limit }.
 // The blocked-user filter is applied to EVERY page (computed once per request),
@@ -314,7 +354,11 @@ const getFeedCards = async (userId, isAdmin, opts = {}) => {
         return suggested ? { ...safe, isSuggested: true } : safe;
     });
 
-    return { cards, nextCursor };
+    // Embed liker sub-objects so the feed card avatar strip renders without
+    // scanning the global users array on the client. One batch User.find;
+    // returns cards as plain objects with `likePreview` added.
+    const cardsWithPreview = await attachLikePreview(cards);
+    return { cards: cardsWithPreview, nextCursor };
 }
 
 // GET /cards/:id/likes — paginated list of users who liked a card.

@@ -61,7 +61,12 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
         
         const creator = users.find((userC) => userC._id === currentCard.userId)
 
-        const getLikesUsers = users.filter((u) => currentCard.likes.includes(u._id)).slice(0,4)
+        // Use server-embedded likePreview when available (feed cards) to avoid
+        // scanning the global users array. Fall back to the users array for
+        // non-feed surfaces that don't yet carry the embed.
+        const getLikesUsers = currentCard.likePreview != null
+            ? currentCard.likePreview.slice(0, 4)
+            : users.filter((u) => currentCard.likes.includes(u._id)).slice(0, 4);
 
   return (
     <Box sx={{

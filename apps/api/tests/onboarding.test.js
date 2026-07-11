@@ -341,3 +341,84 @@ describe('GET /cards/feed — cursor pagination', () => {
         await request(app).patch(`/users/${idE}/block`).set('auth-token', tokenG); // unblock
     });
 });
+
+// ─── GET /cards/feed — likePreview embed (provider-retirement slice 3) ────────
+// Each feed card must carry a `likePreview` array. For cards with likes it must
+// contain liker sub-objects {_id, name, lastName, profilePicture}; for cards
+// with no likes it must be an empty array. No per-card User queries (N+1 check
+// is structural — one attachLikePreview call in the svc covers the whole page).
+
+describe('GET /cards/feed — likePreview embed', () => {
+    let tokenH, idH, tokenI, likedCardId, unlikedCardId;
+
+    beforeAll(async () => {
+        // H posts two cards. I follows H and likes one of them.
+        const rH = await request(app).post('/users').send(mkUser('lp-h'));
+        tokenH = rH.body.token; idH = rH.body.safeUser._id;
+        const rI = await request(app).post('/users').send(mkUser('lp-i'));
+        tokenI = rI.body.token;
+
+        const rLiked = await newCard(tokenH, 'Liked preview card');
+        likedCardId = rLiked.body._id;
+        const rUnliked = await newCard(tokenH, 'Unliked preview card');
+        unlikedCardId = rUnliked.body._id;
+
+        // I follows H so H's cards appear in I's following feed
+        await request(app).patch(`/users/${idH}/follow`).set('auth-token', tokenI);
+        // I likes only the first card
+        await request(app).patch(`/cards/${likedCardId}`).set('auth-token', tokenI);
+    }, 60_000);
+
+    it('every feed card carries a likePreview array', async () => {
+        const res = await request(app).get('/cards/feed').set('auth-token', tokenI);
+        expect(res.status).toBe(200);
+        for (const card of res.body.cards) {
+            expect(Array.isArray(card.likePreview)).toBe(true);
+        }
+    });
+
+    it('a liked card has likePreview with liker sub-objects', async () => {
+        const res = await request(app).get('/cards/feed').set('auth-token', tokenI);
+        expect(res.status).toBe(200);
+        const card = res.body.cards.find(c => c._id === likedCardId);
+        expect(card).toBeDefined();
+        expect(card.likePreview.length).toBeGreaterThan(0);
+        const liker = card.likePreview[0];
+        expect(liker).toHaveProperty('_id');
+        expect(liker).toHaveProperty('name');
+        expect(liker).toHaveProperty('lastName');
+        expect(liker).toHaveProperty('profilePicture');
+    });
+
+    it('an unliked card has an empty likePreview array', async () => {
+        const res = await request(app).get('/cards/feed').set('auth-token', tokenI);
+        expect(res.status).toBe(200);
+        const card = res.body.cards.find(c => c._id === unlikedCardId);
+        expect(card).toBeDefined();
+        expect(Array.isArray(card.likePreview)).toBe(true);
+        expect(card.likePreview).toHaveLength(0);
+    });
+
+    it('likePreview contains at most 4 entries even when a card has more likes', async () => {
+        // Have H also like the likedCard (so it now has 2 likers: I and H)
+        // Then create 3 more accounts and have them all like it — total >= 5 likers
+        const extraTokens = [];
+        for (let k = 0; k < 3; k++) {
+            const r = await request(app).post('/users').send(mkUser(`lp-extra-${k}`));
+            extraTokens.push(r.body.token);
+        }
+        // H likes its own card (self-like, allowed)
+        await request(app).patch(`/cards/${likedCardId}`).set('auth-token', tokenH);
+        for (const tok of extraTokens) {
+            // extras need to follow H so they can see/like (not required by the like
+            // endpoint itself, but we do it to mirror real usage)
+            await request(app).patch(`/cards/${likedCardId}`).set('auth-token', tok);
+        }
+
+        const res = await request(app).get('/cards/feed').set('auth-token', tokenI);
+        expect(res.status).toBe(200);
+        const card = res.body.cards.find(c => c._id === likedCardId);
+        expect(card).toBeDefined();
+        expect(card.likePreview.length).toBeLessThanOrEqual(4);
+    });
+});
