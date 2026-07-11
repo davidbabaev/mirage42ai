@@ -26,6 +26,7 @@ const {
     getCardsPage,
     getCardComments,
     getCardsSearch,
+    getAdminCards,
 } = require('../service/cardsSvc');
 const { reportCard, getCardReports } = require('../service/reportSvc');
 const auth = require('../../auth/authService');
@@ -64,6 +65,26 @@ router.get('/cards/explore', auth, async (req, res) => {
             cursor: req.query.cursor,
             limit: req.query.limit,
             userId: req.query.userId,
+        });
+        res.send(result);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+// GET /cards/admin — offset-paginated admin table of ALL cards with server-side
+// search/filter/sort. Admin-only. Must be before /cards/:id so 'admin' isn't an id.
+router.get('/cards/admin', auth, async (req, res) => {
+    try {
+        if (!req.user.isAdmin) throw createError(403, 'Admin only');
+        const result = await getAdminCards(req.user.userId, {
+            page: req.query.page,
+            limit: req.query.limit,
+            search: req.query.search,
+            creator: req.query.creator,
+            category: req.query.category,
+            status: req.query.status,
+            sort: req.query.sort,
         });
         res.send(result);
     } catch (err) {

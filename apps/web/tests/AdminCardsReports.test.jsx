@@ -3,6 +3,11 @@
  *
  * Tests for the Reports column + reporter-list modal in AdminCardsPanel,
  * and the post-reported notification type in Notifications.
+ *
+ * AdminCardsPanel now fetches data via getAdminCards (server-side pagination)
+ * instead of reading from CardsProvider. The mock shape reflects the server
+ * response: items have `likesCount`, `commentsCount`, and a `creator` object
+ * instead of the raw `likes[]`/`comments[]` arrays.
  */
 
 import React from 'react';
@@ -19,53 +24,25 @@ vi.mock('../src/providers/AuthProvider', () => ({
     useAuth: () => ({ user: { _id: ADMIN_ID } }),
 }));
 
-vi.mock('../src/providers/UsersProvider', () => ({
-    useUsersProvider: () => ({
-        loading: false,
-        getUsers: vi.fn(),
-        users: [
-            { _id: ADMIN_ID, name: 'Admin', lastName: 'User', profilePicture: '' },
-            { _id: OTHER_ID, name: 'Alice', lastName: 'Smith', profilePicture: '' },
-        ],
-    }),
-}));
-
+// AdminCardsPanel no longer reads registeredCards from CardsProvider; it calls
+// getAdminCards directly. We still mock the module to prevent import errors in
+// case anything indirectly imports it.
 vi.mock('../src/providers/CardsProvider', () => ({
     useCardsProvider: () => ({
-        registeredCards: [
-            {
-                _id: 'card-reported',
-                userId: OTHER_ID,
-                title: 'Reported Post',
-                content: '',
-                mediaUrl: '',
-                mediaType: 'image',
-                likes: [],
-                comments: [],
-                createdAt: new Date().toISOString(),
-                status: 'active',
-                category: 'Technology',
-                reportCount: 3,
-            },
-            {
-                _id: 'card-clean',
-                userId: OTHER_ID,
-                title: 'Clean Post',
-                content: '',
-                mediaUrl: '',
-                mediaType: 'image',
-                likes: [],
-                comments: [],
-                createdAt: new Date().toISOString(),
-                status: 'active',
-                category: 'Science',
-                reportCount: 0,
-            },
-        ],
+        registeredCards: [],
         refreshFeed: vi.fn(),
         fetchCards: vi.fn(),
         handleDeleteCard: vi.fn(),
         handleBanCard: vi.fn(),
+    }),
+}));
+
+// AdminCardsPanel no longer reads users from UsersProvider.
+vi.mock('../src/providers/UsersProvider', () => ({
+    useUsersProvider: () => ({
+        loading: false,
+        getUsers: vi.fn(),
+        users: [],
     }),
 }));
 
@@ -77,16 +54,67 @@ vi.mock('../src/hooks/useDebounce', () => ({
     default: (v) => v,
 }));
 
+// ---- apiService mock ---------------------------------------------------------
+// AdminCardsPanel now uses getAdminCards + getCardReports from apiService.
+
 const getCardReportsMock = vi.fn();
+const getAdminCardsMock = vi.fn();
+const banCardMock = vi.fn();
+const deleteCardMock = vi.fn();
+
 vi.mock('../src/services/apiService', () => ({
     getCardReports: (...args) => getCardReportsMock(...args),
+    getAdminCards: (...args) => getAdminCardsMock(...args),
+    banCard: (...args) => banCardMock(...args),
+    deleteCard: (...args) => deleteCardMock(...args),
+    getUserCountries: () => Promise.resolve({ countries: [] }),
 }));
+
+// Default mock response: two cards matching the server's { items, total, page, limit } shape.
+// Items have creator object, likesCount, commentsCount instead of raw arrays.
+const MOCK_CARDS_RESPONSE = {
+    items: [
+        {
+            _id: 'card-reported',
+            userId: OTHER_ID,
+            title: 'Reported Post',
+            mediaUrl: '',
+            mediaType: 'image',
+            likesCount: 0,
+            commentsCount: 0,
+            createdAt: new Date().toISOString(),
+            status: 'active',
+            category: 'Technology',
+            reportCount: 3,
+            creator: { _id: OTHER_ID, name: 'Alice', lastName: 'Smith', profilePicture: '' },
+            creatorName: 'Alice Smith',
+        },
+        {
+            _id: 'card-clean',
+            userId: OTHER_ID,
+            title: 'Clean Post',
+            mediaUrl: '',
+            mediaType: 'image',
+            likesCount: 0,
+            commentsCount: 0,
+            createdAt: new Date().toISOString(),
+            status: 'active',
+            category: 'Science & Tech',
+            reportCount: 0,
+            creator: { _id: OTHER_ID, name: 'Alice', lastName: 'Smith', profilePicture: '' },
+            creatorName: 'Alice Smith',
+        },
+    ],
+    total: 2,
+    page: 1,
+    limit: 10,
+};
 
 // Stub out heavy child components
 vi.mock('../src/components/card/CardPopupModal', () => ({ default: () => null }));
 vi.mock('../src/components/ConfirmationDialog', () => ({ default: () => null }));
 vi.mock('../src/components/OnLoadingSkeletonBox', () => ({ default: () => <div>Loading skeleton</div> }));
-vi.mock('../src/components/MediaDisplay', () => ({ default: () => <div data-testid="media-display" /> }));
+vi.mock('../src/components/MediaDisplay', () => ({ default: () => <div data-testid='media-display' /> }));
 
 // ---- import components after mocks -----------------------------------------
 import AdminCardsPanel from '../src/pages/adminUserDashboard/AdminCardsPanel';
@@ -103,7 +131,7 @@ function renderAdminCards() {
     return render(
         <MemoryRouter>
             <AdminCardsPanel />
-        </MemoryRouter>
+        </MemoryRouter>,
     );
 }
 
@@ -125,13 +153,18 @@ function renderNotifications(notifications, onClose = vi.fn()) {
                 handleDeleteNotificationValue={vi.fn()}
                 onClose={onClose}
             />
-        </MemoryRouter>
+        </MemoryRouter>,
     );
 }
 
 beforeEach(() => {
     navigate.mockClear();
     getCardReportsMock.mockClear();
+    getAdminCardsMock.mockClear();
+    banCardMock.mockClear();
+    deleteCardMock.mockClear();
+    // Default: getAdminCards resolves with the two mock cards.
+    getAdminCardsMock.mockResolvedValue(MOCK_CARDS_RESPONSE);
 });
 
 afterEach(() => cleanup());
@@ -139,28 +172,31 @@ afterEach(() => cleanup());
 // ---- AdminCardsPanel: Reports column ----------------------------------------
 
 describe('AdminCardsPanel — Reports column', () => {
-    it('renders a "Reports" column header', () => {
+    it('renders a "Reports" column header', async () => {
         renderAdminCards();
-        expect(screen.getByText('Reports')).toBeInTheDocument();
+        // Wait for the initial fetch to complete before asserting
+        await waitFor(() => expect(screen.getByText('Reports')).toBeInTheDocument());
     });
 
-    it('shows a muted "0" for a post with reportCount 0', () => {
+    it('shows a muted "0" for a post with reportCount 0', async () => {
         renderAdminCards();
-        // The muted zero is a Typography; there should be one for the clean post
-        // Use getAllByText in case multiple zeros appear
-        const zeros = screen.getAllByText('0');
-        expect(zeros.length).toBeGreaterThan(0);
+        await waitFor(() => {
+            const zeros = screen.getAllByText('0');
+            expect(zeros.length).toBeGreaterThan(0);
+        });
     });
 
-    it('shows a clickable button with the count for a post with reportCount > 0', () => {
+    it('shows a clickable button with the count for a post with reportCount > 0', async () => {
         renderAdminCards();
-        const reportBtn = screen.getByRole('button', { name: /view 3 reporters/i });
-        expect(reportBtn).toBeInTheDocument();
+        await waitFor(() => {
+            const reportBtn = screen.getByRole('button', { name: /view 3 reporters/i });
+            expect(reportBtn).toBeInTheDocument();
+        });
     });
 
-    it('does NOT show a clickable button for the post with reportCount 0', () => {
+    it('does NOT show a clickable button for the post with reportCount 0', async () => {
         renderAdminCards();
-        // There should be no button labelled "View 0 reporters"
+        await waitFor(() => expect(screen.getByText('Reports')).toBeInTheDocument());
         expect(screen.queryByRole('button', { name: /view 0 reporters/i })).not.toBeInTheDocument();
     });
 
@@ -168,13 +204,12 @@ describe('AdminCardsPanel — Reports column', () => {
         getCardReportsMock.mockResolvedValueOnce([]);
         renderAdminCards();
 
-        const reportBtn = screen.getByRole('button', { name: /view 3 reporters/i });
+        const reportBtn = await screen.findByRole('button', { name: /view 3 reporters/i });
         fireEvent.click(reportBtn);
 
         await waitFor(() => {
             expect(getCardReportsMock).toHaveBeenCalledWith('card-reported');
         });
-        // Dialog should be open
         expect(screen.getByRole('dialog')).toBeInTheDocument();
     });
 
@@ -183,10 +218,9 @@ describe('AdminCardsPanel — Reports column', () => {
         getCardReportsMock.mockReturnValueOnce(new Promise(() => {}));
         renderAdminCards();
 
-        const reportBtn = screen.getByRole('button', { name: /view 3 reporters/i });
+        const reportBtn = await screen.findByRole('button', { name: /view 3 reporters/i });
         fireEvent.click(reportBtn);
 
-        // Skeletons are rendered via MUI Skeleton; check dialog is open
         await waitFor(() => {
             expect(screen.getByRole('dialog')).toBeInTheDocument();
         });
@@ -203,10 +237,9 @@ describe('AdminCardsPanel — Reports column', () => {
         ]);
         renderAdminCards();
 
-        fireEvent.click(screen.getByRole('button', { name: /view 3 reporters/i }));
+        fireEvent.click(await screen.findByRole('button', { name: /view 3 reporters/i }));
 
         await waitFor(() => {
-            // Alice Smith appears in the table row AND in the modal reporter list
             expect(screen.getAllByText('Alice Smith').length).toBeGreaterThan(0);
         });
         expect(screen.getByText('Spam')).toBeInTheDocument();
@@ -216,7 +249,7 @@ describe('AdminCardsPanel — Reports column', () => {
         getCardReportsMock.mockResolvedValueOnce([]);
         renderAdminCards();
 
-        fireEvent.click(screen.getByRole('button', { name: /view 3 reporters/i }));
+        fireEvent.click(await screen.findByRole('button', { name: /view 3 reporters/i }));
 
         await waitFor(() => {
             expect(screen.getByText(/no reports found/i)).toBeInTheDocument();
@@ -227,7 +260,7 @@ describe('AdminCardsPanel — Reports column', () => {
         getCardReportsMock.mockRejectedValueOnce(new Error('Unauthorized'));
         renderAdminCards();
 
-        fireEvent.click(screen.getByRole('button', { name: /view 3 reporters/i }));
+        fireEvent.click(await screen.findByRole('button', { name: /view 3 reporters/i }));
 
         await waitFor(() => {
             expect(screen.getByText(/unauthorized/i)).toBeInTheDocument();
@@ -238,7 +271,7 @@ describe('AdminCardsPanel — Reports column', () => {
         getCardReportsMock.mockResolvedValueOnce([]);
         renderAdminCards();
 
-        fireEvent.click(screen.getByRole('button', { name: /view 3 reporters/i }));
+        fireEvent.click(await screen.findByRole('button', { name: /view 3 reporters/i }));
         await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
 
         fireEvent.click(screen.getByRole('button', { name: /close reporters modal/i }));

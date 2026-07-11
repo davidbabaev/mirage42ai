@@ -16,11 +16,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 Working top-down. One concern per commit; test-first for logic; browser-verify visual at 390/1280; full suite green before "done".
 
-### 2. Admin panels — server-side paging
-- What: Move admin lists (users/cards/reports) off client-side paging over admin-loaded data to server-side pagination.
-- Done when: admin lists page from the server; suite green.
-- Type: logic
-
 ### 3. Optimistic follow/like/comment mutations
 - What: Make follow/like/comment update in place with no refetch/scroll-jump (the real fix). Evaluate whether to adopt React Query or extend the current hooks.
 - Done when: actions reflect instantly, reconcile on server response, roll back on error; browser-verified.

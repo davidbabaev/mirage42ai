@@ -27,6 +27,7 @@ const {
     getUserCountriesList,
     addFavorite,
     removeFavorite,
+    getAdminUsers,
 } = require('../service/usersSvc');
 const { getRecentContacts } = require('../../chat/service/chatSvc');
 const { getFavoriteCards } = require('../../cards/service/cardsSvc');
@@ -115,6 +116,26 @@ router.get('/users/search', auth, async (req, res) => {
             sort: req.query.sort,
             cursor: req.query.cursor,
             limit: req.query.limit,
+        });
+        res.send(result);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+// GET /users/admin — offset-paginated admin table of ALL users with server-side
+// search/filter/sort. Admin-only. Must be before /users/:id so 'admin' isn't an id.
+router.get('/users/admin', auth, async (req, res) => {
+    try {
+        if (!req.user.isAdmin) throw createError(403, 'Admin only');
+        const result = await getAdminUsers(req.user.userId, {
+            page: req.query.page,
+            limit: req.query.limit,
+            search: req.query.search,
+            gender: req.query.gender,
+            country: req.query.country,
+            role: req.query.role,
+            sort: req.query.sort,
         });
         res.send(result);
     } catch (err) {

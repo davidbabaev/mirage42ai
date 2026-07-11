@@ -174,6 +174,32 @@ export const getCardsSearch = (params = {}, cursor, limit = 10) => {
 };
 
 
+// Admin panel: server-side paginated tables → { items, total, page, limit }.
+// Empty/falsy params are omitted from the query string.
+export const getAdminUsers = (params = {}) => {
+    const p = new URLSearchParams();
+    if (params.page)   p.set('page',   params.page);
+    if (params.limit)  p.set('limit',  params.limit);
+    if (params.search) p.set('search', params.search);
+    if (params.gender) p.set('gender', params.gender);
+    if (params.country) p.set('country', params.country);
+    if (params.role)   p.set('role',   params.role);
+    if (params.sort)   p.set('sort',   params.sort);
+    return httpRequest(`/users/admin?${p}`, 'GET');
+};
+
+export const getAdminCards = (params = {}) => {
+    const p = new URLSearchParams();
+    if (params.page)     p.set('page',     params.page);
+    if (params.limit)    p.set('limit',    params.limit);
+    if (params.search)   p.set('search',   params.search);
+    if (params.creator)  p.set('creator',  params.creator);
+    if (params.category) p.set('category', params.category);
+    if (params.status)   p.set('status',   params.status);
+    if (params.sort)     p.set('sort',     params.sort);
+    return httpRequest(`/cards/admin?${p}`, 'GET');
+};
+
 // Notifications Requests
 export const getNotifications = (cursor, limit = 20) =>
     httpRequest(`/notifications?${pageParams(cursor, limit)}`, 'GET');

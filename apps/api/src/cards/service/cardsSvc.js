@@ -588,6 +588,120 @@ const getCardsSearch = async (requesterId, isAdmin, opts = {}) => {
     return { items, nextCursor };
 };
 
+// GET /cards/admin — offset-paginated admin view of ALL cards with server-side
+// search, filter, and sort. Admin-only — caller must verify isAdmin before calling.
+// Opts: { page (1-based), limit, search (title), creator (name substring),
+//         category (exact), status ('active'|'banned'|'deleted'|''), sort }.
+// Sort keys: newest (createdAt desc, default), oldest, likes, likes_asc,
+//            category, category_desc, creator, creator_desc.
+// Returns { items, total, page, limit }. Items include creator obj, likesCount, commentsCount.
+const getAdminCards = async (currentUserId, opts = {}) => {
+    const { page: rawPage, limit: rawLimit, search, creator, category, status, sort } = opts;
+    const pageNum = Math.max(1, parseInt(rawPage, 10) || 1);
+    const lim = normalizeLimit(rawLimit, 10, 100);
+    const skip = (pageNum - 1) * lim;
+
+    // ── Sort ─────────────────────────────────────────────────────────────────
+    let sortStage;
+    switch (sort) {
+        case 'oldest':        sortStage = { createdAt: 1,  _id: 1  };       break;
+        case 'likes':         sortStage = { likesCount: -1, _id: -1 };      break;
+        case 'likes_asc':     sortStage = { likesCount: 1,  _id: 1  };      break;
+        case 'category':      sortStage = { category: 1,  _id: 1  };        break;
+        case 'category_desc': sortStage = { category: -1, _id: -1 };        break;
+        case 'creator':       sortStage = { creatorName: 1,  _id: 1  };     break;
+        case 'creator_desc':  sortStage = { creatorName: -1, _id: -1 };     break;
+        case 'newest':
+        default:              sortStage = { createdAt: -1, _id: -1 };       break;
+    }
+
+    // ── Match clauses (applied after $lookup so we can filter on creator fields) ─
+    const matchClauses = [];
+    if (search && search.trim()) {
+        matchClauses.push({ title: new RegExp(escapeRegex(search.trim()), 'i') });
+    }
+    if (creator && creator.trim()) {
+        const rx = new RegExp(escapeRegex(creator.trim()), 'i');
+        matchClauses.push({ $or: [{ 'creator.name': rx }, { 'creator.lastName': rx }] });
+    }
+    if (category && category.trim()) {
+        matchClauses.push({ category: category.trim() });
+    }
+    if (status && status.trim()) {
+        // Admin can filter by specific status; no filter = see all statuses
+        matchClauses.push({ status: status.trim() });
+    }
+
+    const pipeline = [
+        // Lookup creator first so we can filter/sort by name
+        {
+            $lookup: {
+                from: 'users',
+                localField: 'userId',
+                foreignField: '_id',
+                pipeline: [{ $project: { name: 1, lastName: 1, profilePicture: 1 } }],
+                as: '_creatorArr',
+            },
+        },
+        // Compute derived fields (stage 1)
+        {
+            $addFields: {
+                // $ifNull guards a legacy card whose likes/comments field is absent
+                // ($size throws on a missing field).
+                likesCount: { $size: { $ifNull: ['$likes', []] } },
+                commentsCount: { $size: { $ifNull: ['$comments', []] } },
+                creator: { $arrayElemAt: ['$_creatorArr', 0] },
+            },
+        },
+        // Compute creatorName (stage 2 — can reference `creator` from stage 1)
+        {
+            $addFields: {
+                creatorName: {
+                    $trim: {
+                        input: {
+                            $concat: [
+                                { $ifNull: ['$creator.name', ''] },
+                                ' ',
+                                { $ifNull: ['$creator.lastName', ''] },
+                            ],
+                        },
+                    },
+                },
+            },
+        },
+        // Apply filters after all computed fields are available
+        ...(matchClauses.length ? [{ $match: { $and: matchClauses } }] : []),
+        // Paginate via $facet: items + total count
+        {
+            $facet: {
+                items: [
+                    { $sort: sortStage },
+                    { $skip: skip },
+                    { $limit: lim },
+                    {
+                        $project: {
+                            title: 1, mediaUrl: 1, mediaType: 1,
+                            category: 1, createdAt: 1, userId: 1,
+                            status: 1, reportCount: 1,
+                            likesCount: 1, commentsCount: 1,
+                            creatorName: 1, creator: 1,
+                        },
+                    },
+                ],
+                total: [{ $count: 'n' }],
+            },
+        },
+    ];
+
+    const [result] = await Card.aggregate(pipeline);
+    return {
+        items: result.items ?? [],
+        total: result.total[0]?.n ?? 0,
+        page: pageNum,
+        limit: lim,
+    };
+};
+
 module.exports = {
     createNewCard,
     getCards,
@@ -609,4 +723,5 @@ module.exports = {
     getCardsPage,
     getCardComments,
     getCardsSearch,
+    getAdminCards,
 }

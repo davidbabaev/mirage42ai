@@ -666,6 +666,119 @@ const getUsersSearch = async (requesterId, isAdmin, opts = {}) => {
     };
 };
 
+// GET /users/admin — offset-paginated admin view of ALL users with server-side
+// search, filter, and sort. Admin-only — caller must verify isAdmin before calling.
+// Opts: { page (1-based), limit, search (name/lastName), gender, country,
+//         role ('admin'|'user'|''), sort }.
+// Sort keys: joined (createdAt desc, default), joined_asc, name_asc, name_desc,
+//            age (youngest first), age_desc, posts, posts_asc, followers, followers_asc.
+// Returns { items, total, page, limit }. Items include followersCount and postsCount.
+const getAdminUsers = async (currentUserId, opts = {}) => {
+    const { page: rawPage, limit: rawLimit, search, gender, country, role, sort } = opts;
+    const pageNum = Math.max(1, parseInt(rawPage, 10) || 1);
+    const lim = normalizeLimit(rawLimit, 10, 100);
+    const skip = (pageNum - 1) * lim;
+
+    // ── Match filter ─────────────────────────────────────────────────────────
+    const matchStage = {};
+    if (search && search.trim()) {
+        const rx = new RegExp(escapeRegex(search.trim()), 'i');
+        matchStage.$or = [{ name: rx }, { lastName: rx }];
+    }
+    if (gender && gender.trim()) {
+        matchStage.gender = gender.trim();
+    }
+    if (country && country.trim()) {
+        matchStage['address.country'] = new RegExp('^' + escapeRegex(country.trim()) + '$', 'i');
+    }
+    if (role === 'admin') matchStage.isAdmin = true;
+    if (role === 'user') matchStage.isAdmin = { $ne: true };
+
+    // ── Sort ─────────────────────────────────────────────────────────────────
+    let sortStage;
+    switch (sort) {
+        case 'joined_asc':    sortStage = { createdAt: 1,  _id: 1  };                  break;
+        case 'name_asc':      sortStage = { name: 1,  lastName: 1,  _id: 1  };         break;
+        case 'name_desc':     sortStage = { name: -1, lastName: -1, _id: -1 };         break;
+        case 'age':           sortStage = { age: 1,  _id: 1  };                        break;
+        case 'age_desc':      sortStage = { age: -1, _id: -1 };                        break;
+        case 'posts':         sortStage = { postsCount: -1, _id: -1 };                 break;
+        case 'posts_asc':     sortStage = { postsCount: 1,  _id: 1  };                 break;
+        case 'followers':     sortStage = { followersCount: -1, _id: -1 };             break;
+        case 'followers_asc': sortStage = { followersCount: 1,  _id: 1  };             break;
+        case 'joined':
+        default:              sortStage = { createdAt: -1, _id: -1 };                  break;
+    }
+
+    const pipeline = [
+        { $match: matchStage },
+
+        // followersCount: users whose `following` string-array contains this user's _id
+        {
+            $lookup: {
+                from: 'users',
+                let: { uid: { $toString: '$_id' } },
+                pipeline: [
+                    { $match: { $expr: { $in: ['$$uid', '$following'] } } },
+                    { $count: 'n' },
+                ],
+                as: '_followersArr',
+            },
+        },
+        {
+            $addFields: {
+                followersCount: { $ifNull: [{ $arrayElemAt: ['$_followersArr.n', 0] }, 0] },
+            },
+        },
+
+        // postsCount: cards authored by this user
+        {
+            $lookup: {
+                from: 'cards',
+                let: { uid: '$_id' },
+                pipeline: [
+                    { $match: { $expr: { $eq: ['$userId', '$$uid'] } } },
+                    { $count: 'n' },
+                ],
+                as: '_postsArr',
+            },
+        },
+        {
+            $addFields: {
+                postsCount: { $ifNull: [{ $arrayElemAt: ['$_postsArr.n', 0] }, 0] },
+            },
+        },
+
+        {
+            $facet: {
+                items: [
+                    { $sort: sortStage },
+                    { $skip: skip },
+                    { $limit: lim },
+                    {
+                        $project: {
+                            name: 1, lastName: 1, email: 1, gender: 1,
+                            profilePicture: 1, address: 1, age: 1,
+                            isAdmin: 1, isBanned: 1,
+                            createdAt: 1, lastLoginAt: 1,
+                            followersCount: 1, postsCount: 1,
+                        },
+                    },
+                ],
+                total: [{ $count: 'n' }],
+            },
+        },
+    ];
+
+    const [result] = await User.aggregate(pipeline);
+    return {
+        items: result.items ?? [],
+        total: result.total[0]?.n ?? 0,
+        page: pageNum,
+        limit: lim,
+    };
+};
+
 // GET /users/countries — sorted distinct list of address.country values visible
 // to the requester (block-aware both directions). Non-empty values only.
 const getUserCountriesList = async (requesterId) => {
@@ -708,4 +821,5 @@ module.exports = {
     getFollowing,
     getUsersSearch,
     getUserCountriesList,
+    getAdminUsers,
 };
