@@ -155,57 +155,89 @@ const getMessages = async (conversationId, userId, opts = {}) => {
     return { messages: page.slice().reverse(), nextCursor };
 }
 
-const getChats = async (userId) => {
-    const chats = await Conversation.find({
-        $or: [
-            {fromUser: new mongoose.Types.ObjectId(userId)},
-            {toUser: new mongoose.Types.ObjectId(userId)}
-        ],
-    }).sort({updatedAt: -1});
+// The set of conversations this user participates in (either side).
+const conversationBaseFilter = (userId) => ({
+    $or: [
+        { fromUser: new mongoose.Types.ObjectId(userId) },
+        { toUser: new mongoose.Types.ObjectId(userId) },
+    ],
+});
 
-    // Drop conversations with a blocked counterpart (either direction). New
-    // messages are already refused by getOrCreateConversation; this removes the
-    // stale thread from the chat list + dock so a blocked user disappears there
-    // too, matching WhatsApp/IG.
-    const hidden = await getHiddenUserIds(userId);
+// Enrich one conversation for this user: apply the block + per-side-delete
+// visibility rules, and attach `unreadCount`. Returns null when the conversation
+// should be hidden (blocked counterpart, or the user deleted it and nothing newer
+// exists). Single source of truth for both the list rows and the unread total.
+// SCALING NOTE: one or two countDocuments per conversation (N+1). Fine for the
+// per-user conversation counts we expect; if a user ever accumulates many
+// hundreds, replace with a single aggregation ($lookup messages + $group).
+const enrichConversation = async (chat, userId, hidden) => {
+    const otherId = String(chat.fromUser) === String(userId)
+        ? String(chat.toUser) : String(chat.fromUser);
+    if (hidden.has(otherId)) return null;
 
-    // Per conversation: apply this user's delete cutoff, then attach unread count.
-    // SCALING NOTE: this runs one or two countDocuments per conversation (N+1).
-    // Fine for the per-user conversation counts we expect; if a user accumulates
-    // many hundreds of conversations, replace this loop with a single aggregation
-    // ($lookup messages + $group, or a $facet) to compute all counts in one query.
-    const enriched = await Promise.all(chats.map(async (chat) => {
-        const otherId = String(chat.fromUser) === String(userId)
-            ? String(chat.toUser) : String(chat.fromUser);
-        if (hidden.has(otherId)) return null;
+    const deletedAt = chat.deletedAt?.get(String(userId));
 
-        const deletedAt = chat.deletedAt?.get(String(userId));
-
-        // Per-side delete: if I cleared this chat, hide it until a newer message
-        // exists (from either side). The other user's view is unaffected.
-        if (deletedAt) {
-            const visibleCount = await Message.countDocuments({
-                conversationId: chat._id,
-                createdAt: { $gt: deletedAt },
-            });
-            if (visibleCount === 0) return null;
-        }
-
-        // Unread = messages I didn't send, newer than the later of my read /
-        // delete cutoffs (so old, pre-delete messages never count).
-        const lastRead = chat.lastReadAt?.get(String(userId));
-        const threshold = [lastRead, deletedAt].filter(Boolean).sort((a, b) => b - a)[0];
-        const unreadFilter = {
+    // Per-side delete: if I cleared this chat, hide it until a newer message
+    // exists (from either side). The other user's view is unaffected.
+    if (deletedAt) {
+        const visibleCount = await Message.countDocuments({
             conversationId: chat._id,
-            userId: { $ne: new mongoose.Types.ObjectId(userId) },
-        };
-        if (threshold) unreadFilter.createdAt = { $gt: threshold };
-        const unreadCount = await Message.countDocuments(unreadFilter);
+            createdAt: { $gt: deletedAt },
+        });
+        if (visibleCount === 0) return null;
+    }
 
-        return { ...chat.toObject(), unreadCount };
-    }));
+    // Unread = messages I didn't send, newer than the later of my read /
+    // delete cutoffs (so old, pre-delete messages never count).
+    const lastRead = chat.lastReadAt?.get(String(userId));
+    const threshold = [lastRead, deletedAt].filter(Boolean).sort((a, b) => b - a)[0];
+    const unreadFilter = {
+        conversationId: chat._id,
+        userId: { $ne: new mongoose.Types.ObjectId(userId) },
+    };
+    if (threshold) unreadFilter.createdAt = { $gt: threshold };
+    const unreadCount = await Message.countDocuments(unreadFilter);
 
-    return enriched.filter(Boolean);
+    return { ...chat.toObject(), unreadCount };
+};
+
+// Total unread across ALL of this user's visible conversations. Computed
+// server-side so the nav badge stays correct once the conversation LIST is
+// paginated (the client only holds page 1, so it can't sum the rest itself).
+// Conversation COUNT per user is small, so scanning them all here is cheap even
+// though message VOLUME is not — see the SCALING NOTE on enrichConversation.
+const getTotalUnread = async (userId, hidden) => {
+    const h = hidden || await getHiddenUserIds(userId);
+    const chats = await Conversation.find(conversationBaseFilter(userId));
+    const enriched = await Promise.all(chats.map((c) => enrichConversation(c, userId, h)));
+    return enriched.reduce((sum, c) => sum + (c ? c.unreadCount : 0), 0);
+};
+
+// Conversation list, keyset-paginated newest-first by `updatedAt` (the field a
+// new message bumps). Returns { conversations, nextCursor }; on the FIRST page
+// (no cursor) it also returns `totalUnread` across all conversations so the
+// client can seed the nav badge and keep it live via sockets — cursor pages omit
+// it (mirrors notifications). Hidden/deleted rows are filtered AFTER the keyset
+// page, so a page can hold fewer than `limit` rows while nextCursor still points
+// at the correct next-older conversation (same as the feed's block handling).
+const getChats = async (userId, opts = {}) => {
+    const limit = normalizeLimit(opts.limit, 15, 50);
+    const decoded = decodeCursor(opts.cursor);
+    // A non-null cursor that fails to decode is a client bug — fail fast.
+    if (opts.cursor && !decoded) throw createError(400, 'Invalid cursor');
+
+    const hidden = await getHiddenUserIds(userId);
+    const { page, nextCursor } = await runKeysetPage(
+        Conversation, conversationBaseFilter(userId), decoded, limit, 'updatedAt'
+    );
+
+    const conversations = (await Promise.all(
+        page.map((chat) => enrichConversation(chat, userId, hidden))
+    )).filter(Boolean);
+
+    const result = { conversations, nextCursor };
+    if (!decoded) result.totalUnread = await getTotalUnread(userId, hidden);
+    return result;
 }
 
 // Recent DM contacts for the share-dialog default list: the other participant
@@ -301,6 +333,7 @@ module.exports = {
     createNewMessage,
     getMessages,
     getChats,
+    getTotalUnread,
     markConversationRead,
     deleteChat,
     buildSharedCardSnapshot,

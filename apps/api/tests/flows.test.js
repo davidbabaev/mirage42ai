@@ -263,17 +263,20 @@ describe('chat unread + last-message preview + mark-read', () => {
         expect(conversationId).toBeTruthy();
 
         const chats = await request(app).get('/chats').set('auth-token', tokenB);
-        const convo = chats.body.find(c => c._id === conversationId);
+        const convo = chats.body.conversations.find(c => c._id === conversationId);
         expect(convo.lastMessage.mediaType).toBe('image');
         expect(String(convo.lastMessage.senderId)).toBe(userAId);
     });
 
     it('counts unread per user: recipient sees 1, sender sees 0 (own message)', async () => {
         const asB = await request(app).get('/chats').set('auth-token', tokenB);
-        expect(asB.body.find(c => c._id === conversationId).unreadCount).toBe(1);
+        expect(asB.body.conversations.find(c => c._id === conversationId).unreadCount).toBe(1);
+        // totalUnread rides the first page and mirrors the per-row sum.
+        expect(asB.body.totalUnread).toBe(1);
 
         const asA = await request(app).get('/chats').set('auth-token', tokenA);
-        expect(asA.body.find(c => c._id === conversationId).unreadCount).toBe(0);
+        expect(asA.body.conversations.find(c => c._id === conversationId).unreadCount).toBe(0);
+        expect(asA.body.totalUnread).toBe(0);
     });
 
     it('marking the conversation read clears the recipient\'s unread count', async () => {
@@ -283,7 +286,8 @@ describe('chat unread + last-message preview + mark-read', () => {
         expect(read.status).toBe(200);
 
         const asB = await request(app).get('/chats').set('auth-token', tokenB);
-        expect(asB.body.find(c => c._id === conversationId).unreadCount).toBe(0);
+        expect(asB.body.conversations.find(c => c._id === conversationId).unreadCount).toBe(0);
+        expect(asB.body.totalUnread).toBe(0);
     });
 });
 

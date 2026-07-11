@@ -24,7 +24,7 @@ export default function ChatPage() {
     const {user} = useAuth();
     const {users} = useUsersProvider();
     const {setIsChatOpen} = useUI();
-    const {conversations, markRead, deleteConversation, setActiveConversationId} = useChatList();
+    const {conversations, hasMore, loadingMore, loadMore, markRead, deleteConversation, setActiveConversationId} = useChatList();
 
     // Block flow
     const { toggleBlock } = useBlockUser();
@@ -311,6 +311,9 @@ return (
             currentUserId={user._id}
             selectedConversationId={selectedChat?.conversationId}
             onSelectChat={handleSelectChat}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={loadMore}
         />
     </Grid>
 

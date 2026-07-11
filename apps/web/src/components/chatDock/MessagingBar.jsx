@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Avatar, Badge, Box, Paper, Typography } from '@mui/material';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -7,6 +8,7 @@ import { useUsersProvider } from '../../providers/UsersProvider';
 import { useAuth } from '../../providers/AuthProvider';
 import { usePresence } from '../../providers/PresenceProvider';
 import OnlineBadge from '../OnlineBadge';
+import InfiniteScroll from '../InfiniteScroll';
 import getTimeAgo from '../../utils/getTimeAgo';
 
 // Preview line for a conversation row (mirrors ConversationList): media → icon,
@@ -25,12 +27,14 @@ function previewText(lastMessage, currentUserId) {
 // dots). Clicking a conversation opens the single docked chat window.
 export default function MessagingBar() {
     const { openChat, openUser, barOpen, toggleBar } = useChatDock();
-    const { conversations, totalUnread } = useChatList();
+    const { conversations, totalUnread, hasMore, loadingMore, loadMore } = useChatList();
     const { users } = useUsersProvider();
     const { user } = useAuth();
     const { isOnline } = usePresence();
 
     const currentUserId = user?._id;
+    // The dock list scrolls inside its own 360px box — make that the observer root.
+    const [scrollEl, setScrollEl] = useState(null);
 
     return (
         <Paper
@@ -70,13 +74,21 @@ export default function MessagingBar() {
             </Box>
 
             {barOpen && (
-                <Box sx={{ maxHeight: 360, overflowY: 'auto' }}>
-                    {conversations.length === 0 ? (
-                        <Typography color='text.secondary' fontSize={14} sx={{ p: 2, textAlign: 'center' }}>
-                            No conversations yet
-                        </Typography>
-                    ) : (
-                        conversations.map((chat) => {
+                <Box ref={setScrollEl} sx={{ maxHeight: 360, overflowY: 'auto' }}>
+                    <InfiniteScroll
+                        hasMore={hasMore}
+                        loadingMore={loadingMore}
+                        onLoadMore={loadMore}
+                        isEmpty={conversations.length === 0}
+                        root={scrollEl}
+                        showEnd={false}
+                        emptyState={(
+                            <Typography color='text.secondary' fontSize={14} sx={{ p: 2, textAlign: 'center' }}>
+                                No conversations yet
+                            </Typography>
+                        )}
+                    >
+                        {conversations.map((chat) => {
                             const otherUserId = chat.fromUser === currentUserId ? chat.toUser : chat.fromUser;
                             const otherUser = users.find((u) => u._id === otherUserId);
                             if (!otherUser) return null; // hidden (e.g. blocked) — skip
@@ -124,8 +136,8 @@ export default function MessagingBar() {
                                     </Box>
                                 </Box>
                             );
-                        })
-                    )}
+                        })}
+                    </InfiniteScroll>
                 </Box>
             )}
         </Paper>

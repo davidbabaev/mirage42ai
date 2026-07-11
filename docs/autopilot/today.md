@@ -16,12 +16,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 Working top-down. One concern per commit; test-first for logic; browser-verify visual at 390/1280; full suite green before "done".
 
-### 1. Chat — conversation-list pagination  [DEFERRED from the 2026-07-10 run]
-- What: Paginate the conversation list, reusing the cursor-pagination util + InfiniteScroll pattern. (Message-list pagination already shipped.)
-- Decisions: needs server-side `totalUnread` FIRST — `ChatProvider` sums unread across ALL conversations for the nav badge, so paginating the list without it regresses the badge to counting only the loaded page. Enabling indexes `{fromUser,updatedAt}` + `{toUser,updatedAt}` already shipped (fefc876).
-- Done when: conversation list paginates; nav unread badge stays correct; browser-verified at 390/1280; suite green.
-- Type: feature
-
 ### 2. Admin panels — server-side paging
 - What: Move admin lists (users/cards/reports) off client-side paging over admin-loaded data to server-side pagination.
 - Done when: admin lists page from the server; suite green.

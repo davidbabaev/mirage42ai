@@ -78,21 +78,21 @@ describe('Gap A — getChats drops conversations with a blocked counterpart', ()
     it('shows the conversation before a block', async () => {
         const res = await request(app).get('/chats').set('auth-token', P.token);
         expect(res.status).toBe(200);
-        expect(res.body.some(c => String(c.toUser) === Q.id || String(c.fromUser) === Q.id)).toBe(true);
+        expect(res.body.conversations.some(c => String(c.toUser) === Q.id || String(c.fromUser) === Q.id)).toBe(true);
     });
 
     it('hides it from BOTH sides once P blocks Q', async () => {
         await block(P.token, Q.id);
         const pView = await request(app).get('/chats').set('auth-token', P.token);
-        expect(pView.body.some(c => String(c.toUser) === Q.id || String(c.fromUser) === Q.id)).toBe(false);
+        expect(pView.body.conversations.some(c => String(c.toUser) === Q.id || String(c.fromUser) === Q.id)).toBe(false);
         const qView = await request(app).get('/chats').set('auth-token', Q.token);
-        expect(qView.body.some(c => String(c.toUser) === P.id || String(c.fromUser) === P.id)).toBe(false);
+        expect(qView.body.conversations.some(c => String(c.toUser) === P.id || String(c.fromUser) === P.id)).toBe(false);
     });
 
     it('restores it after unblock', async () => {
         await block(P.token, Q.id); // toggle off
         const res = await request(app).get('/chats').set('auth-token', P.token);
-        expect(res.body.some(c => String(c.toUser) === Q.id || String(c.fromUser) === Q.id)).toBe(true);
+        expect(res.body.conversations.some(c => String(c.toUser) === Q.id || String(c.fromUser) === Q.id)).toBe(true);
     });
 });
 

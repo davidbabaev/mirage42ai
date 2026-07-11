@@ -187,7 +187,15 @@ export const addFavorite = (cardId) => httpRequest(`/users/me/favorites/${cardId
 export const removeFavorite = (cardId) => httpRequest(`/users/me/favorites/${cardId}`, 'DELETE');
 
 // chat requests
-export const getChats = () => httpRequest(`/chats`, 'GET');
+// Cursor-paginated conversation list → { conversations, nextCursor, totalUnread }.
+// Omit cursor for the newest page (which also carries totalUnread across ALL
+// conversations); pass nextCursor to load the next-older page. Cursor pages omit
+// totalUnread — the client seeds it once and keeps it live via sockets.
+export const getChats = ({ cursor, limit = 15 } = {}) => {
+    const params = new URLSearchParams({ limit });
+    if (cursor) params.set('cursor', cursor);
+    return httpRequest(`/chats?${params.toString()}`, 'GET');
+};
 // Cursor-paginated conversation messages → { messages, nextCursor }. Omit cursor
 // for the newest page; pass nextCursor to load the next-older page (scroll-up).
 export const getSingleChatMessages = (id, { cursor, limit = 25 } = {}) => {

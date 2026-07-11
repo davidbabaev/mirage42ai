@@ -28,9 +28,15 @@ vi.mock('../src/services/socketService', () => ({
     disconnectSocket: () => {},
 }));
 vi.mock('../src/services/apiService', () => ({
-    getChats: vi.fn().mockResolvedValue([
-        { _id: 'conv1', fromUser: 'me', toUser: 'sarah', unreadCount: 0, lastMessage: null },
-    ]),
+    // Paginated envelope: { conversations, nextCursor, totalUnread }. First page
+    // carries the server-computed total; here one already-read conversation.
+    getChats: vi.fn().mockResolvedValue({
+        conversations: [
+            { _id: 'conv1', fromUser: 'me', toUser: 'sarah', unreadCount: 0, lastMessage: null },
+        ],
+        nextCursor: null,
+        totalUnread: 0,
+    }),
     markChatRead: vi.fn().mockResolvedValue({}),
     deleteChat: vi.fn().mockResolvedValue({}),
 }));

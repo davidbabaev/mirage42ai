@@ -16,8 +16,11 @@ const uploadToCloudinary = require('../../utils/cloudinary');
 module.exports = (io) => {
     router.get('/chats', auth, async (req,res) => {
         try{
-            const chats = await getChats(req.user.userId);
-            res.send(chats)
+            const { conversations, nextCursor, totalUnread } = await getChats(
+                req.user.userId,
+                { cursor: req.query.cursor, limit: req.query.limit },
+            );
+            res.send({ conversations, nextCursor, totalUnread })
         }
         catch(err){
             handleError(res, err);

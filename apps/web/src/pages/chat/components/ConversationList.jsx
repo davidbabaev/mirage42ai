@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Avatar, Badge, Box, Paper, Typography } from '@mui/material';
 import getTimeAgo from '../../../utils/getTimeAgo';
 import { usePresence } from '../../../providers/PresenceProvider';
 import OnlineBadge from '../../../components/OnlineBadge';
+import InfiniteScroll from '../../../components/InfiniteScroll';
 
 // Build the list preview from the denormalized lastMessage: media gets an icon,
 // and your own last message is prefixed with "You:".
@@ -22,8 +24,14 @@ export default function ConversationList({
     currentUserId,
     selectedConversationId,
     onSelectChat,
+    hasMore = false,
+    loadingMore = false,
+    onLoadMore = () => {},
 }) {
     const { isOnline } = usePresence();
+    // The inner scroll container is the IntersectionObserver root, so the
+    // sentinel triggers on THIS list's scroll (not the window).
+    const [scrollEl, setScrollEl] = useState(null);
     return (
         <Paper
             elevation={0}
@@ -49,11 +57,24 @@ export default function ConversationList({
                 </Typography>
             </Box>
 
-            <Box sx={{
+            <Box ref={setScrollEl} sx={{
                 flex: 1,
                 overflowY: 'auto'
             }}>
                 {/* conversation list */}
+                <InfiniteScroll
+                    hasMore={hasMore}
+                    loadingMore={loadingMore}
+                    onLoadMore={onLoadMore}
+                    isEmpty={conversationsList.length === 0}
+                    root={scrollEl}
+                    showEnd={false}
+                    emptyState={(
+                        <Box sx={{ textAlign: 'center', py: 5, color: 'text.secondary' }}>
+                            <Typography variant="body2">No conversations yet.</Typography>
+                        </Box>
+                    )}
+                >
                 {conversationsList.map((chat) => {
                     const otherUserId = chat.fromUser === currentUserId ? chat.toUser : chat.fromUser
                     const otherUser = users.find(u => u._id === otherUserId)
@@ -116,6 +137,7 @@ export default function ConversationList({
                         </Box>
                     )
                 })}
+                </InfiniteScroll>
             </Box>
         </Paper>
     );
