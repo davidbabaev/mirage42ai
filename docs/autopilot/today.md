@@ -16,14 +16,16 @@ Clear and rewrite it each day. Git keeps the history.
 
 Working top-down. One concern per commit; test-first for logic; browser-verify visual at 390/1280; full suite green before "done".
 
-### 4. Retire global load-everything providers
+### 4. Retire global load-everything providers  [DEFERRED — large migration, needs its own order]
 - What: Remove `getAllUsers`/`getAllCards` mount-time full-collection loads (counts are now server-side); anything still depending on them migrates to scoped/paginated queries.
 - Done when: no provider loads a full collection on mount; suite green.
 - Type: logic
+- 2026-07-11 run decision: NOT force-built. Assessed as a LARGE migration (~14 coupled blockers across ~20 components, several needing NEW server endpoints — embed liker/sender/participant/creator sub-objects, postsCount, activate GET /cards/:id, analytics endpoints). It's the read-side half of master-plan #15/#16 and is coupled to the deferred React Query adoption. Can't ship as one clean, green, verified increment without destabilizing the three features shipped this run (chat + admin pagination, optimistic like). Full blocker list + migration plan recorded in backlog.md under the "Infinite scroll" epic. Schedule as its own order, ideally WITH #15, server-embedding sub-objects endpoint-by-endpoint (not big-bang).
 
-### 5. Folder / naming sweep
+### 5. Folder / naming sweep  [DEFERRED — precondition not met]
 - What: One restructure — misspellings, casing, "reusable components" naming. Done LAST, after the architecture settles.
 - Type: logic
+- 2026-07-11 run decision: NOT built. Its own spec says do this LAST, "after the architecture settles." The architecture has NOT settled — provider retirement (#4) and the React Query migration (#15) are still pending. Doing the rename sweep now would just churn files that #4/#15 will move/restructure anyway. Correct to defer until after #4/#15 land.
 
 ### 6. Network / infra hardening  (deploy-time, not app code)
 - What: Firewall / WAF (Cloudflare) / restrict inbound ports / lock Atlas network access. Verified in host dashboards.
