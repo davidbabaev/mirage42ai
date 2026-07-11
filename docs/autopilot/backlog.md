@@ -34,7 +34,8 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-(none)
+### Optimistic like (post + comment) mutations — awaiting review
+- Built on branch autopilot/2026-07-11. Master-plan Phase D #15 "follow/like/comment become optimistic mutations (the real fix — no refetch, no scroll-jump)". FOLLOW was already in-place (AuthProvider setUser + UsersProvider.syncUser + feed splice — no refetch), so no change needed. Made the two TOGGLE mutations optimistic with rollback in CardsProvider: `handleToggleLike` and `handleToggleCommentLike` now flip my id in the card's likes (or the target comment/reply's likes) in both state arrays IMMEDIATELY, fire the request, reconcile with the authoritative server card on success, and revert on error (pure-toggle-is-its-own-inverse). CardsComments' existing reconcile effect syncs the visible paginated list from card.comments, so the heart flips at once. Add-comment/reply/delete-comment left on their proven await-then-reconcile path (fast, no scroll-jump) to avoid regressing the delicate newestSeen-ceiling/didInit reconcile logic — instant-append is a possible follow-up. New OptimisticLike.test.jsx (flips before the server responds; reverts on failure). web 163 green; browser-verified at 390/1280 (Like flips instantly, single PATCH with NO GET refetch, no scroll jump, toggles back). React Query deliberately NOT adopted here: optimistic UI needs the READS migrated too (Context providers own them), which is the larger #15/#16 bundle and would collide with the just-shipped pagination — deferred.
 
 ## Done
 

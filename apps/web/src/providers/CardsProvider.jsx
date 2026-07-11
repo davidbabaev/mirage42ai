@@ -10,7 +10,7 @@ export function CardsProvider({children}) {
     // state for saving cards (register cards)
 const [registeredCards, setRegisteredCards] = useState([]);
 
-const {isLoggedIn} = useAuth();
+const {isLoggedIn, user} = useAuth();
 
 // Cursor-paginated feed. The hook owns the accumulated `items` (exposed as
 // feedCards) plus loading/hasMore state; refresh() reloads from the top and
@@ -148,23 +148,39 @@ const handleCardRegister = async (cardData) => {
             }
         }
 
+    // Optimistic like: flip my id in the card's likes array in both state arrays
+    // IMMEDIATELY (no network wait — kills the "like jank"), fire the request,
+    // reconcile with the authoritative card on success, and revert on error.
+    // Applying the same pure toggle twice is identity, so it doubles as rollback.
     const handleToggleLike = async (cardId) => {
+        const uid = user?._id;
+        if (!uid) return { success: false, message: 'Not logged in' };
+
+        const toggle = (card) => {
+            if (card._id !== cardId) return card;
+            const likes = card.likes || [];
+            const liked = likes.some(id => String(id) === String(uid));
+            return {
+                ...card,
+                likes: liked ? likes.filter(id => String(id) !== String(uid)) : [...likes, uid],
+            };
+        };
+        setRegisteredCards(prev => prev.map(toggle));
+        setFeedCards(prev => prev.map(toggle));
+
         try{
             const response = await likeUnlikeCard(cardId);
-            setRegisteredCards(prev => prev.map((card) => {
-                return card._id === cardId ? response : card
-            }))
-
-            setFeedCards(prev => prev.map((card) => {
-                return card._id === cardId ? response : card
-            }))
-
+            setRegisteredCards(prev => prev.map(card => card._id === cardId ? response : card))
+            setFeedCards(prev => prev.map(card => card._id === cardId ? response : card))
             return{
                 success: true,
                 message: 'liked Successfully'
             }
         }
         catch(err){
+            // revert the optimistic flip
+            setRegisteredCards(prev => prev.map(toggle))
+            setFeedCards(prev => prev.map(toggle))
             return{
                 success: false,
                 message: err.message,
@@ -195,26 +211,49 @@ const handleCardRegister = async (cardData) => {
         }
     }
 
-    // Toggle a like on a comment. Same await-then-replace-card pattern as
-    // handleToggleLike: the server returns the full updated card (with the
-    // comment's new likes), which we swap into both state arrays.
+    // Optimistic comment-like: flip my id in the target comment's (or reply's)
+    // likes array within the card's embedded comments, instantly, then fire the
+    // request and reconcile on success / revert on error. CardsComments'
+    // reconcile effect syncs the visible paginated list from card.comments, so
+    // the heart flips at once. commentId can be a top-level comment or a reply.
     const handleToggleCommentLike = async (cardId, commentId) => {
+        const uid = user?._id;
+        if (!uid) return { success: false, message: 'Not logged in' };
+
+        const flip = (likes = []) => {
+            const liked = likes.some(id => String(id) === String(uid));
+            return liked ? likes.filter(id => String(id) !== String(uid)) : [...likes, uid];
+        };
+        const toggle = (card) => {
+            if (card._id !== cardId) return card;
+            const comments = (card.comments || []).map(c => {
+                if (String(c._id) === String(commentId)) return { ...c, likes: flip(c.likes) };
+                if ((c.replies || []).some(r => String(r._id) === String(commentId))) {
+                    return {
+                        ...c,
+                        replies: c.replies.map(r =>
+                            String(r._id) === String(commentId) ? { ...r, likes: flip(r.likes) } : r),
+                    };
+                }
+                return c;
+            });
+            return { ...card, comments };
+        };
+        setRegisteredCards(prev => prev.map(toggle));
+        setFeedCards(prev => prev.map(toggle));
+
         try{
             const response = await likeUnlikeComment(cardId, commentId);
-            setRegisteredCards(prev => prev.map((card) => {
-                return card._id === cardId ? response : card
-            }))
-
-            setFeedCards(prev => prev.map((card) => {
-                return card._id === cardId ? response : card
-            }))
-
+            setRegisteredCards(prev => prev.map(card => card._id === cardId ? response : card))
+            setFeedCards(prev => prev.map(card => card._id === cardId ? response : card))
             return{
                 success: true,
                 message: 'Comment like toggled'
             }
         }
         catch(err){
+            setRegisteredCards(prev => prev.map(toggle))
+            setFeedCards(prev => prev.map(toggle))
             return{
                 success: false,
                 message: err.message,
