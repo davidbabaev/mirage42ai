@@ -18,11 +18,6 @@ Working top-down. One concern per commit; test-first for logic; browser-verify v
 
 **Goal of this run:** kill the two unbounded mount-time loads — `getAllUsers` (`GET /users` → ALL users) and `getAllCards` (`GET /cards` → ALL cards / `registeredCards`) — WITHOUT regressions. Strategy = server-embed the sub-objects each consumer needs, endpoint-by-endpoint, so the app stays green at every step; only remove the global loads in the LAST task, once nothing reads them. Full blocker list lives in `backlog.md` ("Infinite scroll" epic). Do NOT big-bang this.
 
-### 1. Embed sender user in notification payloads
-- What: `GET /notifications` should embed the sender's `{ _id, name, lastName, profilePicture }` on each notification (server-side), and `Notifications.jsx` should render from that instead of `users.find(n.fromUser)`.
-- Done when: notifications render sender name/avatar with `users` mocked EMPTY; API test covers the embedded field; suite green.
-- Type: logic
-
 ### 2. Embed the other participant in conversation payloads
 - What: `GET /chats` should embed the other participant `{ _id, name, lastName, profilePicture }` per conversation row; `ConversationList.jsx`, `MessagingBar.jsx`, and `ChatPage.jsx` read that instead of `users.find`.
 - Done when: chat list + dock render partner name/avatar with `users` empty; API test covers it; browser-verified 390/1280; suite green.

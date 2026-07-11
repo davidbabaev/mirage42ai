@@ -10,19 +10,13 @@ vi.mock('../src/providers/CardsProvider', () => ({
     useCardsProvider: () => ({ registeredCards: [] }),
 }));
 
-vi.mock('../src/providers/UsersProvider', () => ({
-    useUsersProvider: () => ({
-        users: [
-            { _id: 'u1', name: 'Alice', lastName: 'Smith', profilePicture: '' },
-        ],
-    }),
-}));
-
 import Notifications from '../src/components/Notifications';
 
+// Sender is now embedded on the notification by the server (no global users scan).
 const makeNotification = (overrides = {}) => ({
     _id: 'n1',
     fromUser: 'u1',
+    sender: { _id: 'u1', name: 'Alice', lastName: 'Smith', profilePicture: '' },
     whichCard: 'c1',
     actionType: 'like',
     isRead: true,

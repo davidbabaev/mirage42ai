@@ -4,7 +4,6 @@ import getTimeAgo from '../utils/getTimeAgo';
 import { Avatar, Box, IconButton, List, ListItem, ListItemAvatar, ListItemText, Typography } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import GavelIcon from '@mui/icons-material/Gavel';
-import { useUsersProvider } from '../providers/UsersProvider';
 import InfiniteScroll from './InfiniteScroll';
 
 
@@ -19,14 +18,13 @@ export default function Notifications({
   onLoadMore,
 }) {
 
-  const {users} = useUsersProvider();
   const navigate = useNavigate();
 
   // The scroll container becomes the IntersectionObserver root so the sentinel
   // fires against the panel's own overflow, not the window.
   const [scrollEl, setScrollEl] = useState(null);
 
-  if(!notificationsValue || !users) return <p>Loading..</p>
+  if(!notificationsValue) return <p>Loading..</p>
 
   return (
     <Box ref={setScrollEl} sx={(theme) => ({
@@ -81,7 +79,8 @@ export default function Notifications({
       >
       <List disablePadding>
         {notificationsValue.map((notification) => {
-          const notificationSenderUser = users.find(u => u._id === notification.fromUser)
+          // Sender is embedded on the notification by the server (no global users scan).
+          const notificationSenderUser = notification.sender
 
           // Moderation notice: no actor (the moderator is intentionally hidden),
           // so it renders as a system message with a gavel icon and no profile link.

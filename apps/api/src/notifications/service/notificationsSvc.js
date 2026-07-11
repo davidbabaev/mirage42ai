@@ -1,6 +1,28 @@
 const Notification = require("../models/Notifications");
+const User = require('../../users/models/User');
 const { createError } = require('../../utils/handleErrors');
 const { normalizeLimit, decodeCursor, runKeysetPage } = require('../../utils/cursorPagination');
+
+// Attach the sender user sub-object to each notification so the client renders
+// name/avatar without scanning a global users array. One User.find for the whole
+// page (no N+1), same manual fetch-and-attach pattern as chatSvc. `fromUser` is
+// null for system notifications (e.g. post-removed, moderator hidden) → sender null.
+const attachSenders = async (page) => {
+    const ids = [...new Set(page.map(n => n.fromUser).filter(Boolean).map(String))];
+    const users = ids.length
+        ? await User.find({ _id: { $in: ids } }, 'name lastName profilePicture')
+        : [];
+    const byId = new Map(users.map(u => [String(u._id), u]));
+    return page.map(n => {
+        const u = n.fromUser ? byId.get(String(n.fromUser)) : null;
+        return {
+            ...n.toObject(),
+            sender: u
+                ? { _id: u._id, name: u.name, lastName: u.lastName, profilePicture: u.profilePicture || '' }
+                : null,
+        };
+    });
+};
 
 // user's notifications bell — cursor-paginated (keyset on createdAt+_id, newest
 // first). Replaces the old hard .limit(50) so older notifications are reachable
@@ -29,7 +51,8 @@ const getNotifications = async (userId, opts = {}) => {
         ? undefined
         : await Notification.countDocuments({ toUser: userId, isRead: false });
 
-    return { items: page, nextCursor, unreadCount };
+    const items = await attachSenders(page);
+    return { items, nextCursor, unreadCount };
 }
 
 const getNotification = async (notificationId) => {

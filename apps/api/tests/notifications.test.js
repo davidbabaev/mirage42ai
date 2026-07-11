@@ -46,6 +46,7 @@ const userBob = {
 
 let tokenAlice;
 let tokenBob;
+let aliceId;
 
 beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
@@ -69,6 +70,7 @@ beforeAll(async () => {
 
     const aliceReg = await request(app).post('/users').send(userAlice);
     tokenAlice = aliceReg.body.token;
+    aliceId = aliceReg.body.safeUser._id;
     const bobReg = await request(app).post('/users').send(userBob);
     tokenBob = bobReg.body.token;
 });
@@ -152,6 +154,56 @@ describe('comment-like / comment-reply notifications carry commentId', () => {
         expect(notif).toBeTruthy();
         expect(notif.commentId).toBeTruthy();
         expect(String(notif.commentId)).toBe(String(commentId));
+    });
+});
+
+describe('notifications embed the sender user (no global users scan needed)', () => {
+    it('attaches sender { _id, name, lastName, profilePicture } from the fromUser', async () => {
+        // Bob creates a card; Alice likes it → Bob gets a like notification.
+        const cardRes = await request(app)
+            .post('/cards')
+            .set('auth-token', tokenBob)
+            .field('content', 'Bob card for sender-embed test')
+            .attach('media', Buffer.from('img'), { filename: 'bsender.png', contentType: 'image/png' });
+        expect(cardRes.status).toBe(200);
+        const likeRes = await request(app)
+            .patch(`/cards/${cardRes.body._id}`)
+            .set('auth-token', tokenAlice);
+        expect(likeRes.status).toBe(200);
+
+        const notifsRes = await request(app).get('/notifications').set('auth-token', tokenBob);
+        expect(notifsRes.status).toBe(200);
+        const notif = notifsRes.body.items.find(n => n.actionType === 'like' && String(n.fromUser) === String(aliceId));
+        expect(notif).toBeTruthy();
+        expect(notif.sender).toBeTruthy();
+        expect(String(notif.sender._id)).toBe(String(aliceId));
+        // registration lowercases names — compare case-insensitively
+        expect(notif.sender.name.toLowerCase()).toBe('alice');
+        expect(notif.sender.lastName.toLowerCase()).toBe('aaron');
+        expect(notif.sender).toHaveProperty('profilePicture');
+    });
+
+    it('sender is null for a system notification with no fromUser (moderator hidden)', async () => {
+        // Bob creates a card, then an admin bans it → Bob gets a post-removed
+        // notification with fromUser null (moderator identity hidden).
+        const User = requireFromHere(path.join(__dirname, '../src/users/models/User'));
+        const cardRes = await request(app)
+            .post('/cards')
+            .set('auth-token', tokenBob)
+            .field('content', 'Bob card to be banned')
+            .attach('media', Buffer.from('img'), { filename: 'bban.png', contentType: 'image/png' });
+        const cardId = cardRes.body._id;
+        // Promote Alice to admin so she can ban.
+        await User.findByIdAndUpdate(aliceId, { isAdmin: true });
+        const banRes = await request(app).patch(`/cards/${cardId}/ban`).set('auth-token', tokenAlice);
+        expect(banRes.status).toBe(200);
+        await User.findByIdAndUpdate(aliceId, { isAdmin: false });
+
+        const notifsRes = await request(app).get('/notifications').set('auth-token', tokenBob);
+        const removed = notifsRes.body.items.find(n => n.actionType === 'post-removed');
+        expect(removed).toBeTruthy();
+        expect(removed.fromUser == null).toBe(true);
+        expect(removed.sender).toBeNull();
     });
 });
 
