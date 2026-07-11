@@ -186,7 +186,7 @@ export default function CardsComments({card, users, addComment, removeComment, f
                 }
             >
             {comments.map((comment) => {
-                const userComment = users.find(u => u._id === comment.userId);
+                const userComment = comment.author ?? users.find(u => u._id === comment.userId);
                 const isHighlighted = highlightedId === comment._id
 
                 return(
@@ -333,7 +333,7 @@ export default function CardsComments({card, users, addComment, removeComment, f
                                 .slice()
                                 .sort((a,b) => a.createdAt.localeCompare(b.createdAt))
                                 .map((reply) => {
-                                    const replyUser = users.find(u => u._id === reply.userId);
+                                    const replyUser = reply.author ?? users.find(u => u._id === reply.userId);
                                     return (
                                         <Box key={reply._id} sx={{display: 'flex', gap: 1, mt: 1.5}}>
                                             <Avatar

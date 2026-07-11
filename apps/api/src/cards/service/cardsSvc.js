@@ -90,7 +90,8 @@ const getCards = async (requesterId, isAdmin) => {
         // Hide posts authored by a blocked user (either direction).
         if(hidden.size) filter.userId = { $nin: [...hidden] };
         const cards = await Card.find(filter)
-        return cards.map(card => stripBlockedComments(pickSafeCardFields(card), hidden))
+        const mapped = cards.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
+        return attachCommentAuthors(mapped);
 }
 
 // The caller's saved posts, hydrated fresh from the DB (so edits/bans reflect,
@@ -111,7 +112,8 @@ const getFavoriteCards = async (userId, requesterId, isAdmin) => {
         const cards = await Card.find(filter);
         const order = new Map(favoriteIds.map((id, i) => [id, i]));
         cards.sort((a, b) => order.get(String(a._id)) - order.get(String(b._id)));
-        return cards.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
+        const mapped = cards.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
+        return attachCommentAuthors(mapped);
 }
 
 // Raw fetch for internal/owner operations (edit, delete, like, comment):
@@ -131,7 +133,7 @@ const getPublicCard = async (cardId, requesterId, isAdmin) => {
         // A blocked author's post is invisible to the requester (either direction).
         const hidden = await getHiddenUserIds(requesterId);
         if(hidden.has(String(card.userId))) throw createError(404, "Card not found")
-        return stripBlockedComments(pickSafeCardFields(card), hidden);
+        return attachCommentAuthorsToCard(stripBlockedComments(pickSafeCardFields(card), hidden));
 }
 
 const updateCard = async (cardId, upCard) => {
@@ -173,7 +175,7 @@ const likeCard = async (cardById, userId) => {
     const savedCard = await card.save();
 
     // 4. return
-    return pickSafeCardFields(savedCard);
+    return attachCommentAuthorsToCard(pickSafeCardFields(savedCard));
 }
 
 // Toggle a like on an embedded comment. Mirrors likeCard: same string-array
@@ -205,7 +207,7 @@ const likeComment = async (cardId, commentId, userId) => {
     }
 
     const savedCard = await card.save();
-    return pickSafeCardFields(savedCard);
+    return attachCommentAuthorsToCard(pickSafeCardFields(savedCard));
 }
 
 const addComment = async (cardId, userId, commentText) => {
@@ -226,8 +228,8 @@ const addComment = async (cardId, userId, commentText) => {
 
     // save after changes
     const saveComment = await card.save();
-    // return picked
-    return pickSafeCardFields(saveComment)
+    // return picked with comment authors embedded
+    return attachCommentAuthorsToCard(pickSafeCardFields(saveComment));
 }
 
 // Add a single-level reply to an embedded comment. Mirrors addComment, but the
@@ -256,7 +258,7 @@ const addReply = async (cardId, commentId, userId, replyText) => {
     }
 
     const savedCard = await card.save();
-    return pickSafeCardFields(savedCard);
+    return attachCommentAuthorsToCard(pickSafeCardFields(savedCard));
 }
 
 const removeComment = async (cardId, commentId) => {
@@ -266,7 +268,7 @@ const removeComment = async (cardId, commentId) => {
     card.comments = card.comments.filter(comment => comment._id.toString() !== commentId)
 
     const saveComment = await card.save();
-    return pickSafeCardFields(saveComment)
+    return attachCommentAuthorsToCard(pickSafeCardFields(saveComment));
 }
 
 // Attach a `likePreview` array (first n liker objects) to each plain card object
@@ -307,6 +309,72 @@ const attachLikePreview = async (cards, n = 4) => {
             }));
         return { ...card, likePreview: preview };
     });
+};
+
+// ── Comment-author embed helpers ─────────────────────────────────────────────
+// Attach an `author` sub-object to every comment and reply so the client renders
+// commenter names/avatars without scanning a global users array. One User.find
+// for the union of all userIds across the whole batch (no N+1).
+//
+// All three public wrappers share the same two private primitives below:
+//   _buildCommentAuthorMap — collect ids → one User.find → byId Map
+//   _decorateCommentList   — walk comments/replies, stamp author or null
+
+const _buildCommentAuthorMap = async (comments) => {
+    const idSet = new Set();
+    for (const c of comments) {
+        if (c.userId) idSet.add(String(c.userId));
+        for (const r of (c.replies || [])) {
+            if (r.userId) idSet.add(String(r.userId));
+        }
+    }
+    if (!idSet.size) return new Map();
+    const users = await User.find(
+        { _id: { $in: [...idSet] } },
+        'name lastName profilePicture job'
+    ).lean();
+    return new Map(users.map(u => [String(u._id), u]));
+};
+
+const _decorateCommentList = (comments, byId) =>
+    (comments || []).map(c => {
+        const u = byId.get(String(c.userId));
+        return {
+            ...c,
+            author: u
+                ? { _id: u._id, name: u.name, lastName: u.lastName, profilePicture: u.profilePicture || '', job: u.job || '' }
+                : null,
+            replies: (c.replies || []).map(r => {
+                const ru = byId.get(String(r.userId));
+                return {
+                    ...r,
+                    author: ru
+                        ? { _id: ru._id, name: ru.name, lastName: ru.lastName, profilePicture: ru.profilePicture || '' }
+                        : null,
+                };
+            }),
+        };
+    });
+
+// Public: enrich an array of plain card objects (post-pickSafeCardFields + stripBlockedComments).
+// Collects comment/reply userIds across ALL cards in one Set → one User.find.
+const attachCommentAuthors = async (cards) => {
+    const allComments = cards.flatMap(card => card.comments || []);
+    const byId = await _buildCommentAuthorMap(allComments);
+    if (!byId.size) return cards;
+    return cards.map(card => ({
+        ...card,
+        comments: _decorateCommentList(card.comments, byId),
+    }));
+};
+
+// Single-card convenience wrapper (mutation responses, single-card reads).
+const attachCommentAuthorsToCard = async (card) => (await attachCommentAuthors([card]))[0];
+
+// Enrich a bare comments array returned by GET /cards/:id/comments.
+const attachAuthorsToComments = async (comments) => {
+    const byId = await _buildCommentAuthorMap(comments);
+    return _decorateCommentList(comments, byId);
 };
 
 // Cursor-paginated feed. Returns { cards, nextCursor } where nextCursor is an
@@ -358,7 +426,10 @@ const getFeedCards = async (userId, isAdmin, opts = {}) => {
     // scanning the global users array on the client. One batch User.find;
     // returns cards as plain objects with `likePreview` added.
     const cardsWithPreview = await attachLikePreview(cards);
-    return { cards: cardsWithPreview, nextCursor };
+    // Embed comment/reply authors so the comment panel renders without a global
+    // users scan. Second batch User.find (separate projection, different fields).
+    const cardsEnriched = await attachCommentAuthors(cardsWithPreview);
+    return { cards: cardsEnriched, nextCursor };
 }
 
 // GET /cards/:id/likes — paginated list of users who liked a card.
@@ -460,7 +531,8 @@ const getCardsPage = async (requesterId, isAdmin, opts = {}) => {
     }
 
     const { page, nextCursor } = await runKeysetPage(Card, baseFilter, decoded, pageSize);
-    const items = page.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
+    const stripped = page.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
+    const items = await attachCommentAuthors(stripped);
 
     return { items, nextCursor };
 };
@@ -512,7 +584,8 @@ const getCardComments = async (cardId, requesterId, isAdmin, opts = {}) => {
     const page = comments.slice(0, pageSize);
     const nextCursor = hasMore ? encodeCursor(page[page.length - 1]) : null;
 
-    return { items: page.map(c => c.toObject()), nextCursor };
+    const items = await attachAuthorsToComments(page.map(c => c.toObject()));
+    return { items, nextCursor };
 };
 
 const banCard = async (cardId) => {
@@ -628,7 +701,8 @@ const getCardsSearch = async (requesterId, isAdmin, opts = {}) => {
         ? Buffer.from(String(skip + lim)).toString('base64')
         : null;
 
-    const items = page.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
+    const stripped = page.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
+    const items = await attachCommentAuthors(stripped);
     return { items, nextCursor };
 };
 

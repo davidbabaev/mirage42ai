@@ -18,11 +18,6 @@ Working top-down. One concern per commit; test-first for logic; browser-verify v
 
 **Goal of this run:** kill the two unbounded mount-time loads — `getAllUsers` (`GET /users` → ALL users) and `getAllCards` (`GET /cards` → ALL cards / `registeredCards`) — WITHOUT regressions. Strategy = server-embed the sub-objects each consumer needs, endpoint-by-endpoint, so the app stays green at every step; only remove the global loads in the LAST task, once nothing reads them. Full blocker list lives in `backlog.md` ("Infinite scroll" epic). Do NOT big-bang this.
 
-### 4. Embed commenter / reply-author in comment objects
-- What: comment + reply objects carry their author `{ _id, name, lastName, profilePicture }`; `CardsComments.jsx` reads that instead of `users.find` per comment/reply.
-- Done when: comments/replies show author with `users` empty; API test; browser-verified; suite green.
-- Type: feature
-
 ### 5. Server-embed postsCount on user objects + activate GET /cards/:id
 - What: add `postsCount` to the user projection (aggregation, no N+1) so the 6+ "N posts" displays stop doing `registeredCards.filter(c => c.userId===id).length`. Activate the (already server-side, commented-out) `GET /cards/:id` in apiService for `CardDetailsPage`/`CardDetailsModal` to resolve a card by id instead of scanning `registeredCards` (also fixes the deep-link "skeleton forever" bug). Keep optimistic-like state live in the detail view.
 - Done when: post counts + card-detail views work with `registeredCards` empty; API tests; browser-verified; suite green.
