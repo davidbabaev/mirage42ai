@@ -12,30 +12,54 @@ Clear and rewrite it each day. Git keeps the history.
 - Type: logic | visual | feature
 -->
 
-## Plan — recommended execution order
+## Plan — retire the load-everything providers (master-plan #15/#16/#4)
 
 Working top-down. One concern per commit; test-first for logic; browser-verify visual at 390/1280; full suite green before "done".
 
-### 4. Retire global load-everything providers  [DEFERRED — large migration, needs its own order]
-- What: Remove `getAllUsers`/`getAllCards` mount-time full-collection loads (counts are now server-side); anything still depending on them migrates to scoped/paginated queries.
-- Done when: no provider loads a full collection on mount; suite green.
+**Goal of this run:** kill the two unbounded mount-time loads — `getAllUsers` (`GET /users` → ALL users) and `getAllCards` (`GET /cards` → ALL cards / `registeredCards`) — WITHOUT regressions. Strategy = server-embed the sub-objects each consumer needs, endpoint-by-endpoint, so the app stays green at every step; only remove the global loads in the LAST task, once nothing reads them. Full blocker list lives in `backlog.md` ("Infinite scroll" epic). Do NOT big-bang this.
+
+### 1. Embed sender user in notification payloads
+- What: `GET /notifications` should embed the sender's `{ _id, name, lastName, profilePicture }` on each notification (server-side), and `Notifications.jsx` should render from that instead of `users.find(n.fromUser)`.
+- Done when: notifications render sender name/avatar with `users` mocked EMPTY; API test covers the embedded field; suite green.
 - Type: logic
-- 2026-07-11 run decision: NOT force-built. Assessed as a LARGE migration (~14 coupled blockers across ~20 components, several needing NEW server endpoints — embed liker/sender/participant/creator sub-objects, postsCount, activate GET /cards/:id, analytics endpoints). It's the read-side half of master-plan #15/#16 and is coupled to the deferred React Query adoption. Can't ship as one clean, green, verified increment without destabilizing the three features shipped this run (chat + admin pagination, optimistic like). Full blocker list + migration plan recorded in backlog.md under the "Infinite scroll" epic. Schedule as its own order, ideally WITH #15, server-embedding sub-objects endpoint-by-endpoint (not big-bang).
 
-### 5. Folder / naming sweep  [DEFERRED — precondition not met]
-- What: One restructure — misspellings, casing, "reusable components" naming. Done LAST, after the architecture settles.
+### 2. Embed the other participant in conversation payloads
+- What: `GET /chats` should embed the other participant `{ _id, name, lastName, profilePicture }` per conversation row; `ConversationList.jsx`, `MessagingBar.jsx`, and `ChatPage.jsx` read that instead of `users.find`.
+- Done when: chat list + dock render partner name/avatar with `users` empty; API test covers it; browser-verified 390/1280; suite green.
+- Type: feature
+
+### 3. Embed top-N liker objects on feed/card payloads
+- What: feed + card responses embed the first ~4 liker user objects (`likePreview`) so `CardItem.jsx` / `CardDetailsModal.jsx` render the avatar strip without `users.filter(u => card.likes.includes(u._id))`. (LikesModal already uses the scoped `getCardLikes` endpoint — leave it.)
+- Done when: liker avatars render on feed cards with `users` empty; keeps working after an optimistic like; API test; browser-verified; suite green.
+- Type: feature
+
+### 4. Embed commenter / reply-author in comment objects
+- What: comment + reply objects carry their author `{ _id, name, lastName, profilePicture }`; `CardsComments.jsx` reads that instead of `users.find` per comment/reply.
+- Done when: comments/replies show author with `users` empty; API test; browser-verified; suite green.
+- Type: feature
+
+### 5. Server-embed postsCount on user objects + activate GET /cards/:id
+- What: add `postsCount` to the user projection (aggregation, no N+1) so the 6+ "N posts" displays stop doing `registeredCards.filter(c => c.userId===id).length`. Activate the (already server-side, commented-out) `GET /cards/:id` in apiService for `CardDetailsPage`/`CardDetailsModal` to resolve a card by id instead of scanning `registeredCards` (also fixes the deep-link "skeleton forever" bug). Keep optimistic-like state live in the detail view.
+- Done when: post counts + card-detail views work with `registeredCards` empty; API tests; browser-verified; suite green.
 - Type: logic
-- 2026-07-11 run decision: NOT built. Its own spec says do this LAST, "after the architecture settles." The architecture has NOT settled — provider retirement (#4) and the React Query migration (#15) are still pending. Doing the rename sweep now would just churn files that #4/#15 will move/restructure anyway. Correct to defer until after #4/#15 land.
 
-### 6. Network / infra hardening  (deploy-time, not app code)
-- What: Firewall / WAF (Cloudflare) / restrict inbound ports / lock Atlas network access. Verified in host dashboards.
-- Type: infrastructure
+### 6. Decouple like/comment count hooks + profile resolution from the global arrays
+- What: refactor `useLikedCards` / `useCommentsCards` so `isLikeByMe` / `getLikeCount` / `countComments` read from the card object (feedCards already carries `likes`/`comments`) rather than `registeredCards.find`. Profile sub-routes (`UserProfileLayout/Main/About/Media/Followers`) resolve the subject via `getSingleUser(id)` instead of `users.find`. `UserProfileMain` posts tab uses paginated `getExploreCards(cursor,limit,userId)`. `addAuthorToFeed` (follow) fetches the followed user's posts via the user-posts endpoint instead of splicing from `registeredCards`.
+- Done when: like/comment counts, profiles, and follow-adds-posts all work with both global arrays empty; tests updated; browser-verified; suite green.
+- Type: logic
 
-### 7. TASK B — DMs fail after a long session  (DIAGNOSE-ONLY, separate session)
-- What: After a long session DMs silently fail until relogin. Likely token/socket-auth expiry. Diagnose, do not implement here.
-- Type: bug → diagnosis
+### 7. Adopt React Query for the feed + REMOVE the global loads
+- What: add `@tanstack/react-query`; migrate the feed to `useInfiniteQuery` (load-more, 20–30/page); with tasks 1–6 done, DELETE the `getAllUsers`/`getAllCards` mount-time loads from UsersProvider/CardsProvider (and the now-dead client-side join/filter code — master-plan #16). Admin analytics (`useAnalytics`) moves to server aggregation endpoints (or is explicitly scoped out for this run if too big).
+- Done when: NO provider loads a full collection on mount (verify the network tab on login shows no `GET /users` / `GET /cards`); suite green; browser-verified 390/1280.
+- Type: logic
 
 ---
+
+## After this run (own orders)
+
+- **Folder / naming sweep** (master-plan #20) — one restructure, done LAST once the above settles the file layout.
+- **TASK B — DMs fail after a long session** — diagnose-only session (likely token/socket-auth expiry).
+- **Phase E — deployment**: Dockerized local env · staging + prod hosting · Sentry · Playwright smoke pack · domain/HTTPS/deploy pipeline. Unlocks the **network/infra hardening** item (firewall/WAF/Atlas lockdown — done in host dashboards).
 
 ## Phase F — Agents (the product vision; starts after the app-hardening items above)
 - Data model (`kind`, personas, memory) + `apps/agents` skeleton + kill-switch.
