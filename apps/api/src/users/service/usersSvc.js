@@ -7,7 +7,7 @@ const {issueRefreshToken} = require('../../auth/refreshTokens');
 const { createError } = require('../../utils/handleErrors');
 const normalizeUser = require('../helpers/normalizeUser');
 const Card = require('../../cards/models/Card');
-const Notification = require('../../notifications/models/Notifications');
+const Notification = require('../../notifications/models/Notification');
 const { normalizeLimit, decodeCursor, runKeysetPage } = require('../../utils/cursorPagination');
  
 const pickSafeUserFields = (user) => {

@@ -51,7 +51,7 @@ beforeAll(async () => {
 
     const mod = await import('../src/app.js');
     app = mod.app ?? mod.default?.app;
-    Notification = requireFromHere('../src/notifications/models/Notifications');
+    Notification = requireFromHere('../src/notifications/models/Notification');
 
     const rA = await request(app).post('/users').send(mkUser('np-a'));
     tokenA = rA.body.token; idA = rA.body.safeUser._id;

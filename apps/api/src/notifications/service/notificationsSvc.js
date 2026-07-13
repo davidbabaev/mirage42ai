@@ -1,4 +1,4 @@
-const Notification = require("../models/Notifications");
+const Notification = require("../models/Notification");
 const User = require('../../users/models/User');
 const { createError } = require('../../utils/handleErrors');
 const { normalizeLimit, decodeCursor, runKeysetPage } = require('../../utils/cursorPagination');

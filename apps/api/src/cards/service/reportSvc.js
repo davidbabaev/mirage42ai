@@ -1,7 +1,7 @@
 const Card = require('../models/Card');
 const { Report, REPORT_REASONS } = require('../models/Report');
 const User = require('../../users/models/User');
-const Notification = require('../../notifications/models/Notifications');
+const Notification = require('../../notifications/models/Notification');
 const { createError } = require('../../utils/handleErrors');
 const { getHiddenUserIds } = require('./cardsSvc');
 

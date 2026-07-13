@@ -37,7 +37,7 @@ beforeAll(async () => {
 
     Card = requireFromHere('../src/cards/models/Card');
     User = requireFromHere('../src/users/models/User');
-    Notification = requireFromHere('../src/notifications/models/Notifications');
+    Notification = requireFromHere('../src/notifications/models/Notification');
 
     const author = await request(app).post('/users').send(mk('author'));
     authorId = author.body.safeUser._id;

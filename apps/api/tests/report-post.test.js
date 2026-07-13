@@ -59,7 +59,7 @@ beforeAll(async () => {
 
     Card         = requireFromHere('../src/cards/models/Card');
     User         = requireFromHere('../src/users/models/User');
-    Notification = requireFromHere('../src/notifications/models/Notifications');
+    Notification = requireFromHere('../src/notifications/models/Notification');
 
     // Register users
     const rAuthor   = await request(app).post('/users').send(mk('rp-author'));

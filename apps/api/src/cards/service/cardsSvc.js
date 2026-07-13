@@ -3,7 +3,7 @@ const User = require('../../users/models/User');
 const { createError } = require('../../utils/handleErrors');
 const normalizeCard = require('../helpers/normalizeCard');
 const Card = require('../models/Card')
-const Notification = require('../../notifications/models/Notifications');
+const Notification = require('../../notifications/models/Notification');
 const { normalizeLimit, decodeCursor, encodeCursor, runKeysetPage } = require('../../utils/cursorPagination');
 const _ = require('lodash');
 
