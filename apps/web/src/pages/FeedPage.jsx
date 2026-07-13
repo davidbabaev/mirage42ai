@@ -596,7 +596,7 @@ export default function FeedPage() {
                                             variant={'outlined'}
                                             startIcon={<PersonAddIcon/>}
                                             onClick={async () => {
-                                                await toggleFollow(userF?._id)
+                                                await toggleFollow(userF)
                                             }}
                                             sx={{
                                                 fontSize: 9, 
@@ -640,7 +640,7 @@ export default function FeedPage() {
                                     size='small'
                                     variant={isFollowByMe(userF._id) ? 'outlined' : 'contained'}
                                     onClick={async () => {
-                                        await toggleFollow(userF._id)
+                                        await toggleFollow(userF)
                                         await refreshFeed()
                                     }}
                                     sx={{fontSize: 11, minWidth: 70}}

@@ -167,7 +167,7 @@ export default function CardItem({
                             variant={'outlined'}
                             startIcon={<PersonAddIcon/>}
                             onClick={async () => {
-                                await toggleFollow(creator?._id)
+                                await toggleFollow(creator)
                             }}
                             sx={{
                                 fontSize: 9,

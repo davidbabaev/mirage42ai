@@ -108,7 +108,7 @@ export default function UserProfileFollowing() {
                   variant={'outlined'}
                   startIcon={<PersonAddIcon/>}
                   onClick={async () => {
-                    await toggleFollow(following?._id)
+                    await toggleFollow(following)
                   }}
                   sx={{
                     fontSize: 9,

@@ -28,12 +28,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### 9. toggleFollow optimistic update — user overlay
-- What: `toggleFollow` calls `syncUser` to patch the global users array so follow counts stay consistent across surfaces. That mechanism dies with the array.
-- Decisions: Introduce a small user-overlay in UsersProvider (the same shape as the card overlay: a map of id → patched user, empty at start) that mutations write to and consumers read through with `overlay[id] ?? serverUser`. Keep follow optimistic — do not regress it to await-then-refetch.
-- Done when: following from the feed updates the follower count on the profile and in the sidebar without a refetch, with no global users array. Web test covers the cross-surface case. Browser-verify at 390/1280.
-- Type: logic
-
 ### 10. Admin analytics — fetch on demand, not at app mount
 - What: `useAnalytics` makes 13 passes over the full users+cards arrays. It's the last consumer forcing EVERY user to load both collections at mount — for an admin-only panel.
 - Decisions: Do NOT build the full server-aggregation endpoint suite in this run — that's a bigger piece of work and it is not on the critical path. Instead make the admin OverView panel fetch `getAllUsers`/`getAllCards` ON DEMAND at panel mount (admin-only, admin-guarded), so the providers stop loading them for everyone. Log this as a deliberate interim step and leave a backlog item for the proper aggregation endpoints. Rationale: it unblocks task 11 today, is fully reversible, and the cost lands only on the handful of admins who open that panel.

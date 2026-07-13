@@ -251,7 +251,7 @@ export default function UserReusableCard({
                         setIsLoginPopupOpen(true)
                         return;
                     }
-                    await toggleFollow(userObject._id)
+                    await toggleFollow(userObject)
                 }}
                 fullWidth
                 sx={{

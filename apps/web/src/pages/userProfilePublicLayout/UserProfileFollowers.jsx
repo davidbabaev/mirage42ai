@@ -123,7 +123,7 @@ export default function UserProfileFollowers() {
                   variant={'outlined'}
                   startIcon={<PersonAddIcon/>}
                   onClick={async () => {
-                    await toggleFollow(follower?._id);
+                    await toggleFollow(follower);
                   }}
                   sx={{
                     fontSize: 9,

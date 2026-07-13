@@ -11,13 +11,20 @@ const inFlightFollows = new Set();
 function useFollowUser() {
 
   const{ handleToggleFollow, user} = useAuth();
-  const {users, syncUser} = useUsersProvider();
+  const {users, syncUser, userOverlay, patchUser} = useUsersProvider();
   const {removeAuthorFromFeed, addAuthorToFeed} = useCardsProvider();
 
     // toggle Follow
+    //
+    // Accepts the user OBJECT or a bare id. Given the object we can also keep the
+    // TARGET's follower count right across every surface: that count used to be
+    // derived by scanning the global users array (which syncUser patched), and with
+    // that array gone the only place to record "+1 follower" is the user overlay.
 
-    const toggleFollow = async (userId) => {
+    const toggleFollow = async (target) => {
         if(!user) return false;
+        const userId = (target && typeof target === 'object') ? target._id : target;
+        if(!userId) return;
         // Ignore re-entry while a request for this user is already in flight.
         if(inFlightFollows.has(userId)) return;
         inFlightFollows.add(userId);
@@ -28,9 +35,21 @@ function useFollowUser() {
             const updatedUser = await handleToggleFollow(userId);
             syncUser(updatedUser);
             if (!updatedUser) return;
+
+            const nowFollowing = (updatedUser.following || []).includes(userId);
+
+            // Record the target's new follower count in the overlay, so it reflects
+            // on every surface showing them (profile header, cards, people lists).
+            if (target && typeof target === 'object') {
+                const base = getFollowersCount(target);
+                patchUser(userId, {
+                    followersCount: Math.max(0, nowFollowing ? base + 1 : base - 1),
+                });
+            }
+
             // Reflect the change in the feed in place — no refetch, no scroll reset.
             // Follow -> add their posts; unfollow -> drop them.
-            if ((updatedUser.following || []).includes(userId)) {
+            if (nowFollowing) {
                 addAuthorToFeed(userId);
             } else {
                 removeAuthorFromFeed(userId);
@@ -54,18 +73,23 @@ function useFollowUser() {
         return new Set(foundUser?.following || []).size
     }
 
-    // Takes the user OBJECT: prefer the server-computed `followersCount` (attached
-    // to every user response) so no global users scan is needed. Falls back to
-    // scanning the loaded users array by id only when the server count is absent
-    // (e.g. the logged-in user's own object from login, which omits it) — that
-    // fallback disappears once the global users load is retired.
+    // Takes the user OBJECT (or an id). Resolution order:
+    //   1. the overlay — carries the count I just changed by following/unfollowing,
+    //      so it reflects on every surface without a refetch;
+    //   2. the server-computed `followersCount` on the user object itself;
+    //   3. (legacy) a scan of the loaded users array — removed with the global load.
     const getFollowersCount = (userOrId) => {
-        if (userOrId && typeof userOrId === 'object') {
-            if (typeof userOrId.followersCount === 'number') return userOrId.followersCount;
-            userOrId = userOrId._id;
+        const id = (userOrId && typeof userOrId === 'object') ? userOrId._id : userOrId;
+
+        const overlaid = userOverlay?.[id]?.followersCount;
+        if (typeof overlaid === 'number') return overlaid;
+
+        if (userOrId && typeof userOrId === 'object' && typeof userOrId.followersCount === 'number') {
+            return userOrId.followersCount;
         }
+
         if(!users) return 0;
-        return users.filter(userU => (userU.following || []).includes(userOrId)).length;
+        return users.filter(userU => (userU.following || []).includes(id)).length;
     }
 
   return {toggleFollow, isFollowByMe, getFollowingCount, getFollowersCount} 

@@ -429,7 +429,7 @@ function SuggestedStep({ users, loading, error, onRetry, searchQuery, onSearchCh
                         key={u._id}
                         user={u}
                         isFollowing={isFollowByMe(u._id) || !!u.isFollowing}
-                        onFollow={() => toggleFollow(u._id)}
+                        onFollow={() => toggleFollow(u)}
                     />
                 ))
             )}

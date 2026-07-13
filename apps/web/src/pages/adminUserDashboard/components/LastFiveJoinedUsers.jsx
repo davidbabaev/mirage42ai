@@ -89,7 +89,7 @@ export default function LastFiveJoinedUsers() {
                                 variant={'outlined'}
                                 startIcon={<PersonAddIcon/>}
                                 onClick={async () => {
-                                    await toggleFollow(userF?._id)
+                                    await toggleFollow(userF)
                                 }}
                                 sx={{fontSize: 9, minWidth: 70, borderRadius: 5, py: 0.3,
                                     '& .MuiButton-startIcon' : {mb: 0.2}, lineHeight: 0 

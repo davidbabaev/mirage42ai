@@ -37,6 +37,12 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
+### Retire load-everything providers — task 9: user overlay keeps follower counts live — awaiting review
+- Built on branch autopilot/2026-07-13, commit <pending>. A user's follower count was derived by SCANNING the global users array ("how many loaded users have this id in their `following`?"), and `syncUser` patched my own record into that array after a follow so the count moved everywhere at once. With the array empty that scan returns 0, and following someone would have nowhere to record that their count just went up.
+- New user overlay in UsersProvider (`userOverlay` + `patchUser`) — the direct counterpart of the card overlay in CardsProvider. Starts empty, fills only with users you've acted on, cleared on logout. `getFollowersCount` now resolves: overlay → the server-sent `followersCount` on the user object → (legacy) array scan, which goes away in task 11.
+- `toggleFollow` now accepts the user OBJECT (or a bare id, still supported). Given the object it patches the target's new follower count into the overlay, so the count updates on every surface showing that person — profile header, feed cards, people lists — with no refetch. All 17 call sites pass the object; they all had it in hand and were just spreading `._id`.
+- Tests: new apps/web/tests/FollowOverlayCount.test.jsx — with `getAllUsers` mocked EMPTY, the count renders from the server field and then bumps 5→6 on follow and back to 5 on unfollow. MobileSuggestions + PeopleModal tests updated for the object signature. web 177 green; no new lint (UsersProvider's 2 errors are the pre-existing effect + hook-export).
+
 ### Retire load-everything providers — task 8: PYMK + mutual friends move server-side — awaiting review
 - Built on branch autopilot/2026-07-13, commit 6faf01f. Two surfaces derived people-lists by walking the global users array.
 - FEED "People you may know": computed friends-of-friends client-side (everyone I follow → everyone THEY follow → dedupe → exclude self/already-following). `GET /users/suggested` already did exactly that server-side — block-aware and ranked by follower count — so FeedPage just calls it. Re-pulled when my following set settles, so following someone drops them out of the suggestions. Net: a whole client-side graph walk deleted, and `useUsersProvider` is gone from FeedPage.

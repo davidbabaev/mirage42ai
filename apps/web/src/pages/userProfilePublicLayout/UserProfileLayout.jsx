@@ -383,7 +383,7 @@ export default function UserProfileLayout() {
                                 setIsLoginPopupOpen(true)
                                 return;
                             } 
-                            await toggleFollow(userProfile._id)
+                            await toggleFollow(userProfile)
                         }}
                         color={isFollowByMe(userProfile._id) ? 'inherit' : 'primary'}
                       >
@@ -542,7 +542,7 @@ export default function UserProfileLayout() {
                         setIsLoginPopupOpen(true)
                         return;
                     }
-                    await toggleFollow(userProfile._id)
+                    await toggleFollow(userProfile)
                 }}
                 color={isFollowByMe(userProfile._id) ? 'inherit' : 'primary'}
                 >

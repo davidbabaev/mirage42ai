@@ -425,7 +425,7 @@ return (
                                         variant={'outlined'}
                                         startIcon={<PersonAddIcon/>}
                                         onClick={async () => {
-                                            await toggleFollow(person?._id)
+                                            await toggleFollow(person)
                                         }}
                                         sx={{
                                             fontSize: 9, 

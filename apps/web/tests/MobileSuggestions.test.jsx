@@ -33,10 +33,13 @@ describe('MobileSuggestions', () => {
         expect(screen.getByText('Bob Reed')).toBeInTheDocument();
     });
 
-    it('Follow button calls toggleFollow with the user id', () => {
+    // toggleFollow now takes the user OBJECT, not an id: the target's follower count
+    // used to be derived by scanning the global users array, and with that gone the
+    // object is what lets the count update on every surface.
+    it('Follow button calls toggleFollow with the user', () => {
         renderIt();
         fireEvent.click(screen.getAllByRole('button', { name: /follow/i })[0]);
-        expect(toggleFollow).toHaveBeenCalledWith('u1');
+        expect(toggleFollow).toHaveBeenCalledWith(expect.objectContaining({ _id: 'u1' }));
     });
 
     it('"See all" opens a modal listing the suggestions', () => {

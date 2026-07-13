@@ -207,7 +207,7 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
                             variant={'outlined'}
                             startIcon={<PersonAddIcon/>}
                             onClick={async () => {
-                                await toggleFollow(creator?._id)
+                                await toggleFollow(creator)
                             }}
                             sx={{ fontSize: 10, minWidth: 70 }}
                         >

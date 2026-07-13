@@ -46,6 +46,27 @@ export function UsersProvider({children}) {
         )));
     }
 
+    // ── The user overlay ────────────────────────────────────────────────────
+    // Mutation state for OTHER users, keyed by id — the counterpart of the card
+    // overlay in CardsProvider. Starts empty and only fills with users you have
+    // actually acted on.
+    //
+    // It exists because a follower count used to be derived by SCANNING the global
+    // users array ("how many loaded users have this id in their following?"). With
+    // that array gone, following someone has nowhere to record that their follower
+    // count just went up — so the count would sit stale on every surface until a
+    // refetch. Consumers read through the overlay first, then the user object's own
+    // server-sent count.
+    const [userOverlay, setUserOverlay] = useState({});
+
+    const patchUser = (userId, patch) => {
+        if (!userId) return;
+        setUserOverlay(prev => ({
+            ...prev,
+            [userId]: { ...(prev[userId] || {}), ...patch },
+        }));
+    }
+
     const handleDeleteUser = async (userId) => {
         try{
             await deleteUser(userId);
@@ -111,17 +132,20 @@ export function UsersProvider({children}) {
             getUsers();
         } else {
             setUsers([]);
+            setUserOverlay({});
         }
     }, [isLoggedIn])
-  
+
     return(
         <UsersContext.Provider value={{
             users,
             loading,
             getUsers,
             syncUser,
+            userOverlay,
+            patchUser,
             handleDeleteUser,
-            handleBanUser, 
+            handleBanUser,
             handlePromoteUser
         }}>
             {children}

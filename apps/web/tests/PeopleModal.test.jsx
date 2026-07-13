@@ -46,7 +46,9 @@ describe('PeopleModal', () => {
             renderModal({ users: makeUsers(2), mode: 'suggested' });
             const followBtns = screen.getAllByRole('button', { name: /follow/i });
             await act(async () => { fireEvent.click(followBtns[0]); });
-            expect(toggleFollow).toHaveBeenCalledWith('u0');
+            // toggleFollow takes the user OBJECT now (see useFollowUser) — the
+            // target's follower count is patched into the user overlay from it.
+            expect(toggleFollow).toHaveBeenCalledWith(expect.objectContaining({ _id: 'u0' }));
             // still visible right after following
             expect(screen.getByText('P0 Z')).toBeInTheDocument();
             // ...gone after the linger window

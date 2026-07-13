@@ -39,7 +39,7 @@ export default function PeopleModal({ open, onClose, title, users = [], mode = '
     const remove = (id) => setItems((prev) => prev.filter((u) => u._id !== id));
 
     const handleFollow = async (u) => {
-        await toggleFollow(u._id);
+        await toggleFollow(u);
         if (mode === 'suggested' && !lingerTimers.current.has(u._id)) {
             const t = setTimeout(() => {
                 remove(u._id);

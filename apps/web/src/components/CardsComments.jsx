@@ -280,7 +280,7 @@ export default function CardsComments({card, users, addComment, removeComment, f
                                     variant={'outlined'}
                                     startIcon={<PersonAddIcon/>}
                                     onClick={async () => {
-                                        await toggleFollow(userComment?._id)
+                                        await toggleFollow(userComment)
                                     }}
                                     sx={{fontSize: 9, minWidth: 70, borderRadius: 5, py: 0.3,
                                         '& .MuiButton-startIcon' : {mb: 0.2}, lineHeight: 0

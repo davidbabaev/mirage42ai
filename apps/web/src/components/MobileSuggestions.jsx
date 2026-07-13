@@ -31,7 +31,7 @@ function SuggestionRow({ u, onNavigate }) {
                 variant={following ? 'outlined' : 'contained'}
                 color={following ? 'inherit' : 'primary'}
                 startIcon={!following && <PersonAddIcon />}
-                onClick={() => toggleFollow(u._id)}
+                onClick={() => toggleFollow(u)}
                 sx={{ borderRadius: 5, fontSize: 11, minWidth: 84 }}
             >
                 {following ? 'Following' : 'Follow'}
@@ -98,7 +98,7 @@ export default function MobileSuggestions({ suggestions = [] }) {
                                     size='small'
                                     variant={following ? 'outlined' : 'contained'}
                                     color={following ? 'inherit' : 'primary'}
-                                    onClick={() => toggleFollow(u._id)}
+                                    onClick={() => toggleFollow(u)}
                                     sx={{ borderRadius: 5, fontSize: 11 }}
                                 >
                                     {following ? 'Following' : 'Follow'}
