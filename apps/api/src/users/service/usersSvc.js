@@ -92,6 +92,29 @@ const countFollowersFor = async (userIds) => {
     return map;
 }
 
+// The logged-in user's OWN counts, attached at the auth entry points (register,
+// login, token refresh). Without these the own-profile sidebar/dashboard has no
+// source for "N posts / N followers" except deriving them from a fully-loaded
+// users/cards array — the very thing we're retiring.
+//
+// Deliberately NOT folded into pickSafeUserFields: that helper is synchronous and
+// also serializes every mutation response (follow, edit, ban, promote, ...), so
+// making it async would put two extra queries on writes that never render a count.
+// Same semantics as GET /users/:id, so the numbers agree across surfaces.
+const attachOwnCounts = async (safeUser) => {
+    const id = String(safeUser._id);
+    const [followersCount, postsCount] = await Promise.all([
+        User.countDocuments({ following: id }),
+        Card.countDocuments({ userId: id, status: 'active' }),
+    ]);
+    return {
+        ...safeUser,
+        followersCount,
+        postsCount,
+        followingCount: new Set((safeUser.following || []).map(String)).size,
+    };
+}
+
 // MongoDB operation
 
 const createNewUser = async (user) => {
@@ -103,7 +126,7 @@ const createNewUser = async (user) => {
 
         const token = signNewToken(newUser);
         const refreshToken = await issueRefreshToken(newUser);
-        const safeUser = pickSafeUserFields(newUser);
+        const safeUser = await attachOwnCounts(pickSafeUserFields(newUser));
         return{token, refreshToken, safeUser}
     }
     catch(err){
@@ -128,7 +151,7 @@ const loginUser = async ({email, password}) => {
         // issueRefreshToken persists the user (saving lastLoginAt too).
         const token = signNewToken(user);
         const refreshToken = await issueRefreshToken(user);
-        const safeUser = pickSafeUserFields(user);
+        const safeUser = await attachOwnCounts(pickSafeUserFields(user));
         return{token, refreshToken, safeUser}
     }
     catch(err){
@@ -835,6 +858,7 @@ module.exports = {
     deleteUser,
     loginUser,
     pickSafeUserFields,
+    attachOwnCounts,
     followUser,
     blockUser,
     addFavorite,

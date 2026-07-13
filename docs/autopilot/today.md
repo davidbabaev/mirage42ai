@@ -28,12 +28,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### 4. Own-user postsCount / followersCount on login
-- What: The logged-in user object (from login's `pickSafeUserFields`) has no `postsCount`/`followersCount`, so the OWN sidebar/dashboard counts fall back to the global arrays.
-- Decisions: Add both to `pickSafeUserFields` server-side (cheapest, one place, mirrors what the user-list endpoints already embed) rather than firing an extra `getSingleUser(me)` round-trip on every login. Keep the counts fresh on mutation the same way the profile already does.
-- Done when: own post/follower counts render correctly with both global arrays empty; API test asserts login response carries both fields. Browser-verify at 390/1280.
-- Type: logic
-
 ### 5. addAuthorToFeed (follow) — stop splicing from registeredCards
 - What: On follow, `addAuthorToFeed` splices the followed user's posts out of `registeredCards` into the feed. With the array empty there's nothing to splice.
 - Decisions: Replace with a call to the existing user-posts endpoint (`getExploreCards(cursor, limit, userId)`) and merge the first page into the feed, preserving the existing no-refetch / no-scroll-jump behavior. If merging cleanly proves fragile, fall back to a feed refetch and LOG that choice — correctness beats the optimization here.

@@ -10,7 +10,7 @@ export function CardsProvider({children}) {
     // state for saving cards (register cards)
 const [registeredCards, setRegisteredCards] = useState([]);
 
-const {isLoggedIn, user} = useAuth();
+const {isLoggedIn, user, refreshMe} = useAuth();
 
 // Cursor-paginated feed. The hook owns the accumulated `items` (exposed as
 // feedCards) plus loading/hasMore state; refresh() reloads from the top and
@@ -116,7 +116,10 @@ const addAuthorToFeed = (userId) => {
 const handleCardRegister = async (cardData) => {
     try{
         const response = await createCard(cardData);
-        setRegisteredCards(prev => [...prev, response]);
+        setRegisteredCards(prev => upsertCard(prev, response));
+        // My own postsCount comes from the server now (it used to be derived from
+        // the global all-cards array), so it has to be re-pulled when I post.
+        refreshMe?.();
 
         return{
             success: true,
@@ -134,7 +137,8 @@ const handleCardRegister = async (cardData) => {
     const handleDeleteCard = async (cardId) => {
         try{
             await deleteCard(cardId);
-            setRegisteredCards(registeredCards.filter(card => card._id !== cardId))
+            setRegisteredCards(prev => prev.filter(card => card._id !== cardId))
+            refreshMe?.(); // my postsCount just went down
 
             return{
                 success: true,

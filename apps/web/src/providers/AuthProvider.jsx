@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { followUnfollowUser, blockUnblockUser, loginUser, registerUser, updateUser, getSingleUser, logout, FORCE_LOGOUT_EVENT } from '../services/apiService';
 import { jwtDecode } from 'jwt-decode';
 import { connectSocket, disconnectSocket } from '../services/socketService';
@@ -96,10 +96,35 @@ export function AuthProvider({children}) {
         }
     }
 
+    // Mutation endpoints (follow, block, edit) answer with pickSafeUserFields,
+    // which carries NO counts — so replacing `user` wholesale with the response
+    // would silently wipe postsCount/followersCount off the logged-in user and
+    // blank the own-profile counts. Merge instead: take the response's fields,
+    // keep everything else we already know.
+    const mergeIntoUser = (response) => {
+        setUser(prev => (prev ? { ...prev, ...response } : response));
+    };
+
+    // Pull the logged-in user fresh from the server (GET /users/:id returns the
+    // own record WITH postsCount / followersCount / followingCount). Used after an
+    // action that changes one of those counts, so they stay live instead of being
+    // frozen at whatever login handed us.
+    const refreshMe = useCallback(async () => {
+        const id = user?._id;
+        if (!id) return;
+        try {
+            const fresh = await getSingleUser(id);
+            setUser(prev => (prev ? { ...prev, ...fresh } : fresh));
+        } catch (err) {
+            // A stale count is not worth breaking the screen over.
+            console.log(err.message);
+        }
+    }, [user?._id]);
+
     const handleToggleFollow = async (userId) => {
         try{
             const response = await followUnfollowUser(userId);
-            setUser(response)
+            mergeIntoUser(response)
             // Return the updated current user so callers can sync the users
             // list in place (no full re-fetch needed).
             return response
@@ -116,7 +141,7 @@ export function AuthProvider({children}) {
     const handleToggleBlock = async (userId) => {
         try{
             const response = await blockUnblockUser(userId);
-            setUser(response)
+            mergeIntoUser(response)
             return response
         }
         catch(err){
@@ -150,7 +175,7 @@ export function AuthProvider({children}) {
     const editUser = async (userId, updatedFields) => {
         try{
             const response = await updateUser(userId, updatedFields);
-            setUser(response);
+            mergeIntoUser(response);
             return{
                 success: true,
                 message: 'Edited Successfully'
@@ -167,7 +192,7 @@ export function AuthProvider({children}) {
     
   return (
     <UseAuthCheck.Provider 
-        value={{isLoggedIn, user, handleLogin, handleLogout, handleRegister, editUser, setUser, handleToggleFollow, handleToggleBlock, isUserLoaded}}>
+        value={{isLoggedIn, user, handleLogin, handleLogout, handleRegister, editUser, setUser, handleToggleFollow, handleToggleBlock, isUserLoaded, refreshMe}}>
             {children}
     </UseAuthCheck.Provider>
   )

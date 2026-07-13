@@ -8,7 +8,7 @@ const {
     setRefreshCookie,
     clearRefreshCookie,
 } = require('./refreshTokens');
-const { pickSafeUserFields } = require('../users/service/usersSvc');
+const { pickSafeUserFields, attachOwnCounts } = require('../users/service/usersSvc');
 const { refreshLimiter } = require('../middlewares/rateLimit');
 
 // Exchange a valid refresh cookie for a fresh access token. Rotates the refresh
@@ -27,7 +27,9 @@ router.post('/auth/refresh', refreshLimiter, async (req, res) => {
 
         setRefreshCookie(res, rotated.rawToken);
         const token = signNewToken(rotated.user);
-        res.send({ token, safeUser: pickSafeUserFields(rotated.user) });
+        // Counts too — a silent refresh replaces the client's user object, so
+        // omitting them here would blank the own-profile counts mid-session.
+        res.send({ token, safeUser: await attachOwnCounts(pickSafeUserFields(rotated.user)) });
     } catch (err) {
         clearRefreshCookie(res);
         res.status(401).send('Invalid refresh token');
