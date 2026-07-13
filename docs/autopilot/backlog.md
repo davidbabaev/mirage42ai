@@ -37,6 +37,13 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
+### Retire load-everything providers — task 7: /allcards creator filter searches the server — awaiting review
+- Built on branch autopilot/2026-07-13, commit <pending>. The creator picker filtered the FULLY-LOADED users array client-side — unusable at 100k+ users, and dependent on the global load being retired. It now queries `GET /users/search` (the same endpoint the admin panel's creator search uses), debounced at 300ms, with "Searching…" / "No people found" states.
+- The selected creator is now held as an OBJECT, not just an id: the active-filter chip needs their name and there is no global array left to look it up in. `useUsersProvider` is gone from this page entirely.
+- Loading state is DERIVED (`creatorSearch !== debouncedCreatorSearch`) rather than stored, which keeps the setState out of the effect body and avoids adding a `react-hooks/set-state-in-effect` lint error.
+- Also fixed a copy-paste bug found here: the creator search box's placeholder read "Search Post.." — it searches people.
+- Tests: new apps/web/tests/CreatorFilterSearch.test.jsx (typing queries the SERVER with the term; selecting a creator drives the server-side card query by creatorId). web 175 green; no new lint (the one error in this file is the pre-existing deep-link effect).
+
 ### Retire load-everything providers — task 6: profile subject resolved from the server — awaiting review
 - Built on branch autopilot/2026-07-13, commit 483f878. All five profile surfaces (Layout, Main, About, Media, Followers) each ran their own `users.find(u => u._id === id)` against the global users array. UserProfileLayout now resolves the subject ONCE from `GET /users/:id` and shares it with the tabs through a small `ProfileSubjectContext` — one resolve, not five fetches. (The layout renders its children via a nested `<Routes>`, not an `<Outlet>`, so context is the natural channel.)
 - States: skeleton while in flight; "This account is unavailable" when it doesn't resolve — a 404 covers both "no such user" and "a block exists in either direction", which are deliberately indistinguishable server-side. The old code showed an ENDLESS SKELETON whenever the users array happened not to contain the id; that dead-end is gone.

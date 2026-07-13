@@ -5,7 +5,7 @@ import useDebounce from '../hooks/useDebounce';
 import useFavoriteCards from '../hooks/useFavoriteCards';
 import { useCursorPagination } from '../hooks/useCursorPagination';
 import { CARD_CATEGORIES } from '../constants/cardsCategories';
-import { getCardsSearch } from '../services/apiService';
+import { getCardsSearch, searchUsers } from '../services/apiService';
 import SearchIcon from '@mui/icons-material/Search';
 import { Avatar, Box, Button, Checkbox, Chip, Container, Grid, IconButton, InputAdornment, Paper, TextField, Typography } from '@mui/material';
 import CardItem from '../components/CardItem';
@@ -16,7 +16,6 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import CloseIcon from '@mui/icons-material/Close';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import { useUsersProvider } from '../providers/UsersProvider';
 
 
 export default function AllCardsPage() {
@@ -60,9 +59,28 @@ export default function AllCardsPage() {
     // controls the search input for users
     const [creatorSearch, setCreatorSearch] = useState('')
 
-    // Creator picker: sourced from UsersProvider (already loaded); filtered client-side
-    // by creatorSearch. This avoids an extra network call and keeps the picker instant.
-    const {users} = useUsersProvider();
+    // Creator picker: SERVER-side search. It used to filter the fully-loaded users
+    // array client-side, which cannot work at 100k+ users (and depends on a global
+    // load we're retiring). Debounced so typing doesn't fire a request per keystroke.
+    const debouncedCreatorSearch = useDebounce(creatorSearch, 300);
+    const [filterCreators, setFilterCreators] = useState([]);
+
+    // The selected creator is held as an OBJECT, not just an id: the active-filter
+    // chip needs their name, and there is no global array left to look it up in.
+    const [selectedCreator, setSelectedCreator] = useState(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        searchUsers(debouncedCreatorSearch, 10)
+            .then(res => { if(!cancelled) setFilterCreators(res?.items ?? res ?? []); })
+            .catch(() => { if(!cancelled) setFilterCreators([]); });
+        return () => { cancelled = true; };
+    }, [debouncedCreatorSearch]);
+
+    // Derived, not stored: while the typed text is still settling into the debounced
+    // value, a request is coming. Avoids a setState in the effect body.
+    const creatorsSearching = creatorSearch !== debouncedCreatorSearch;
+
     const {favoriteCards, handleFavoriteCards, handleRemoveCard} = useFavoriteCards();
 
     const [showAllCategories, setShowAllCategories] = useState(false)
@@ -86,15 +104,22 @@ export default function AllCardsPage() {
         {label: 'Most Commented', value: 'most commented'},
     ]
 
-    const filterCreators = users.filter((user) => (user.name + ' ' + user.lastName).toLowerCase().includes(creatorSearch.toLowerCase()))
-
     const handleClearAllFilters = () => {
         setCreatorId('');
+        setSelectedCreator(null);
         setSearchCard('');
         setDateSort('');
         setFavorites('');
         setCategoriesFilter([]);
         setCreatorSearch('');
+    }
+
+    // Selecting a creator drives BOTH the id (which the server query filters on)
+    // and the object (which the chip labels).
+    const handleSelectCreator = (creator) => {
+        const isDeselect = creator._id === creatorId;
+        setCreatorId(isDeselect ? '' : creator._id);
+        setSelectedCreator(isDeselect ? null : creator);
     }
 
     const activeFilters = [];
@@ -107,10 +132,9 @@ export default function AllCardsPage() {
     }
 
     if(creatorId !== ''){
-        const creatorUser = users.find(u => u._id === creatorId)
         activeFilters.push({
-            label: creatorUser?.name + ' ' + creatorUser?.lastName,
-            onDelete: () => setCreatorId('')
+            label: selectedCreator ? `${selectedCreator.name} ${selectedCreator.lastName}` : 'Creator',
+            onDelete: () => { setCreatorId(''); setSelectedCreator(null); }
         })
     }
 
@@ -297,7 +321,7 @@ export default function AllCardsPage() {
                     <TextField
                         fullWidth
                         size='small'
-                        placeholder='Search Post..'
+                        placeholder='Search people..'
                         value={creatorSearch}
                         onChange={(e) => setCreatorSearch(e.target.value)}
                         slotProps={{
@@ -324,7 +348,7 @@ export default function AllCardsPage() {
                             color: 'text.secondary'
                         }}
                     >
-                        {filterCreators.length} Results
+                        {creatorsSearching ? 'Searching…' : `${filterCreators.length} Results`}
                     </Typography>
 
                     <Box
@@ -333,11 +357,16 @@ export default function AllCardsPage() {
                             overflow: 'auto',
                         }}
                     >
+                        {!creatorsSearching && filterCreators.length === 0 && (
+                            <Typography sx={{ fontSize: 12, color: 'text.secondary', py: 1 }}>
+                                No people found
+                            </Typography>
+                        )}
 
                         {filterCreators.map((userF) => (
                             <Box
                                 key={userF._id}
-                                onClick={() => setCreatorId(userF._id === creatorId ? '' : userF._id)}
+                                onClick={() => handleSelectCreator(userF)}
                                 sx={{
                                     display: 'flex',
                                     alignItems: 'center',

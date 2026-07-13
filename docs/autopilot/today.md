@@ -28,12 +28,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### 7. AllCardsPage creator filter — async search
-- What: The creator filter client-filters the FULL users list. Assume 100k+ users — that never scales.
-- Decisions: Use the existing `searchUsers(q)` / `GET /users/search` endpoint with a debounced async autocomplete, matching the admin panel's creator-search pattern shipped in sweep phase 7. Never a dropdown over all users.
-- Done when: typing a creator name queries the server and narrows the posts list; works with the users array empty. Browser-verify at 390/1280.
-- Type: logic
-
 ### 8. PYMK / mutual friends — server-side
 - What: FeedPage and UserProfileMain compute "people you may know" / mutual friends by `users.filter(...)` over the global array.
 - Decisions: `getSuggestedUsers` already exists — use it for PYMK. For MUTUAL friends, add a server endpoint (e.g. `GET /users/:id/mutual`) that intersects the two following sets server-side with one query — do not pull both lists to the client and intersect there. Paginate it like the other people lists.
