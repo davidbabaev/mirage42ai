@@ -43,7 +43,7 @@ Mark items [done] when finished so they drop out of the active list.
 ## Awaiting review
 
 ### Dead CardDetailsPage deleted (was: "wire its missing route") — awaiting review
-- Built on branch autopilot/2026-07-13, commit <pending>. `CardDetailsPage` was imported in App.jsx with NO registered `<Route>` — unreachable dead code.
+- Built on branch autopilot/2026-07-13, commit eb5d0ab. `CardDetailsPage` was imported in App.jsx with NO registered `<Route>` — unreachable dead code.
 - DECISION — REVERSED THE PLANNED FIX. today.md said to wire a `/card/:id` route ("a deep-linkable post URL is table stakes"). Investigation showed that URL ALREADY EXISTS and is what the whole app uses: the chat shared-post card, the external share link (`/s/card/:id` → SPA), and the notification deep-links all navigate to `/allcards?card=<id>`, which opens the post modal. Meanwhile CardDetailsPage is a raw unstyled dev page (plain divs, inline styles, a black border) that duplicates the modal badly. Wiring it would have shipped a SECOND, worse-looking deep-link surface for the same content. Deleted the page instead. If a dedicated post route is ever wanted, it should render the real card UI, not this.
 - Also removed its 2 pre-existing lint errors along with it. web 185 green.
 
