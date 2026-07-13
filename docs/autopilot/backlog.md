@@ -24,7 +24,17 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-(nothing awaiting review)
+### Folder/naming sweep (master-plan #20) — awaiting review
+- Built on branch autopilot/2026-07-13-restructure. The "one restructure, done LAST once the architecture has settled" — now due, because the provider-retirement epic is merged and the file layout has stopped moving. Seven commits, one concern each, suites green after every one.
+- **Typos that were actually BUGS** (db30f8c): `color='text.secondaty'` in FOUR places (UserProfileLayout, DashboardLayout, FeedPage, UserReusableCard) — MUI silently DROPS an unknown palette key, so that text was never actually muted; it rendered at full contrast. Fixing the spelling fixes the styling. Also `'...showless'` shipped to users with no space, in five places; a "Posts per catrgories" heading; and two admin messages ("succefully", "becam").
+- **The space in the folder name** (54a2cfb): `components/reusable components/` → `components/shared/` (a folder with a SPACE, nested inside components/ — components of components). Fixed the misspelled `MostPupularCardReuse` → `MostPopularCardReuse` (file + exported symbol) inside it. 4 importers. NO tracked path in the repo has a space any more.
+- **Case-only renames** (ec38d23): `cards/validation/Joi/` → `joi/` (its sibling users/validation/joi/ was already lowercase) and `AdminOverViewPanel` → `AdminOverviewPanel` ("Overview" is one word). Both are case-ONLY, and the Windows/WSL filesystem is case-insensitive — a direct `git mv` silently no-ops and desyncs the index. Done via an intermediate temp name and VERIFIED: git recorded both as real renames (R).
+- **Model naming** (d2d03af): `Notifications.js` → `Notification.js` — the only plural model file (Card/User/Message/Conversation/Report are all singular). 7 importers.
+- **Pages that lied about what they are** (78a79c3): `CardsRegisterPage` → `CreateCardPage` (it renders the card composer; "register" was the old internal word for creating a post); `RegisteredPage` → `SignUpPage` (it IS the sign-up form — the old name reads like a success screen). Deleted `HomePage.jsx`: dead, nothing imported it, an old wireframe skeleton with an "iamges" typo.
+- **Misspelled internal symbols** (003a837): Registaration→Registration, therty→thirty, moreThen→moreThan, Avater→Avatar, editprofilePicture→editProfilePicture — renamed at EVERY reference (a partial rename is worse than none). Plus comment typos in the same files.
+- **Browser-verified** (task 7): a rename sweep is exactly the change that passes every unit test and still ships a blank screen — one missed import path, or a case-only rename git never recorded. Loaded all six touched surfaces × 390/1280 in a real Chromium against a throwaway in-memory Mongo (NOT Atlas): sign-up page, create-post page, feed, profile, own dashboard, and the admin Overview panel (whose imports ALL moved). 12/12 render with ZERO console errors.
+- OUT OF SCOPE, deliberately: `components/chatDock/` (looks odd but FOLLOWS the convention — multi-word folders are camelCase), and `pages/landing/` + `pages/docs/pages/` (organizational preference, not errors — churn without value).
+- api 375 green; web 186 green; lint unchanged (36 pre-existing errors, none added).
 
 ## Done
 
