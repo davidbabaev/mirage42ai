@@ -38,7 +38,7 @@ Mark items [done] when finished so they drop out of the active list.
 ## Awaiting review
 
 ### Retire load-everything providers — task 8: PYMK + mutual friends move server-side — awaiting review
-- Built on branch autopilot/2026-07-13, commit <pending>. Two surfaces derived people-lists by walking the global users array.
+- Built on branch autopilot/2026-07-13, commit 6faf01f. Two surfaces derived people-lists by walking the global users array.
 - FEED "People you may know": computed friends-of-friends client-side (everyone I follow → everyone THEY follow → dedupe → exclude self/already-following). `GET /users/suggested` already did exactly that server-side — block-aware and ranked by follower count — so FeedPage just calls it. Re-pulled when my following set settles, so following someone drops them out of the suggestions. Net: a whole client-side graph walk deleted, and `useUsersProvider` is gone from FeedPage.
 - PROFILE "mutual connections": new endpoint `GET /users/:id/mutual` intersects the two `following` lists SERVER-side (one indexed query, keyset-paginated, block-aware both directions, 404 on a hidden/absent profile) rather than shipping both lists to the client. Mirrors getFollowing exactly.
 - PROFILE "people they follow that you don't": uses the existing paginated `GET /users/:id/following`, filtered against MY following list — which lives on my own user object, not the global array. No new endpoint needed.
