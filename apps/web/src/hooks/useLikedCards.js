@@ -15,9 +15,11 @@ function useLikedCards() {
         return registeredCards.find(c => c._id === card._id) || card;
     };
 
-    const toggleLike = (cardId) => {
+    // Takes the card OBJECT (like isLikeByMe/getLikeCount): the optimistic flip
+    // needs something to seed the overlay with when the card isn't in it yet.
+    const toggleLike = (card) => {
         if(!user) return;
-        handleToggleLike(cardId)
+        handleToggleLike(card)
     }
 
     const isLikeByMe = (card) => {

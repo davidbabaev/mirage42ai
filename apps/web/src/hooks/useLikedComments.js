@@ -8,9 +8,11 @@ function useLikedComments() {
     const { user } = useAuth();
     const { handleToggleCommentLike } = useCardsProvider();
 
-    const toggleCommentLike = (cardId, commentId) => {
+    // Takes the card OBJECT (not its id) so the optimistic flip can seed the
+    // overlay when the card isn't already in it.
+    const toggleCommentLike = (card, commentId) => {
         if (!user) return;
-        return handleToggleCommentLike(cardId, commentId);
+        return handleToggleCommentLike(card, commentId);
     };
 
     const isCommentLikedByMe = (comment) => (comment?.likes || []).includes(user?._id);

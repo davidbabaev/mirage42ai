@@ -131,7 +131,7 @@ export default function CardDetailsPage() {
 
                 <div>
                     {user ? (
-                        <button onClick={() => toggleLike(currentCard._id)}>
+                        <button onClick={() => toggleLike(currentCard)}>
                             {isLikeByMe(currentCard) ? "Unlike" : "Like"}
                         </button>
                     ):(

@@ -32,6 +32,27 @@ const {
     reset: resetFeed,
 } = useCursorPagination(feedFetcher);
 
+// ── The mutation overlay ────────────────────────────────────────────────────
+// `registeredCards` is the overlay that carries mutation state (optimistic likes,
+// added comments) so a change reflects on EVERY surface, not just the one you
+// clicked on. It no longer holds "all cards in the app" — once the global
+// getAllCards load is retired it starts EMPTY and fills only with cards you have
+// actually touched.
+//
+// That makes a plain `.map()` the wrong tool: mapping over a list that doesn't
+// contain the card is a SILENT no-op, so the mutation would just vanish. Every
+// write into the overlay upserts instead — update in place if present, append if
+// not. (The FEED keeps a plain .map: a card you liked on your profile must not be
+// injected into your feed just because you touched it.)
+const upsertCard = (list, card) => {
+    if (!card?._id) return list;
+    const i = list.findIndex(c => c._id === card._id);
+    if (i === -1) return [...list, card];
+    const next = [...list];
+    next[i] = card;
+    return next;
+};
+
 const fetchCards = async () => {
     // Cards are only shown to signed-in users now (the public pages are walled),
     // so skip the request while logged out instead of firing a wasted GET /cards.
@@ -131,9 +152,7 @@ const handleCardRegister = async (cardData) => {
         const handleEditCard = async (cardId, cardData) => {
             try{
                 const response = await updateCard(cardId, cardData);
-                setRegisteredCards(prev => prev.map((card) => {
-                    return card._id === cardId ? response : card
-                }));
+                setRegisteredCards(prev => upsertCard(prev, response));
 
                 return{
                     success: true,
@@ -148,38 +167,46 @@ const handleCardRegister = async (cardData) => {
             }
         }
 
-    // Optimistic like: flip my id in the card's likes array in both state arrays
-    // IMMEDIATELY (no network wait — kills the "like jank"), fire the request,
-    // reconcile with the authoritative card on success, and revert on error.
-    // Applying the same pure toggle twice is identity, so it doubles as rollback.
-    const handleToggleLike = async (cardId) => {
+    // Optimistic like: flip my id in the card's likes array IMMEDIATELY (no network
+    // wait — kills the "like jank"), fire the request, reconcile with the
+    // authoritative card on success, and revert on error. Applying the same pure
+    // toggle twice is identity, so it doubles as rollback.
+    //
+    // Takes the CARD OBJECT, not an id: the optimistic flip happens before the
+    // server responds, so when the card isn't in the overlay yet this is the only
+    // thing we have to seed it from.
+    const handleToggleLike = async (card) => {
         const uid = user?._id;
         if (!uid) return { success: false, message: 'Not logged in' };
+        if (!card?._id) return { success: false, message: 'Card not found' };
+        const cardId = card._id;
 
-        const toggle = (card) => {
-            if (card._id !== cardId) return card;
-            const likes = card.likes || [];
+        const toggle = (c) => {
+            if (c._id !== cardId) return c;
+            const likes = c.likes || [];
             const liked = likes.some(id => String(id) === String(uid));
             return {
-                ...card,
+                ...c,
                 likes: liked ? likes.filter(id => String(id) !== String(uid)) : [...likes, uid],
             };
         };
-        setRegisteredCards(prev => prev.map(toggle));
+        // Overlay: upsert, so the flip survives even when this card was never loaded
+        // into it. Feed: map only — don't inject a card the feed doesn't hold.
+        setRegisteredCards(prev => upsertCard(prev, toggle(prev.find(c => c._id === cardId) ?? card)));
         setFeedCards(prev => prev.map(toggle));
 
         try{
             const response = await likeUnlikeCard(cardId);
-            setRegisteredCards(prev => prev.map(card => card._id === cardId ? response : card))
-            setFeedCards(prev => prev.map(card => card._id === cardId ? response : card))
+            setRegisteredCards(prev => upsertCard(prev, response))
+            setFeedCards(prev => prev.map(c => c._id === cardId ? response : c))
             return{
                 success: true,
                 message: 'liked Successfully'
             }
         }
         catch(err){
-            // revert the optimistic flip
-            setRegisteredCards(prev => prev.map(toggle))
+            // revert the optimistic flip (toggle is its own inverse)
+            setRegisteredCards(prev => upsertCard(prev, toggle(prev.find(c => c._id === cardId) ?? card)))
             setFeedCards(prev => prev.map(toggle))
             return{
                 success: false,
@@ -189,11 +216,9 @@ const handleCardRegister = async (cardData) => {
     }
 
     const handleAddComment = async (cardId, commentText) => {
-        try{   
+        try{
             const response = await addComment(cardId, {commentText})
-            setRegisteredCards(prev => prev.map((card) => {
-                return card._id === cardId ? response : card
-            }))
+            setRegisteredCards(prev => upsertCard(prev, response))
 
             setFeedCards(prev => prev.map((card) => {
                 return card._id === cardId ? response : card
@@ -216,43 +241,47 @@ const handleCardRegister = async (cardData) => {
     // request and reconcile on success / revert on error. CardsComments'
     // reconcile effect syncs the visible paginated list from card.comments, so
     // the heart flips at once. commentId can be a top-level comment or a reply.
-    const handleToggleCommentLike = async (cardId, commentId) => {
+    // Takes the CARD OBJECT for the same reason handleToggleLike does — the
+    // optimistic flip lands before the server responds.
+    const handleToggleCommentLike = async (card, commentId) => {
         const uid = user?._id;
         if (!uid) return { success: false, message: 'Not logged in' };
+        if (!card?._id) return { success: false, message: 'Card not found' };
+        const cardId = card._id;
 
         const flip = (likes = []) => {
             const liked = likes.some(id => String(id) === String(uid));
             return liked ? likes.filter(id => String(id) !== String(uid)) : [...likes, uid];
         };
-        const toggle = (card) => {
-            if (card._id !== cardId) return card;
-            const comments = (card.comments || []).map(c => {
-                if (String(c._id) === String(commentId)) return { ...c, likes: flip(c.likes) };
-                if ((c.replies || []).some(r => String(r._id) === String(commentId))) {
+        const toggle = (c) => {
+            if (c._id !== cardId) return c;
+            const comments = (c.comments || []).map(cm => {
+                if (String(cm._id) === String(commentId)) return { ...cm, likes: flip(cm.likes) };
+                if ((cm.replies || []).some(r => String(r._id) === String(commentId))) {
                     return {
-                        ...c,
-                        replies: c.replies.map(r =>
+                        ...cm,
+                        replies: cm.replies.map(r =>
                             String(r._id) === String(commentId) ? { ...r, likes: flip(r.likes) } : r),
                     };
                 }
-                return c;
+                return cm;
             });
-            return { ...card, comments };
+            return { ...c, comments };
         };
-        setRegisteredCards(prev => prev.map(toggle));
+        setRegisteredCards(prev => upsertCard(prev, toggle(prev.find(c => c._id === cardId) ?? card)));
         setFeedCards(prev => prev.map(toggle));
 
         try{
             const response = await likeUnlikeComment(cardId, commentId);
-            setRegisteredCards(prev => prev.map(card => card._id === cardId ? response : card))
-            setFeedCards(prev => prev.map(card => card._id === cardId ? response : card))
+            setRegisteredCards(prev => upsertCard(prev, response))
+            setFeedCards(prev => prev.map(c => c._id === cardId ? response : c))
             return{
                 success: true,
                 message: 'Comment like toggled'
             }
         }
         catch(err){
-            setRegisteredCards(prev => prev.map(toggle))
+            setRegisteredCards(prev => upsertCard(prev, toggle(prev.find(c => c._id === cardId) ?? card)))
             setFeedCards(prev => prev.map(toggle))
             return{
                 success: false,
@@ -267,9 +296,7 @@ const handleCardRegister = async (cardData) => {
     const handleAddReply = async (cardId, commentId, replyText) => {
         try{
             const response = await addReply(cardId, commentId, {replyText});
-            setRegisteredCards(prev => prev.map((card) => {
-                return card._id === cardId ? response : card
-            }))
+            setRegisteredCards(prev => upsertCard(prev, response))
 
             setFeedCards(prev => prev.map((card) => {
                 return card._id === cardId ? response : card
@@ -291,9 +318,7 @@ const handleCardRegister = async (cardData) => {
     const handleRemoveComment = async (cardId, commentId) => {
         try{
             const response = await removeComment(cardId, commentId)
-            setRegisteredCards(prev => prev.map((card) => {
-                return card._id === cardId ? response : card
-            }))
+            setRegisteredCards(prev => upsertCard(prev, response))
 
             setFeedCards(prev => prev.map((card) => {
                 return card._id === cardId ? response : card
@@ -315,9 +340,7 @@ const handleCardRegister = async (cardData) => {
     const handleBanCard = async (cardId) => {
         try{
             const response = await banCard(cardId)
-            setRegisteredCards(prev => prev.map((card) => {
-                return card._id === cardId ? response : card 
-            }));
+            setRegisteredCards(prev => upsertCard(prev, response));
 
             return{
                 success: true,

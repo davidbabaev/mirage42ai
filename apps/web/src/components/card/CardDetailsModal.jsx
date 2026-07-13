@@ -379,7 +379,7 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
                     <Button
                         size='small'
                         startIcon={isLikeByMe(currentCard) ? <ThumbUpIcon/> : <ThumbUpOffAltIcon/>}
-                        onClick={() => toggleLike(currentCard._id)}
+                        onClick={() => toggleLike(currentCard)}
                     >
                         {isLikeByMe(currentCard) ? "Unlike" : "Like"}
                     </Button>

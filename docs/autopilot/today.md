@@ -28,12 +28,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### 2. Overlay-upsert — mutations must not depend on registeredCards being populated
-- What: `handleToggleLike` / `handleToggleCommentLike` / `handleAddComment` (and the other CardsProvider mutations) currently `.map` over `registeredCards` to update in place. With `registeredCards` empty (task 11) those maps are no-ops and optimistic updates vanish on non-feed surfaces.
-- Decisions: Change the mutations to UPSERT — if the card isn't in the overlay, insert it (from the card object the caller already passes after slice 6a) and then apply the mutation; if it is, update in place. Keep the existing optimistic-then-reconcile-then-revert-on-error semantics from the optimistic-like work — do not redesign them.
-- Done when: a web test asserts an optimistic like on a card that is NOT in `registeredCards` still flips instantly and reconciles (i.e. the overlay upserts). Full web suite green.
-- Type: logic
-
 ### 3. Posts tab + MyCardsSection — paginate off the server
 - What: UserProfileMain's posts tab and MyCardsSection render a user's cards via `registeredCards.filter(c => c.userId === id)`. Migrate both to the paginated `getExploreCards(cursor, limit, userId)` endpoint (it already exists).
 - Decisions: Reuse the existing `useCursorPagination` hook + `<InfiniteScroll>` primitive — same pattern as the profile media grid / followers list. Do not hand-roll pagination. Loading skeleton + empty state + end state, consistent with the other paginated lists.

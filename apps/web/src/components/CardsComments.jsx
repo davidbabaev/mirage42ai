@@ -256,7 +256,7 @@ export default function CardsComments({card, users, addComment, removeComment, f
                                     <Tooltip title={isCommentLikedByMe(comment) ? 'Unlike' : 'Like'}>
                                         <IconButton
                                             size='small'
-                                            onClick={() => toggleCommentLike(card._id, comment._id)}
+                                            onClick={() => toggleCommentLike(card, comment._id)}
                                             sx={{color: isCommentLikedByMe(comment) ? 'error.main' : 'text.secondary'}}
                                         >
                                             {isCommentLikedByMe(comment)

@@ -385,7 +385,7 @@ export default function CardItem({
                 <Button
                     size='small'
                     startIcon={isLikeByMe(card) ? <ThumbUpIcon/> : <ThumbUpOffAltIcon/>}
-                    onClick={() => isLoggedIn ? toggleLike(card._id) : setIsLoginPopupOpen(true)}
+                    onClick={() => isLoggedIn ? toggleLike(card) : setIsLoginPopupOpen(true)}
                 >
                     {isLikeByMe(card) ? "Unlike" : "Like"}
                 </Button>
