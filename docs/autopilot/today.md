@@ -28,12 +28,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### 12. CardDetailsPage has no route
-- What: `CardDetailsPage` is imported in App.jsx but has NO registered `<Route>`, so its deep-link path is unreachable. (Card detail currently works only via the modal.)
-- Decisions: Wire the route (`/card/:id`) rather than deleting the page — a shareable, deep-linkable post URL is table stakes for a social app and the OG-share route already points people at post URLs. Reuse the page as-is; it already fetches by id since slice 5.
-- Done when: navigating directly to a post URL renders the post (and a not-found state for a bad id). Browser-verify at 390/1280.
-- Type: logic
-
 ### 13. Save button renders on a banned post
 - What: The save/favorite button still renders on a BANNED post (only admins see banned posts in-feed); clicking it 404s and the optimistic add reverts silently.
 - Decisions: Hide the save button when `card.status !== 'active'` in CardItem. Hide, not disable — a disabled control on a banned post is noise.

@@ -42,6 +42,11 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
+### Dead CardDetailsPage deleted (was: "wire its missing route") — awaiting review
+- Built on branch autopilot/2026-07-13, commit <pending>. `CardDetailsPage` was imported in App.jsx with NO registered `<Route>` — unreachable dead code.
+- DECISION — REVERSED THE PLANNED FIX. today.md said to wire a `/card/:id` route ("a deep-linkable post URL is table stakes"). Investigation showed that URL ALREADY EXISTS and is what the whole app uses: the chat shared-post card, the external share link (`/s/card/:id` → SPA), and the notification deep-links all navigate to `/allcards?card=<id>`, which opens the post modal. Meanwhile CardDetailsPage is a raw unstyled dev page (plain divs, inline styles, a black border) that duplicates the modal badly. Wiring it would have shipped a SECOND, worse-looking deep-link surface for the same content. Deleted the page instead. If a dedicated post route is ever wanted, it should render the real card UI, not this.
+- Also removed its 2 pre-existing lint errors along with it. web 185 green.
+
 ### Retire load-everything providers — task 11: THE DELETION (the epic's payoff) — awaiting review
 - Built on branch autopilot/2026-07-13, commit 8545f90. **The two unbounded mount-time loads are GONE.** `getAllUsers` (every user in the database) is deleted from UsersProvider and `getAllCards` (every post in the database) from CardsProvider. On login the app now loads ONE page of the feed and nothing else.
 - UsersProvider no longer has a users array at all. What's left is the user overlay (task 9) + the admin mutations, which no longer patch a local list — the admin panels are server-paginated and refetch their page. `getUsers` and `syncUser` deleted (syncUser existed only to patch the array); `useBlockUser` and `useFollowUser` updated. `getFollowingCount` deleted — it was dead code (defined, exported, never called).
