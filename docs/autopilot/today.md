@@ -28,12 +28,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### 11. THE DELETION — remove the mount-time global loads
-- What: Delete the mount-time `getAllUsers` from UsersProvider and `getAllCards` from CardsProvider. `registeredCards` becomes the empty-start mutation overlay; the users array goes away (or becomes the overlay from task 9). Remove the now-dead `?? users.find(...)` / `?? registeredCards.filter(...)` fallbacks left behind by tasks 1–10.
-- Decisions: This is the payoff task — do it only after 1–10 are green. If any consumer is still reading a global array, fix that consumer rather than keeping the load.
-- Done when: **on login the network tab shows NO `GET /users` and NO `GET /cards`** — verify in the browser, not just in tests. Feed, profile, chat, notifications, admin, all-users and all-posts pages all still work at 390/1280 with zero console errors. Full API + web suites green.
-- Type: logic
-
 ### 12. CardDetailsPage has no route
 - What: `CardDetailsPage` is imported in App.jsx but has NO registered `<Route>`, so its deep-link path is unreachable. (Card detail currently works only via the modal.)
 - Decisions: Wire the route (`/card/:id`) rather than deleting the page — a shareable, deep-linkable post URL is table stakes for a social app and the OG-share route already points people at post URLs. Reuse the page as-is; it already fetches by id since slice 5.

@@ -27,13 +27,11 @@ import ShareDialog from '../ShareDialog';
 import LikesModal from '../LikesModal';
 import ReportPostDialog from './ReportPostDialog';
 import OnLoadingSkeletonBox from '../OnLoadingSkeletonBox';
-import { useUsersProvider } from '../../providers/UsersProvider';
 
 export default function CardDetailsModal({cardId, onClose, highlightCommentId}) {
 
         const {registeredCards, feedCards} = useCardsProvider()
         const {favoriteCards, handleFavoriteCards} = useFavoriteCards();
-        const {users} = useUsersProvider();
         const {user} = useAuth();
         const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
         const [isExpanded, setIsExpanded] = useState(false)
@@ -100,16 +98,9 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
             return <OnLoadingSkeletonBox />;
         }
         
-        // Prefer the server-embedded post author; fall back to the global users
-        // array until it is retired.
-        const creator = currentCard.creator ?? users.find((userC) => userC._id === currentCard.userId)
-
-        // Use server-embedded likePreview when available (feed cards) to avoid
-        // scanning the global users array. Fall back to the users array for
-        // non-feed surfaces that don't yet carry the embed.
-        const getLikesUsers = currentCard.likePreview != null
-            ? currentCard.likePreview.slice(0, 4)
-            : users.filter((u) => currentCard.likes.includes(u._id)).slice(0, 4);
+        // Both come embedded on the card from the server — no global users array.
+        const creator = currentCard.creator
+        const getLikesUsers = (currentCard.likePreview ?? []).slice(0, 4);
 
   return (
     <Box sx={{
@@ -201,7 +192,7 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
 
                 {/* Right: Follow button + overflow menu */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    {user && user._id !== creator?._id && !isFollowByMe(creator?._id) && (
+                    {user && String(user._id) !== String(currentCard.userId) && !isFollowByMe(creator?._id) && (
                         <Button
                             size='small'
                             variant={'outlined'}
@@ -216,7 +207,7 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
                     )}
 
                     {/* ⋯ overflow — only shown to other users (not own post) */}
-                    {user && user._id !== creator?._id && (
+                    {user && String(user._id) !== String(currentCard.userId) && (
                         <>
                             <IconButton
                                 aria-label="Post options"
@@ -421,7 +412,6 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
                 {/* comments */}
                 <CardsComments
                     card={currentCard}
-                    users={users}
                     addComment={addComment}
                     removeComment={removeComment}
                     focusRef={inputRef}

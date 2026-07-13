@@ -20,7 +20,7 @@ import { useUsersProvider } from '../../providers/UsersProvider'
 export default function DashboardLayout() {
 
     const {user, handleLogout} = useAuth();
-    const {handleDeleteUser, getUsers} = useUsersProvider();  
+    const {handleDeleteUser} = useUsersProvider();  
     const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
     const [editMode, setEditMode] = useState(false);
     const navigate = useNavigate();
@@ -32,8 +32,8 @@ export default function DashboardLayout() {
       
 
     const {getFollowersCount} = useFollowUser();
-    const {registeredCards, refreshFeed, fetchCards} = useCardsProvider();
-    const postsAmount = user?.postsCount ?? registeredCards.filter((card) => card.userId === user._id).length
+    const {refreshFeed} = useCardsProvider();
+    const postsAmount = user?.postsCount ?? 0
 
     if(!user){
         return <OnLoadingSkeletonBox/>
@@ -397,8 +397,8 @@ export default function DashboardLayout() {
                     onClose={() => setConfirmDeleteUser(null)}
                     onConfirm={async () => {
                         await handleDeleteUser(confirmDeleteUser._id);
-                        await getUsers();
-                        await fetchCards();
+                        // No array reloads here any more (they were the two global
+                        // loads) — and this logs you out immediately anyway.
                         await refreshFeed();
                         setConfirmDeleteUser(null);
                         onLogOut();

@@ -14,7 +14,9 @@ import InfiniteScroll from './InfiniteScroll';
 import { useCursorPagination } from '../hooks/useCursorPagination';
 import { getCardComments } from '../services/apiService';
 
-export default function CardsComments({card, users, addComment, removeComment, focusRef, closeOnNav, highlightCommentId, scrollRoot = null}) {
+// No `users` prop any more: every comment and reply carries its `author` embedded
+// from the server, so there is nothing to look up in a global array.
+export default function CardsComments({card, addComment, removeComment, focusRef, closeOnNav, highlightCommentId, scrollRoot = null}) {
 
     const [commentText, setCommentText] = useState('');
     const {user: loggedInUser} = useAuth();
@@ -186,7 +188,7 @@ export default function CardsComments({card, users, addComment, removeComment, f
                 }
             >
             {comments.map((comment) => {
-                const userComment = comment.author ?? users.find(u => u._id === comment.userId);
+                const userComment = comment.author;
                 const isHighlighted = highlightedId === comment._id
 
                 return(
@@ -333,7 +335,7 @@ export default function CardsComments({card, users, addComment, removeComment, f
                                 .slice()
                                 .sort((a,b) => a.createdAt.localeCompare(b.createdAt))
                                 .map((reply) => {
-                                    const replyUser = reply.author ?? users.find(u => u._id === reply.userId);
+                                    const replyUser = reply.author;
                                     return (
                                         <Box key={reply._id} sx={{display: 'flex', gap: 1, mt: 1.5}}>
                                             <Avatar

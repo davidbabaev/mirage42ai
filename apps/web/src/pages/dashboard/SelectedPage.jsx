@@ -1,7 +1,6 @@
 import React from 'react'
 import useSelectedUsers from '../../hooks/useSelectedUsers';
 import { Avatar, Box, Button, Container, Grid, IconButton, Paper, Typography } from '@mui/material';
-import { useCardsProvider } from '../../providers/CardsProvider';
 import UserReusableCard from '../../components/UserReusableCard';
 
 
@@ -9,7 +8,6 @@ import UserReusableCard from '../../components/UserReusableCard';
 export default function SelectedPage() {
 
     const {selectedUsers, handleRemoveUser} = useSelectedUsers()
-    const {registeredCards} = useCardsProvider();
 
   return (
     <Container 
@@ -24,7 +22,7 @@ export default function SelectedPage() {
         {!selectedUsers[0] && (<Typography color='text.secondary'>You didn't selected users yet</Typography>)}
 
         {selectedUsers.map((selected) => {
-            const myCardsCount = selected?.postsCount ?? registeredCards.filter(card => card.userId === selected?._id).length;
+            const myCardsCount = selected?.postsCount ?? 0;
 
             return(
                 <UserReusableCard

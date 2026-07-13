@@ -1,50 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { banUser, deleteUser, getAllUsers, promoteUser} from "../services/apiService";
+import { banUser, deleteUser, promoteUser} from "../services/apiService";
 import { useAuth } from "./AuthProvider";
 
 const UsersContext = createContext();
 
+// This provider used to load EVERY user in the database at app mount (GET /users)
+// and hand the array to the whole app, which then answered questions like "who is
+// this post's author?" and "how many followers does she have?" by scanning it.
+// That is gone: each of those questions is now answered by the server, per request.
+//
+// What's left here is the user OVERLAY (mutation state for users you've acted on)
+// and the admin mutations. There is no global users array any more.
 export function UsersProvider({children}) {
 
-    // state and handlers go here
-        const [users, setUsers] = useState([])
-    const [loading, setLoading] = useState(false)
     const {isLoggedIn} = useAuth();
-
-
-    const getUsers = async () => {
-        // GET /users now requires auth; skip while logged out (avoids a 401).
-        const token = localStorage.getItem('auth-token')
-        if(!token) return;
-        setLoading(true)
-        try{
-            const response = await getAllUsers();
-            setUsers(response.map((user)=> {
-                return{
-                    ...user,
-                    profilePicture: user.profilePicture || 'https://images.unsplash.com/photo-1507608869274-d3177c8bb4c7?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
-                }
-            }));
-        }
-        catch(err){
-            console.log(err.message);
-        }
-        finally{
-            setLoading(false)
-        }
-    }
-
-    // Patch a single user in the list in place (e.g. after follow/unfollow),
-    // so follower/following counts derived from `users` stay correct without
-    // re-fetching everyone. Keeps the existing profilePicture fallback.
-    const syncUser = (updatedUser) => {
-        if (!updatedUser?._id) return;
-        setUsers(prev => prev.map(u => (
-            u._id === updatedUser._id
-                ? { ...u, ...updatedUser, profilePicture: updatedUser.profilePicture || u.profilePicture }
-                : u
-        )));
-    }
 
     // ── The user overlay ────────────────────────────────────────────────────
     // Mutation state for OTHER users, keyed by id — the counterpart of the card
@@ -67,10 +36,11 @@ export function UsersProvider({children}) {
         }));
     }
 
+    // The admin mutations. They no longer patch a local array — the admin panels are
+    // server-paginated and refetch the current page after a mutation.
     const handleDeleteUser = async (userId) => {
         try{
             await deleteUser(userId);
-            setUsers(users.filter(user => user._id !== userId))
 
             return{
                 success: true,
@@ -87,10 +57,7 @@ export function UsersProvider({children}) {
 
     const handleBanUser = async (userId) => {
         try{
-            const response = await banUser(userId)
-            setUsers(prev => prev.map((user) => {
-                return user._id === userId ? response : user
-            }))
+            await banUser(userId)
 
             return{
                 success: true,
@@ -107,10 +74,7 @@ export function UsersProvider({children}) {
 
     const handlePromoteUser = async (userId) => {
         try{
-            const response = await promoteUser(userId);
-            setUsers(prev => prev.map((user) => {
-                return user._id === userId ? response : user;
-            }))
+            await promoteUser(userId);
 
             return{
                 success: true,
@@ -125,23 +89,15 @@ export function UsersProvider({children}) {
         }
     }
 
-    // Fetch the users list once authenticated, and re-fetch on login.
-    // On logout, drop the previous user's data so it isn't left in state.
+    // Drop the previous user's mutation state on logout. (There is no users list to
+    // fetch on login any more — that was the app-mount load of the entire user
+    // collection, and it is gone.)
     useEffect(() => {
-        if(isLoggedIn){
-            getUsers();
-        } else {
-            setUsers([]);
-            setUserOverlay({});
-        }
+        if(!isLoggedIn) setUserOverlay({});
     }, [isLoggedIn])
 
     return(
         <UsersContext.Provider value={{
-            users,
-            loading,
-            getUsers,
-            syncUser,
             userOverlay,
             patchUser,
             handleDeleteUser,

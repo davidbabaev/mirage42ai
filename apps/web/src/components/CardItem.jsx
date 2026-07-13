@@ -22,7 +22,6 @@ import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined';
 import ShareDialog from './ShareDialog';
 import LikesModal from './LikesModal';
 import ReportPostDialog from './card/ReportPostDialog';
-import { useUsersProvider } from '../providers/UsersProvider';
 
 export default function CardItem({
     card, 
@@ -54,19 +53,11 @@ export default function CardItem({
     const navigate = useNavigate();
     const {toggleLike, isLikeByMe, getLikeCount} = useLikedCards()
     const {user, isLoggedIn} = useAuth();
-    const {users} = useUsersProvider(); 
-    // const {favoriteCards ,handleFavoriteCards} = useFavoriteCards();
 
-    // Prefer the server-embedded post author; fall back to the global users array
-    // for any surface not yet enriched (removed once the array is retired).
-    const creator = card.creator ?? users.find(u => u._id === card.userId);
-
-    // Use server-embedded likePreview when available (feed cards) to avoid
-    // scanning the global users array. Fall back to the users array for non-feed
-    // surfaces (explore, profile grid) that don't yet carry the embed.
-    const getLikesUsers = card.likePreview != null
-        ? card.likePreview.slice(0, 4)
-        : users.filter((u) => card.likes.includes(u._id)).slice(0, 4);
+    // Both come embedded on the card from the server. There is no global users
+    // array to fall back to any more — and none is needed.
+    const creator = card.creator;
+    const getLikesUsers = (card.likePreview ?? []).slice(0, 4);
 
     const cardRef = useRef(null);
 
@@ -159,9 +150,12 @@ export default function CardItem({
                 </Box>
 
 
-                {/* Right: Follow button + overflow menu */}
+                {/* Right: Follow button + overflow menu.
+                    The own-post checks key on card.userId, not creator._id — the
+                    card's author id is always present, so "is this mine?" can never
+                    depend on whether the author object resolved. */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, m: 1 }}>
-                    {user && user._id !== creator?._id && !isFollowByMe(creator?._id) && (
+                    {user && String(user._id) !== String(card.userId) && !isFollowByMe(creator?._id) && (
                         <Button
                             size='small'
                             variant={'outlined'}
@@ -182,7 +176,7 @@ export default function CardItem({
                     )}
 
                     {/* ⋯ overflow — only shown to other users (not own post) */}
-                    {user && user._id !== creator?._id && (
+                    {user && String(user._id) !== String(card.userId) && (
                         <>
                             <IconButton
                                 aria-label="Post options"
@@ -428,7 +422,6 @@ export default function CardItem({
             {openCommentCardId === card._id && (
                 <CardsComments
                     card = {card}
-                    users={users}
                     addComment={addComment}
                     removeComment = {removeComment}
                     focusRef = {inputRef}

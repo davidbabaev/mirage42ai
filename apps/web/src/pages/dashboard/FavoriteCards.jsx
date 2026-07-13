@@ -6,13 +6,11 @@ import React, { useState } from 'react'
 import { Avatar, Box, Button, Chip, Typography, useTheme } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ExpandCircleDownIcon from '@mui/icons-material/ExpandCircleDown';
-import { useUsersProvider } from '../../providers/UsersProvider';
 
 
 export default function FavoriteCards() {
 
     const {favoriteCards, handleRemoveCard} = useFavoriteCards();
-    const {users} = useUsersProvider()
     const navigate = useNavigate();
     
     const [count, setCount] = useState(5);
@@ -25,9 +23,9 @@ export default function FavoriteCards() {
         {!countedRegisterCards[0] && (<Typography color='text.secondary'>You didn't selected users yet</Typography>)}
 
         {countedRegisterCards.map((favCard) => {
-            // Prefer the server-embedded post author; fall back to the global
-            // users array until it is retired.
-            const currentUser = favCard.creator ?? users.find(user => favCard.userId === user._id)
+            // Embedded on the card by the server. (This used to silently DROP a
+            // saved post whose author wasn't in the loaded users array.)
+            const currentUser = favCard.creator
             if(!currentUser) return;
 
             return(

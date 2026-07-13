@@ -11,7 +11,7 @@ const inFlightFollows = new Set();
 function useFollowUser() {
 
   const{ handleToggleFollow, user} = useAuth();
-  const {users, syncUser, userOverlay, patchUser} = useUsersProvider();
+  const {userOverlay, patchUser} = useUsersProvider();
   const {removeAuthorFromFeed, addAuthorToFeed} = useCardsProvider();
 
     // toggle Follow
@@ -29,11 +29,11 @@ function useFollowUser() {
         if(inFlightFollows.has(userId)) return;
         inFlightFollows.add(userId);
         try {
-            // Update in place: patch the current user in the users list with the
-            // server's response, so the button and counts update without a full
-            // re-fetch (which caused re-renders / scroll jump).
+            // The server returns MY updated record; AuthProvider stores it, so the
+            // follow button flips without a refetch (no re-render storm, no scroll
+            // jump). It used to also be patched into the global users array — that
+            // array is gone; the target's follower count goes in the overlay below.
             const updatedUser = await handleToggleFollow(userId);
-            syncUser(updatedUser);
             if (!updatedUser) return;
 
             const nowFollowing = (updatedUser.following || []).includes(userId);
@@ -65,19 +65,12 @@ function useFollowUser() {
         return (user?.following || []).includes(userId)
     }
 
-    // get following Count — distinct-safe so a corrupt array (duplicate ids)
-    // can never read as inflated.
-    const getFollowingCount = (userId) => {
-        const foundUser = users.find(user => user._id === userId);
-        if(!foundUser) return 0;
-        return new Set(foundUser?.following || []).size
-    }
-
-    // Takes the user OBJECT (or an id). Resolution order:
+    // Takes the user OBJECT. Resolution order:
     //   1. the overlay — carries the count I just changed by following/unfollowing,
     //      so it reflects on every surface without a refetch;
-    //   2. the server-computed `followersCount` on the user object itself;
-    //   3. (legacy) a scan of the loaded users array — removed with the global load.
+    //   2. the server-computed `followersCount` on the user object itself.
+    // (The third source used to be a scan of the fully-loaded users array. That
+    // array is gone, and with it the reason this ever needed one.)
     const getFollowersCount = (userOrId) => {
         const id = (userOrId && typeof userOrId === 'object') ? userOrId._id : userOrId;
 
@@ -88,11 +81,10 @@ function useFollowUser() {
             return userOrId.followersCount;
         }
 
-        if(!users) return 0;
-        return users.filter(userU => (userU.following || []).includes(id)).length;
+        return 0;
     }
 
-  return {toggleFollow, isFollowByMe, getFollowingCount, getFollowersCount} 
+  return {toggleFollow, isFollowByMe, getFollowersCount}
 }
 
 export default useFollowUser;

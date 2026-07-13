@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useCallback, useEffect, useState } from 'react'
-import { getAllCards, createCard, deleteCard, updateCard, likeUnlikeCard, addComment, removeComment, likeUnlikeComment, addReply, getFeedCards, getExploreCards, banCard} from '../services/apiService';
+import { createCard, deleteCard, updateCard, likeUnlikeCard, addComment, removeComment, likeUnlikeComment, addReply, getFeedCards, getExploreCards, banCard} from '../services/apiService';
 import { useCursorPagination } from '../hooks/useCursorPagination';
 import { useAuth } from './AuthProvider';
 
@@ -53,20 +53,6 @@ const upsertCard = (list, card) => {
     return next;
 };
 
-const fetchCards = async () => {
-    // Cards are only shown to signed-in users now (the public pages are walled),
-    // so skip the request while logged out instead of firing a wasted GET /cards.
-    const token = localStorage.getItem('auth-token')
-    if(!token) return;
-    try{
-        const response = await getAllCards();
-        setRegisteredCards(response);
-    }
-    catch(err){
-        console.log(err.message);
-    }
-}
-
 // Reload the feed from the first page. Kept as `refreshFeed` because several
 // screens call it after a mutation (post/delete/ban/edit). Guards on token so a
 // logged-out call is a no-op.
@@ -76,11 +62,14 @@ const refreshFeed = useCallback(async () => {
     await refreshFeedPages();
 }, [refreshFeedPages]);
 
-// Fetch cards + feed once authenticated, and re-fetch on login. On logout,
-// drop the previous user's data so it isn't left sitting in state.
+// Load the FEED once authenticated (one page, cursor-paginated), and re-load on
+// login. On logout, drop the previous user's data so it isn't left in state.
+//
+// There is no getAllCards() here any more. This used to fetch EVERY card in the
+// database at app mount so the client could answer questions like "how many likes
+// does this card have?" locally. The server answers those now, per card.
 useEffect(() => {
     if(isLoggedIn){
-        fetchCards();
         refreshFeed();
     } else {
         setRegisteredCards([]);
@@ -392,7 +381,6 @@ const handleCardRegister = async (cardData) => {
         removeAuthorFromFeed,
         addAuthorToFeed,
         feedCards,
-        fetchCards,
         handleBanCard,
     }}>
         {children}

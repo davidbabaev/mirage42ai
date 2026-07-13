@@ -14,14 +14,12 @@ import useCommentsCards from '../hooks/useCommentsCards';
 import getTimeAgo from '../utils/getTimeAgo';
 import MediaDisplay from '../components/MediaDisplay';
 import OnLoadingSkeletonBox from '../components/OnLoadingSkeletonBox';
-import { useUsersProvider } from '../providers/UsersProvider';
 
 export default function CardDetailsPage() {
 
     const {id} = useParams();
     const {registeredCards, feedCards} = useCardsProvider()
     const {favoriteCards, handleFavoriteCards} = useFavoriteCards();
-    const {users} = useUsersProvider();
     const {user} = useAuth();
 
     const [isOpen, setIsOpen] = useState(false);
@@ -69,9 +67,8 @@ export default function CardDetailsPage() {
         return <OnLoadingSkeletonBox />;
     }
 
-    // Prefer the server-embedded post author; fall back to the global users array
-    // until it is retired.
-    const creator = currentCard.creator ?? users.find((userC) => userC._id === currentCard.userId)
+    // Embedded on the card by the server — no global users array to look it up in.
+    const creator = currentCard.creator
     
   return (
     <div>
@@ -155,7 +152,6 @@ export default function CardDetailsPage() {
                 { currentCard._id && (  
                     <CardsComments
                         card = {currentCard}
-                        users={users}
                         addComment={addComment}
                         removeComment = {removeComment}
                     />

@@ -5,7 +5,6 @@ import { Box, Button, Checkbox, Chip, Container, Grid, IconButton, InputAdornmen
 import UsersPageSorts from '../components/UsersPageSorts';
 import SearchIcon from '@mui/icons-material/Search';
 import UserReusableCard from '../components/UserReusableCard';
-import { useCardsProvider } from '../providers/CardsProvider';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import CloseIcon from '@mui/icons-material/Close';
 import { useAuth } from '../providers/AuthProvider';
@@ -20,7 +19,6 @@ function UsersPage() {
     const {selectedUsers, selectHandleUser, handleRemoveUser} = useSelectedUsers();
     const [search, setSearch] = useState('')
     const debouncedSearch = useDebounce(search, 400);
-    const {registeredCards} = useCardsProvider();
 
     // sorts
     const [ageSort, setAgeSort] = useState('');
@@ -403,7 +401,7 @@ function UsersPage() {
                             }}
                         >
                             {displayUsers.map((u) => {
-                                const myCardsCount = u?.postsCount ?? registeredCards.filter(card => card.userId === u?._id).length;
+                                const myCardsCount = u?.postsCount ?? 0;
                                 return(
                                     <UserReusableCard
                                         key={u._id}

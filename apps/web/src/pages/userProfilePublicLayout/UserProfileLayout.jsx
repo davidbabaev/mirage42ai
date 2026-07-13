@@ -22,14 +22,12 @@ import UserProfileMedia from './UserProfileMedia';
 import LoginPopup from '../../components/LoginPopup';
 import OnLoadingSkeletonBox from '../../components/OnLoadingSkeletonBox';
 import LockedProfile from './LockedProfile';
-import { useUsersProvider } from '../../providers/UsersProvider';
 import { getSingleUser } from '../../services/apiService';
 import { ProfileSubjectContext } from './profileSubjectContext';
 
 export default function UserProfileLayout() {
 
     const {id} = useParams();
-    const{getUsers} = useUsersProvider();
     const {user, isLoggedIn} = useAuth();
     const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
     function onCloseLoginPopup(){
@@ -87,7 +85,6 @@ export default function UserProfileLayout() {
             <LockedProfile
                 onUnblock={async () => {
                     await toggleBlock(id);
-                    await getUsers();          // refresh so they reappear normally
                     navigate('/dashboard/myblocked');
                 }}
             />
