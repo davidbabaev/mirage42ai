@@ -28,18 +28,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### 13. Save button renders on a banned post
-- What: The save/favorite button still renders on a BANNED post (only admins see banned posts in-feed); clicking it 404s and the optimistic add reverts silently.
-- Decisions: Hide the save button when `card.status !== 'active'` in CardItem. Hide, not disable — a disabled control on a banned post is noise.
-- Done when: no save button on a banned post; still present and working on active posts.
-- Type: visual
-
-### 14. `?card=` deep-link modal won't close
-- What: A post modal opened via a `?card=` deep-link URL on `/allcards` doesn't close on the X — a sync effect re-applies the query param. Normal tap-to-open closes fine.
-- Decisions: On close, clear the `card` param from the URL (replace, not push, so Back doesn't reopen it) and gate the sync effect so it only opens from the param on mount / param CHANGE, not on every render.
-- Done when: opening a post from a `?card=` URL and clicking X closes the modal and leaves the param cleared; Back doesn't reopen it. Browser-verify at 390/1280.
-- Type: logic
-
 ---
 
 ## After this run (own orders, in this sequence)

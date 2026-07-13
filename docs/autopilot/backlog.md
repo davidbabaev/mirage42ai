@@ -42,6 +42,16 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
+### `?card=` deep-linked post modal wouldn't close — awaiting review
+- Built on branch autopilot/2026-07-13, commit <pending>. A post opened from a deep link (`/allcards?card=<id>` — what the chat shared-post card, the external share link and the notification links all use) could not be closed: the sync effect re-applied the still-present query param and immediately reopened the modal. Tap-to-open closed fine, so this only ever hit people arriving from a shared link — the exact path a new visitor takes.
+- Two-part fix: the effect now applies the param only when it CHANGES (tracked in a ref), and closing the modal CLEARS `card` + `comment` from the URL with `replace: true`, so the post URL doesn't linger and Back doesn't step onto the reopened post.
+- web 185 green.
+
+### Save button rendered on a banned post — awaiting review
+- Built on branch autopilot/2026-07-13, commit b88ca90. The save/favorite button rendered on a BANNED post (only admins see one in the feed). The server refuses to save a banned post, so clicking it 404'd and the optimistic add reverted silently — a control that could only ever fail.
+- Hidden now, not disabled: a dead control on a removed post is just noise. A card with NO status set is treated as active, which is the normal case for every ordinary post.
+- Tests: new apps/web/tests/BannedPostSaveButton.test.jsx (shown on an active post, shown when status is absent, HIDDEN on a banned post). web 185 green.
+
 ### Dead CardDetailsPage deleted (was: "wire its missing route") — awaiting review
 - Built on branch autopilot/2026-07-13, commit eb5d0ab. `CardDetailsPage` was imported in App.jsx with NO registered `<Route>` — unreachable dead code.
 - DECISION — REVERSED THE PLANNED FIX. today.md said to wire a `/card/:id` route ("a deep-linkable post URL is table stakes"). Investigation showed that URL ALREADY EXISTS and is what the whole app uses: the chat shared-post card, the external share link (`/s/card/:id` → SPA), and the notification deep-links all navigate to `/allcards?card=<id>`, which opens the post modal. Meanwhile CardDetailsPage is a raw unstyled dev page (plain divs, inline styles, a black border) that duplicates the modal badly. Wiring it would have shipped a SECOND, worse-looking deep-link surface for the same content. Deleted the page instead. If a dedicated post route is ever wanted, it should render the real card UI, not this.

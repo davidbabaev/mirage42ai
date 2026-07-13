@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import useDebounce from '../hooks/useDebounce';
@@ -45,13 +45,35 @@ export default function AllCardsPage() {
 
     // Deep link from a shared post (/allcards?card=<id>) opens that post's modal.
     // Optional ?comment=<id> scrolls to + highlights that comment inside the modal.
-    const [searchParams] = useSearchParams();
+    //
+    // The param is applied only when it CHANGES. Re-applying it on every run is what
+    // made a deep-linked modal impossible to close: you'd close it, the effect would
+    // run again with the same ?card= still in the URL, and immediately reopen it.
+    const [searchParams, setSearchParams] = useSearchParams();
+    const appliedCardParam = useRef(undefined);
+
     useEffect(() => {
         const cardParam = searchParams.get('card');
         const commentParam = searchParams.get('comment');
+        if (appliedCardParam.current === cardParam) return;
+        appliedCardParam.current = cardParam;
         if (cardParam) setSelectedCardId(cardParam);
         setHighlightCommentId(commentParam || null);
     }, [searchParams]);
+
+    // Closing the modal also clears the deep-link params, so the post URL doesn't
+    // linger and reopen. `replace` so Back doesn't step onto the reopened post.
+    const closeCardModal = () => {
+        setSelectedCardId(null);
+        setHighlightCommentId(null);
+        if (searchParams.get('card') || searchParams.get('comment')) {
+            const next = new URLSearchParams(searchParams);
+            next.delete('card');
+            next.delete('comment');
+            appliedCardParam.current = null;
+            setSearchParams(next, { replace: true });
+        }
+    };
 
     // Mobile:
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -637,7 +659,7 @@ export default function AllCardsPage() {
                 {selectedCardId && (
                     <CardPopupModal
                         cardId={selectedCardId}
-                        onClose={() => { setSelectedCardId(null); setHighlightCommentId(null); }}
+                        onClose={closeCardModal}
                         highlightCommentId={highlightCommentId}
                     />
                 )}
