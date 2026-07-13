@@ -37,6 +37,14 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
+### Retire load-everything providers — task 8: PYMK + mutual friends move server-side — awaiting review
+- Built on branch autopilot/2026-07-13, commit <pending>. Two surfaces derived people-lists by walking the global users array.
+- FEED "People you may know": computed friends-of-friends client-side (everyone I follow → everyone THEY follow → dedupe → exclude self/already-following). `GET /users/suggested` already did exactly that server-side — block-aware and ranked by follower count — so FeedPage just calls it. Re-pulled when my following set settles, so following someone drops them out of the suggestions. Net: a whole client-side graph walk deleted, and `useUsersProvider` is gone from FeedPage.
+- PROFILE "mutual connections": new endpoint `GET /users/:id/mutual` intersects the two `following` lists SERVER-side (one indexed query, keyset-paginated, block-aware both directions, 404 on a hidden/absent profile) rather than shipping both lists to the client. Mirrors getFollowing exactly.
+- PROFILE "people they follow that you don't": uses the existing paginated `GET /users/:id/following`, filtered against MY following list — which lives on my own user object, not the global array. No new endpoint needed.
+- `useUsersProvider` is now gone from UserProfileMain as well.
+- Tests: new apps/api/tests/mutual-following.test.js (7 cases — returns only people we both follow; excludes people only I follow and only they follow; symmetric from either side; empty list rather than an error when there's no overlap; 404 for a ghost user; 401 without auth; and pagination with no overlap between pages). api 375 green; web 175 green; API lint clean, no new web lint.
+
 ### Retire load-everything providers — task 7: /allcards creator filter searches the server — awaiting review
 - Built on branch autopilot/2026-07-13, commit d961cb0. The creator picker filtered the FULLY-LOADED users array client-side — unusable at 100k+ users, and dependent on the global load being retired. It now queries `GET /users/search` (the same endpoint the admin panel's creator search uses), debounced at 300ms, with "Searching…" / "No people found" states.
 - The selected creator is now held as an OBJECT, not just an id: the active-filter chip needs their name and there is no global array left to look it up in. `useUsersProvider` is gone from this page entirely.

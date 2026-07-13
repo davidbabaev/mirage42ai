@@ -4,7 +4,7 @@ import { useAuth } from '../../providers/AuthProvider';
 import CardItem from '../../components/CardItem';
 import InfiniteScroll from '../../components/InfiniteScroll';
 import { useCursorPagination } from '../../hooks/useCursorPagination';
-import { getExploreCards } from '../../services/apiService';
+import { getExploreCards, getFollowing, getMutualFollowing } from '../../services/apiService';
 import CardPopupModal from '../../components/card/CardPopupModal';
 import CreateCardTrigger from '../../components/CreateCardTrigger';
 import CreateCardModal from '../../components/CreateCardModal';
@@ -15,14 +15,12 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import LoginPopup from '../../components/LoginPopup';
 import useFavoriteCards from '../../hooks/useFavoriteCards';
 import OnLoadingSkeletonBox from '../../components/OnLoadingSkeletonBox';
-import { useUsersProvider } from '../../providers/UsersProvider';
 import { useProfileSubject } from './profileSubjectContext';
 
 
 export default function UserProfileMain() {
 
     const {id} = useParams();
-    const {users} = useUsersProvider();
     const {user, isLoggedIn} = useAuth();
     const navigate = useNavigate();
     const {favoriteCards ,handleFavoriteCards, handleRemoveCard} = useFavoriteCards();
@@ -75,23 +73,41 @@ export default function UserProfileMain() {
     // no scan of a fully-loaded users array.
     const userProfile = useProfileSubject();
 
+    // Mutual connections (people we BOTH follow) and "people they follow that you
+    // don't". Both used to be derived by filtering the global users array against
+    // two `following` lists. The intersection is now computed SERVER-side; the
+    // suggestions come from their (paginated) following list, minus the people I
+    // already follow — my own following list is on my user object, not the array.
+    const [mutualPeople, setMutualPeople] = useState([]);
+    const [suggestionsPeople, setSuggestionsPeople] = useState([]);
+
+    useEffect(() => {
+        if(!id) return;
+        let cancelled = false;
+
+        getMutualFollowing(id, undefined, 20)
+            .then(res => { if(!cancelled) setMutualPeople(res?.items ?? []); })
+            .catch(() => { if(!cancelled) setMutualPeople([]); });
+
+        getFollowing(id, undefined, 20)
+            .then(res => {
+                if(cancelled) return;
+                const mine = new Set((user?.following || []).map(String));
+                setSuggestionsPeople(
+                    (res?.items ?? []).filter(u =>
+                        !mine.has(String(u._id)) && String(u._id) !== String(user?._id)
+                    )
+                );
+            })
+            .catch(() => { if(!cancelled) setSuggestionsPeople([]); });
+
+        return () => { cancelled = true; };
+    }, [id, user?.following, user?._id]);
+
     if(!userProfile){
         return <OnLoadingSkeletonBox/>
     }
 
-    const mutualPeople = users.filter((u) => 
-        user?.following?.includes(u._id) &&
-        userProfile?.following?.includes(u._id)
-    )
-
-    // people that this user follow on,
-    // and me not following
-    const suggestionsPeople = users.filter((u) => 
-        userProfile?.following?.includes(u._id) &&
-        !user?.following?.includes(u._id) &&
-        u._id !== user?._id
-    )
-    
     const userData = [
         {label: 'Job', value: userProfile?.job},
         {label: 'Location', value: userProfile?.address.country + ', ' + userProfile?.address.city},

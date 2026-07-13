@@ -17,7 +17,7 @@ import MobileSuggestions from '../components/MobileSuggestions';
 import PeopleModal from '../components/PeopleModal';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import useFavoriteCards from '../hooks/useFavoriteCards';
-import { useUsersProvider } from '../providers/UsersProvider';
+import { getSuggestedUsers } from '../services/apiService';
 import FolderIcon from '@mui/icons-material/Folder';
 import isProfileIncomplete from '../utils/isProfileIncomplete';
 
@@ -33,7 +33,6 @@ export default function FeedPage() {
         feedError,
     } = useCardsProvider();
     const {user} = useAuth();
-    const {users} = useUsersProvider();
     const{getFollowersCount, toggleFollow, isFollowByMe} = useFollowUser();
     const navigate = useNavigate();
     const debounceFollowing = useDebounce(user?.following, 3000);
@@ -57,8 +56,6 @@ export default function FeedPage() {
     const [suggestModalOpen, setSuggestModalOpen] = useState(false);
     
     // ----------------------------------------------------
-
-    const userFollowing = users.filter(userU => debounceFollowing?.includes(userU._id))
 
     const {registeredCards} = useCardsProvider();
 
@@ -85,15 +82,21 @@ export default function FeedPage() {
         }
     }, [loadMoreFeed]);
 
-    const friendsOfFriends = userFollowing.map((user) => {
-        const somt = user.following;
-        
-    const usersdata = users.filter(userU => somt.includes(userU._id))
-        return usersdata
-    }).flat().filter(userU => userU._id !== user._id).filter(userU => !debounceFollowing?.includes(userU._id));
-    
-    const uniqueFriendsOfFriends = 
-    [...new Map(friendsOfFriends.map((u => {return [u._id, u]}))).values()]
+    // "People you may know" — friends-of-friends. This was computed client-side by
+    // walking the global users array (every user I follow, then everyone THEY
+    // follow). GET /users/suggested already does exactly that server-side, ranked by
+    // follower count and block-aware, so just ask for it.
+    const [uniqueFriendsOfFriends, setSuggestedPeople] = useState([]);
+
+    useEffect(() => {
+        let cancelled = false;
+        getSuggestedUsers(20)
+            .then(res => { if(!cancelled) setSuggestedPeople(res?.users ?? res?.items ?? []); })
+            .catch(() => { if(!cancelled) setSuggestedPeople([]); });
+        return () => { cancelled = true; };
+        // Re-pull when my following set settles (following someone should drop them
+        // out of the suggestions).
+    }, [debounceFollowing]);
 
     return(
         <Container maxWidth='lg' sx={{py:{xs: 0, md:3}}}>

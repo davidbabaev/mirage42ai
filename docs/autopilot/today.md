@@ -28,12 +28,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### 8. PYMK / mutual friends — server-side
-- What: FeedPage and UserProfileMain compute "people you may know" / mutual friends by `users.filter(...)` over the global array.
-- Decisions: `getSuggestedUsers` already exists — use it for PYMK. For MUTUAL friends, add a server endpoint (e.g. `GET /users/:id/mutual`) that intersects the two following sets server-side with one query — do not pull both lists to the client and intersect there. Paginate it like the other people lists.
-- Done when: both surfaces render with the users array empty; API test covers the mutual intersection (including the empty case). Browser-verify at 390/1280.
-- Type: logic
-
 ### 9. toggleFollow optimistic update — user overlay
 - What: `toggleFollow` calls `syncUser` to patch the global users array so follow counts stay consistent across surfaces. That mechanism dies with the array.
 - Decisions: Introduce a small user-overlay in UsersProvider (the same shape as the card overlay: a map of id → patched user, empty at start) that mutations write to and consumers read through with `overlay[id] ?? serverUser`. Keep follow optimistic — do not regress it to await-then-refetch.

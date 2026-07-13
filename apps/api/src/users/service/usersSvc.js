@@ -581,6 +581,42 @@ const getFollowers = async (targetId, requesterId, isAdmin, opts = {}) => {
     return { items, nextCursor };
 };
 
+// GET /users/:id/mutual — people BOTH the requester and the target follow.
+// The intersection is computed here, on the two `following` arrays, rather than
+// shipping both full lists to the client to intersect (which is what the profile
+// page used to do against the global users array). Same block-awareness and
+// keyset pagination as getFollowing.
+const getMutualFollowing = async (targetId, requesterId, isAdmin, opts = {}) => {
+    const { target, requester } = await _resolveProfileAccess(targetId, requesterId);
+    if (!requester) return { items: [], nextCursor: null };
+
+    const pageSize = normalizeLimit(opts.limit);
+    let decoded = null;
+    if (opts.cursor) {
+        decoded = decodeCursor(opts.cursor);
+        if (!decoded) throw createError(400, 'Invalid cursor');
+    }
+
+    const mine = new Set((requester.following || []).map(String));
+    const blockedByMe = (requester.blocked || []).map(String);
+    // The intersection, minus anyone I've blocked and minus myself.
+    const mutualIds = (target.following || [])
+        .map(String)
+        .filter(id => mine.has(id) && !blockedByMe.includes(id) && id !== String(requesterId));
+
+    if (!mutualIds.length) return { items: [], nextCursor: null };
+
+    const baseFilter = {
+        _id: { $in: mutualIds },
+        blocked: { $ne: requesterId },   // and minus anyone who blocked me
+    };
+
+    const { page, nextCursor } = await runKeysetPage(User, baseFilter, decoded, pageSize);
+    const items = page.map(user => projectUser(user, requesterId, isAdmin));
+
+    return { items, nextCursor };
+};
+
 // GET /users/:id/following — paginated list of users the target follows.
 // If the target profile is hidden from the requester (blocked either way) → 404.
 // Block-aware relative to the REQUESTER: hidden-either-way users are excluded.
@@ -859,6 +895,7 @@ module.exports = {
     loginUser,
     pickSafeUserFields,
     attachOwnCounts,
+    getMutualFollowing,
     followUser,
     blockUser,
     addFavorite,

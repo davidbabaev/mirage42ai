@@ -42,6 +42,9 @@ vi.mock('../src/providers/CardsProvider', () => ({
 // cards array), so the page fetches its own posts on mount.
 vi.mock('../src/services/apiService', () => ({
     getExploreCards: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+    // Mutual connections + "people they follow that you don't" are server-side now.
+    getMutualFollowing: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+    getFollowing: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
 }));
 vi.mock('../src/hooks/useFollowUser', () => ({
     default: () => ({

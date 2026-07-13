@@ -152,6 +152,10 @@ export const getFollowers = (userId, cursor, limit = 15) =>
     httpRequest(`/users/${userId}/followers?${pageParams(cursor, limit)}`, 'GET');
 export const getFollowing = (userId, cursor, limit = 15) =>
     httpRequest(`/users/${userId}/following?${pageParams(cursor, limit)}`, 'GET');
+// People BOTH you and this user follow. The intersection is computed server-side —
+// the profile page used to derive it by filtering the global users array.
+export const getMutualFollowing = (userId, cursor, limit = 15) =>
+    httpRequest(`/users/${userId}/mutual?${pageParams(cursor, limit)}`, 'GET');
 
 // Server-driven search/sort/filter + pagination for the browse pages.
 // Array filters (countries, categories) are sent comma-joined. → { items, nextCursor }.

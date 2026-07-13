@@ -23,6 +23,7 @@ const {
     getUsersPage,
     getFollowers,
     getFollowing,
+    getMutualFollowing,
     getUsersSearch,
     getUserCountriesList,
     addFavorite,
@@ -233,6 +234,21 @@ router.get('/users/:id/followers', auth, async (req, res) => {
 router.get('/users/:id/following', auth, async (req, res) => {
     try {
         const result = await getFollowing(req.params.id, req.user.userId, req.user.isAdmin, {
+            cursor: req.query.cursor,
+            limit: req.query.limit,
+        });
+        res.send(result);
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+// GET /users/:id/mutual — cursor-paginated list of people BOTH the requester and
+// the target follow. Intersection computed server-side; declared before /users/:id
+// so the more-specific path wins. Block-aware relative to the requester.
+router.get('/users/:id/mutual', auth, async (req, res) => {
+    try {
+        const result = await getMutualFollowing(req.params.id, req.user.userId, req.user.isAdmin, {
             cursor: req.query.cursor,
             limit: req.query.limit,
         });

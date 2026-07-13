@@ -34,6 +34,7 @@ vi.mock('../src/services/apiService', () => ({
     getExploreCards: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
     getFollowers: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
     getFollowing: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+    getMutualFollowing: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
 }));
 vi.mock('../src/providers/AuthProvider', () => ({
     useAuth: () => ({ user: { _id: 'me' }, isLoggedIn: true }),
