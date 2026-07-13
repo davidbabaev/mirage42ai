@@ -12,7 +12,7 @@ import UserRegistrationByMonths from './components/UserRegistrationByMonths';
 import CountriesAnalytics from './components/CountriesAnalytics';
 import { Box, Typography } from '@mui/material';
 
-export default function AdminOverViewPanel() {
+export default function AdminOverviewPanel() {
   return (
     <Box sx={{p:{xs: 2,md:3}, maxWidth: '100%'}}>
 

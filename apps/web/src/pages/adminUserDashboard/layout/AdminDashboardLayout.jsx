@@ -1,6 +1,6 @@
 import { Link, Route, Routes } from "react-router-dom";
 import AdminUsersPanel from "../AdminUsersPanel";
-import AdminOverViewPanel from "../AdminOverViewPanel";
+import AdminOverviewPanel from "../AdminOverviewPanel";
 import AdminCardsPanel from "../AdminCardsPanel";
 import AdminAnalyticsProvider from "../AdminAnalyticsProvider";
 import { useState } from "react";
@@ -28,7 +28,7 @@ export default function AdminDashboardLayout() {
                     app mount for every visitor by the global providers. */}
                 <Route path="/overviewpanel" element={
                   <AdminAnalyticsProvider>
-                    <AdminOverViewPanel/>
+                    <AdminOverviewPanel/>
                   </AdminAnalyticsProvider>
                 }/>
                 <Route path="/cardspanel" element={<AdminCardsPanel/>}/>

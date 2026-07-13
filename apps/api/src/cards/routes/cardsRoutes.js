@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const {handleError, createError} = require('../../utils/handleErrors');
-const joiSchema = require('../validation/Joi/validateCardsWithJoi');
+const joiSchema = require('../validation/joi/validateCardsWithJoi');
 const {upload} = require('../../middlewares/multer');
 const uploadToCloudinary = require('../../utils/cloudinary');
 
