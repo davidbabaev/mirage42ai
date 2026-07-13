@@ -38,7 +38,7 @@ Mark items [done] when finished so they drop out of the active list.
 ## Awaiting review
 
 ### Retire load-everything providers — task 7: /allcards creator filter searches the server — awaiting review
-- Built on branch autopilot/2026-07-13, commit <pending>. The creator picker filtered the FULLY-LOADED users array client-side — unusable at 100k+ users, and dependent on the global load being retired. It now queries `GET /users/search` (the same endpoint the admin panel's creator search uses), debounced at 300ms, with "Searching…" / "No people found" states.
+- Built on branch autopilot/2026-07-13, commit d961cb0. The creator picker filtered the FULLY-LOADED users array client-side — unusable at 100k+ users, and dependent on the global load being retired. It now queries `GET /users/search` (the same endpoint the admin panel's creator search uses), debounced at 300ms, with "Searching…" / "No people found" states.
 - The selected creator is now held as an OBJECT, not just an id: the active-filter chip needs their name and there is no global array left to look it up in. `useUsersProvider` is gone from this page entirely.
 - Loading state is DERIVED (`creatorSearch !== debouncedCreatorSearch`) rather than stored, which keeps the setState out of the effect body and avoids adding a `react-hooks/set-state-in-effect` lint error.
 - Also fixed a copy-paste bug found here: the creator search box's placeholder read "Search Post.." — it searches people.
