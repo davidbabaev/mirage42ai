@@ -12,32 +12,86 @@ Clear and rewrite it each day. Git keeps the history.
 - Type: logic | visual | feature
 -->
 
-## Plan — FINISH the provider retirement (master-plan #15/#16/#4), then clear the small-bug tail
+## Plan — the folder/naming sweep (master-plan #20)
 
-**Context.** Slices 1–6 (server-embed sub-objects) are committed on `autopilot/2026-07-11-2` and awaiting review. They were all ADDITIVE — the two unbounded mount-time loads are still there. This run does the rest: migrate every remaining consumer off the global arrays, THEN delete the loads.
+Master-plan #20: *"Folder/file reorganization + naming sweep (the misspellings, casing, 'reusable components' space) — done LAST in D, when the architecture has settled. ONE restructure."*
 
-**Goal:** on login, the network tab shows NO `GET /users` and NO `GET /cards`. `registeredCards` becomes an empty-start mutation overlay; `users` goes away.
+The architecture has now settled: the provider-retirement epic is merged to main, so the file layout has stopped moving. This is that one restructure.
 
-**Order matters.** Tasks 1–10 each remove one consumer of a global array and are individually safe (the arrays are still loaded, so every step stays green). Task 11 is the actual deletion and only works once 1–10 are done. Tasks 12–14 are the known small-bug tail, cheap and independent.
+**Scope discipline.** This is a rename/cleanup pass — NO behavior changes, except where a "typo" turns out to be an actual bug (task 1). Each rename is its own commit so a bad one can be reverted alone. The full suites must stay green after every task.
 
-**Not in this run (human gate):** merging `autopilot/2026-07-11` + `autopilot/2026-07-11-2` to main. Autopilot never touches main — David does that at the merge gate.
-
-**Deliberately deferred:** React Query (#15). The overlay approach achieves #4 without it and is more reversible. Do not adopt it here.
+**Deliberately OUT of scope** (organizational preference, not errors — churn without value):
+- `components/chatDock/` — looks odd but actually FOLLOWS the convention (multi-word folders are camelCase).
+- `pages/landing/` (a folder holding one file) and `pages/docs/pages/` (a redundant nesting). Harmless; leave them.
 
 ---
 
 ## Tasks
 
+### 1. Typos that are actually BUGS (not cosmetics)
+- What: The sweep turned up misspellings that silently break behavior or ship broken text to users. Fix them first, separately from the renames.
+  - `color='text.secondaty'` in **UserProfileLayout.jsx, FeedPage.jsx, UserReusableCard.jsx, DashboardLayout.jsx** — MUI silently DROPS an unknown palette key, so this text was never actually greyed out. → `text.secondary`.
+  - `id='loginGradiant'` + `fill='url(#loginGradiant)'` in **LoggedInThirtyDays.jsx** — id and reference agree with each other, so the gradient does work; rename both to `loginGradient` anyway.
+  - `'...showless'` rendered to users in **CardItem, CardDetailsModal, FavoriteCards, MyCardsSection, TopAndLastFiveCardReuse** → `'...show less'` (missing space).
+  - `"Posts per catrgories"` heading in **CountPostsByCategoriesList.jsx** → `"Posts per categories"`.
+  - Admin result messages in **UsersProvider.jsx**: `"User banned succefully"` → `successfully`; `'User becam admin successfully'` → `became`.
+- Decisions: `text.secondaty` → `text.secondary` is a real VISUAL fix — that text will now actually render muted. That's the intended behavior, not a regression.
+- Done when: no `secondaty` / `showless` / `catrgories` / `succefully` / `becam` anywhere in apps/web/src. Full suites green.
+- Type: logic
+
+### 2. `reusable components/` → `shared/` (the space in the folder name)
+- What: `apps/web/src/pages/adminUserDashboard/components/reusable components/` — a folder with a SPACE in its name, nested inside `components/` (components of components). Rename to `shared/`. Also fix the misspelled file + component inside it: `MostPupularCardReuse` → `MostPopularCardReuse` (file name AND the exported component symbol).
+- Decisions: `shared/` over `reusable/` — drops the space AND the vague descriptor. 4 importers, all co-located in the same `components/` folder: MostPopular, TotalAnalytics, TopAndLastFiveCards, RetentionAnalyticsUsers.
+- Done when: no path with a space anywhere in the repo; the 4 imports resolve; admin Overview panel still renders. Full suites green.
+- Type: logic
+
+### 3. Case-only renames (need a two-step `git mv`)
+- What: Two renames that change ONLY the casing of a single letter. On Windows/WSL the filesystem is case-insensitive, so a direct `git mv` silently no-ops and leaves the index out of sync — each needs an intermediate temp name.
+  - `apps/api/src/cards/validation/Joi/` → `joi/` (its sibling `users/validation/joi/` is already lowercase). 1 importer: cardsRoutes.js.
+  - `apps/web/src/pages/adminUserDashboard/AdminOverViewPanel.jsx` → `AdminOverviewPanel.jsx` ("Overview" is one word). 1 importer: AdminDashboardLayout.jsx (+1 JSX use). Rename the exported component too.
+- Decisions: use the two-step (`git mv X _tmp && git mv _tmp x`) and VERIFY with `git status` that git actually recorded the rename — a silent no-op here is the whole trap.
+- Done when: `git log --stat` shows the renames; imports resolve; full suites green.
+- Type: logic
+
+### 4. `Notifications.js` model → `Notification.js`
+- What: `apps/api/src/notifications/models/Notifications.js` is the only PLURAL model file — every other one is singular (Card.js, User.js, Message.js, Conversation.js, Report.js). The Mongoose model inside is already named `Notification`; only the file name is wrong.
+- Decisions: widest blast radius in this sweep — 7 importers (cardsSvc, usersSvc, reportSvc, notificationsSvc + 3 test files). Its own commit so it can be reverted alone.
+- Done when: all 7 importers updated; API suite green.
+- Type: logic
+
+### 5. Page names that lie about what they are
+- What: Two pages whose names actively mislead, plus one dead file.
+  - `CardsRegisterPage.jsx` → `CreateCardPage.jsx` — it renders the card-creation form at `/createnewcard`. ("Register" is the old internal term for creating a post.)
+  - `RegisteredPage.jsx` → `SignUpPage.jsx` — it's the multi-step user SIGN-UP form; the current name reads like a post-signup success screen.
+  - `HomePage.jsx` — DELETE. Nothing imports it; it's an old wireframe skeleton (placeholder text, an "iamges" typo).
+- Decisions: 1 importer each (App.jsx). Deleting dead code belongs in a restructure — a stale wireframe is exactly the confusion this sweep exists to remove.
+- Done when: App.jsx imports resolve; routes still work; no references to HomePage remain. Full suites green.
+- Type: logic
+
+### 6. Misspelled internal symbols
+- What: Not user-facing, but wrong, and they make the code hard to grep:
+  - `useAnalytics.js`: `arrayGroupUsersRegistarationByMonth` → `...Registration...` (also destructured in UserRegistrationByMonths.jsx); `groupUsersRegistarationByMonth` → `...Registration...`; `thertyDaysInMs`/`dateThertyDays`/`ThertyDays` → `thirty...`; `moreThenSevenDays`/`moreThenSevenDaysCount` → `moreThan...` (also destructured in RetentionAnalyticsUsers.jsx).
+  - `NavBar.jsx` + `AdminNavBar.jsx`: `isProfileAvaterOpen`/`setIsProfileAvaterOpen` → `...Avatar...`.
+  - `ProfileSection.jsx`: `editprofilePicture`/`setEditprofilePicture` → `editProfilePicture`/`setEditProfilePicture`.
+  - Comment typos while in the file: "scoket"→socket, "conenction"→connection, "cahrt"→chart, "flase"→false, "testerday"→yesterday.
+- Decisions: rename the symbol at EVERY reference — a partial rename is worse than none.
+- Done when: no `Registaration`/`Therty`/`moreThen`/`Avater`/`editprofilePicture` anywhere. Full suites green.
+- Type: logic
+
+### 7. Verify the restructure in a real browser
+- What: A rename sweep is exactly the change that passes every test and still ships a blank screen (a missed import path; a case-only rename git never recorded). Verify in a real browser.
+- Decisions: reuse the harness pattern from the merge-prep sweep — boot the API against a throwaway in-memory Mongo (NEVER Atlas, NEVER David's running dev servers), seed, log in through the real form, and load the touched surfaces at 390 and 1280: feed, admin Overview (the `shared/` folder + AdminOverviewPanel rename), sign-up page, create-post page, and the profile/dashboard pages that had the `text.secondaty` fix. Assert ZERO console errors.
+- Done when: every touched surface renders with no console errors at both widths, and the previously-broken muted text actually renders muted.
+- Type: visual
+
 ---
 
 ## After this run (own orders, in this sequence)
 
-1. **MERGE GATE (David).** Review + merge `autopilot/2026-07-11`, `autopilot/2026-07-11-2`, and this run's branch to main. 20+ commits are stacked and unmerged — land them before more work piles on.
-2. **Folder / naming sweep** (master-plan #20) — one restructure, done LAST once the architecture above has settled the file layout.
-3. **TASK B — DMs fail after a long session** — diagnose-only session (likely token/socket-auth expiry).
-4. **Phase E — deployment**: Dockerized local env · staging + prod hosting · Sentry · Playwright smoke pack · domain/HTTPS/deploy pipeline. Unlocks the **network/infra hardening** item (firewall/WAF/Atlas lockdown — done in host dashboards).
-   - Do this BEFORE Phase F. Agents are API clients; running autonomous agents against a system with no staging, no error monitoring and no smoke tests means finding out about bugs from users instead of Sentry.
-5. **Admin analytics aggregation endpoints** — the proper fix deferred in task 10.
+1. **TASK B — DMs fail after a long session** — diagnose-only session (likely token/socket-auth expiry).
+2. **Phase E — deployment**: Dockerized local env · staging + prod hosting · Sentry · Playwright smoke pack · domain/HTTPS/deploy pipeline. Unlocks the **network/infra hardening** item.
+   - The throwaway browser harness (used twice now: merge-prep sweep, and task 7 above) should become the CHECKED-IN Playwright smoke pack here. It has caught two bugs that ~190 unit tests could not.
+3. **Admin analytics aggregation endpoints** — the debt taken deliberately in the provider-retirement run.
 
 ## Phase F — Agents (the product vision; starts after the app-hardening items above)
 - Data model (`kind`, personas, memory) + `apps/agents` skeleton + kill-switch. (`apps/agents` does not exist yet; `packages/shared` is still an empty .gitkeep.)
