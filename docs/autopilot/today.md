@@ -28,12 +28,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### 5. addAuthorToFeed (follow) — stop splicing from registeredCards
-- What: On follow, `addAuthorToFeed` splices the followed user's posts out of `registeredCards` into the feed. With the array empty there's nothing to splice.
-- Decisions: Replace with a call to the existing user-posts endpoint (`getExploreCards(cursor, limit, userId)`) and merge the first page into the feed, preserving the existing no-refetch / no-scroll-jump behavior. If merging cleanly proves fragile, fall back to a feed refetch and LOG that choice — correctness beats the optimization here.
-- Done when: following a user still surfaces their posts in the feed without a full-page reload or scroll jump, with `registeredCards` empty. Browser-verify at 390/1280.
-- Type: logic
-
 ### 6. Profile resolution — `getSingleUser(id)` instead of `users.find`
 - What: UserProfileLayout / Main / About / Media / Followers all resolve the profile subject via `users.find(id)`.
 - Decisions: Resolve once at the layout level via `getSingleUser(id)` and pass the subject down to the sub-routes — do NOT fetch the same user five times, one per sub-route. Skeleton while loading, "user not found" on 404 (no perpetual skeleton — same bug class slice 5 fixed for cards).

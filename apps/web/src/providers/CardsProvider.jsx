@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useCallback, useEffect, useState } from 'react'
-import { getAllCards, createCard, deleteCard, updateCard, likeUnlikeCard, addComment, removeComment, likeUnlikeComment, addReply, getFeedCards, banCard} from '../services/apiService';
+import { getAllCards, createCard, deleteCard, updateCard, likeUnlikeCard, addComment, removeComment, likeUnlikeComment, addReply, getFeedCards, getExploreCards, banCard} from '../services/apiService';
 import { useCursorPagination } from '../hooks/useCursorPagination';
 import { useAuth } from './AuthProvider';
 
@@ -95,22 +95,35 @@ const removeAuthorFromFeed = (userId) => {
     setFeedCards(prev => prev.filter(card => String(card.userId) !== String(userId)));
 }
 
-// Add a newly-followed author's posts to the feed in place. Their cards are
-// already loaded client-side in `registeredCards` (GET /cards returns
-// active cards), so we merge them in — deduped and date-sorted to match
-// the feed's order — without a refetch or scroll reset.
-const addAuthorToFeed = (userId) => {
+// Add a newly-followed author's posts to the feed in place, so they appear
+// without a refetch or scroll reset. Their cards used to be sitting in
+// `registeredCards` (which held every card in the app) and were simply spliced
+// out of it; now we fetch the author's first page from the server instead.
+//
+// Only the first page: the feed is cursor-paginated by recency, and scrolling on
+// will pull the rest of their posts in order anyway. Merged deduped + date-sorted
+// to match the feed's ordering.
+const addAuthorToFeed = async (userId) => {
     if(!userId) return;
-    setFeedCards(prev => {
-        const present = new Set(prev.map(c => c._id));
-        const additions = registeredCards.filter(c =>
-            String(c.userId) === String(userId) && c.status === 'active' && !present.has(c._id)
-        );
-        if(additions.length === 0) return prev;
-        return [...prev, ...additions].sort(
-            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
-    });
+    try{
+        const { items = [] } = await getExploreCards(undefined, 10, userId);
+        if(!items.length) return;
+        setFeedCards(prev => {
+            const present = new Set(prev.map(c => c._id));
+            const additions = items.filter(c =>
+                c.status === 'active' && !present.has(c._id)
+            );
+            if(additions.length === 0) return prev;
+            return [...prev, ...additions].sort(
+                (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+            );
+        });
+    }
+    catch(err){
+        // A follow that can't merge posts is not a failed follow — the next feed
+        // refresh will pick them up.
+        console.log(err.message);
+    }
 }
 
 const handleCardRegister = async (cardData) => {

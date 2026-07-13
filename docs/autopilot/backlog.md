@@ -37,6 +37,11 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
+### Retire load-everything providers — task 5: addAuthorToFeed fetches from the server — awaiting review
+- Built on branch autopilot/2026-07-13, commit <pending>. Following someone surfaces their posts in the feed immediately (no refetch, no scroll jump). That worked by splicing their cards out of `registeredCards` — which only worked because that array held EVERY card in the app. `addAuthorToFeed` now fetches the author's first page from `GET /cards/explore?userId=` and merges it in, keeping the existing dedupe + date-sort so feed order is preserved.
+- First page only (10): the feed is cursor-paginated by recency, so scrolling on pulls the rest of their posts in order anyway. A failed fetch is caught and logged, not surfaced — a follow whose posts don't merge is not a failed follow, and the next feed refresh picks them up.
+- Tests: new apps/web/tests/FollowAddsAuthorToFeed.test.jsx — with `getAllCards` mocked EMPTY (the post-retirement state), following an author must ask the SERVER for their posts and merge them into the feed; and re-following must not duplicate a post already in the feed. web 171 green; changed files lint-clean.
+
 ### Retire load-everything providers — task 4: own-user postsCount/followersCount from the server — awaiting review
 - Built on branch autopilot/2026-07-13, commit 701cc82. The logged-in user object carried no counts, so the OWN sidebar/dashboard fell back to deriving "N posts" from the global cards array. New `attachOwnCounts()` in usersSvc attaches `postsCount` + `followersCount` + `followingCount` at the three auth entry points: register, login, and POST /auth/refresh. Same query semantics as GET /users/:id, so the numbers agree across surfaces.
 - DECISION (deviates from the plan, which said "add it to pickSafeUserFields"): pickSafeUserFields is SYNCHRONOUS and also serializes every mutation response (follow, edit, ban, promote, block…). Making it async to add counts would have put two extra DB queries on every write that never renders a count. Attached at the auth entry points instead — same result for the client, no cost on the write path.
