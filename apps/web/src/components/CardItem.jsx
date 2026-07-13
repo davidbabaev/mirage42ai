@@ -246,7 +246,7 @@ export default function CardItem({
 
                                 }}
                             >
-                                {isExpanded ? '...showless' : '...read more'}
+                                {isExpanded ? '...show less' : '...read more'}
                             </span>
                         )}
 

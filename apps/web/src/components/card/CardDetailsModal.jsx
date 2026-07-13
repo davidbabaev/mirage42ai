@@ -273,7 +273,7 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
 
                                 }}
                             >
-                                {isExpanded ? '...showless' : '...read more'}
+                                {isExpanded ? '...show less' : '...read more'}
                             </span>
                         )}
 

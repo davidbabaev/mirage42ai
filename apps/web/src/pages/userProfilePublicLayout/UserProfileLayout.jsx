@@ -355,7 +355,7 @@ export default function UserProfileLayout() {
 
                   <Typography 
                       fontSize={15} 
-                      color='text.secondaty' 
+                      color='text.secondary' 
                       sx={{mb: -0.5}}
                   >
                       {userProfile?.job}

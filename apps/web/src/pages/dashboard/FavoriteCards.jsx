@@ -124,7 +124,7 @@ export default function FavoriteCards() {
             
                                             }}
                                         >
-                                            {isExpanded === favCard._id ? '...showless' : '...read more'}
+                                            {isExpanded === favCard._id ? '...show less' : '...read more'}
                                         </span>
                                     )}
             

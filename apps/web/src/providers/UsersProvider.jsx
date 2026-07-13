@@ -61,7 +61,7 @@ export function UsersProvider({children}) {
 
             return{
                 success: true,
-                message: "User banned succefully"
+                message: "User banned successfully"
             }
         }
         catch(err){
@@ -78,7 +78,7 @@ export function UsersProvider({children}) {
 
             return{
                 success: true,
-                message: 'User becam admin successfully'
+                message: 'User became admin successfully'
             }
         }
         catch(err){

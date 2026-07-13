@@ -124,7 +124,7 @@ export default function TopAndLastFiveCardReuse({
                 
                                                 }}
                                             >
-                                                {isExpanded === card._id ? '...showless' : '...read more'}
+                                                {isExpanded === card._id ? '...show less' : '...read more'}
                                             </span>
                                         )}
                 

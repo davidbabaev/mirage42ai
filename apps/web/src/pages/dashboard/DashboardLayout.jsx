@@ -211,7 +211,7 @@ export default function DashboardLayout() {
 
                         <Typography 
                             fontSize={13} 
-                            color='text.secondaty' 
+                            color='text.secondary' 
                             sx={{mb: -0.5}}
                         >
                             {user?.job}

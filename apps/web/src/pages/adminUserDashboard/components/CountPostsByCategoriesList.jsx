@@ -24,7 +24,7 @@ export default function CountPostsByCategoriesList() {
             width: {xs: '100%', md: '40%'}
         }}
     >
-        <Typography fontWeight={700} fontSize={15}>Posts per catrgories</Typography>
+        <Typography fontWeight={700} fontSize={15}>Posts per categories</Typography>
 
         <Box>
             {countedArr.map((item, index) => (
