@@ -1,14 +1,15 @@
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useCardsProvider } from '../../providers/CardsProvider';
 import { useAuth } from '../../providers/AuthProvider';
 import CardItem from '../../components/CardItem';
+import InfiniteScroll from '../../components/InfiniteScroll';
+import { useCursorPagination } from '../../hooks/useCursorPagination';
+import { getExploreCards } from '../../services/apiService';
 import CardPopupModal from '../../components/card/CardPopupModal';
 import CreateCardTrigger from '../../components/CreateCardTrigger';
 import CreateCardModal from '../../components/CreateCardModal';
 import PeopleModal from '../../components/PeopleModal';
 import { Avatar, Box, Button, Divider, Grid, Paper, Typography } from '@mui/material';
-import ExpandCircleDownIcon from '@mui/icons-material/ExpandCircleDown';
 import useFollowUser from '../../hooks/useFollowUser';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import LoginPopup from '../../components/LoginPopup';
@@ -21,11 +22,33 @@ export default function UserProfileMain() {
 
     const {id} = useParams();
     const {users} = useUsersProvider();
-    const {registeredCards} = useCardsProvider();
     const {user, isLoggedIn} = useAuth();
     const navigate = useNavigate();
-    const [count, setCount] = useState(10);
     const {favoriteCards ,handleFavoriteCards, handleRemoveCard} = useFavoriteCards();
+
+    // This user's posts, paginated off the server, instead of filtering the global
+    // all-cards array (which cannot scale and is being retired). Same primitives as
+    // the sibling media grid: useCursorPagination + <InfiniteScroll>.
+    const postsFetcher = useCallback(
+        (cursor) => getExploreCards(cursor, 10, id).then(r => ({
+            items: r.items ?? [],
+            nextCursor: r.nextCursor ?? null,
+        })),
+        [id]
+    );
+    const {
+        items: userCards,
+        hasMore: postsHasMore,
+        loading: postsLoading,
+        loadingMore: postsLoadingMore,
+        error: postsError,
+        refresh: refreshPosts,
+        loadMore: loadMorePosts,
+    } = useCursorPagination(postsFetcher);
+
+    useEffect(() => {
+        if (id) refreshPosts();
+    }, [id, refreshPosts]);
 
     
     const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
@@ -38,8 +61,8 @@ export default function UserProfileMain() {
     const [openCommentCardId, setOpenCommentCardId] = useState(null);
 
     // Post-composer (own profile only): mirrors the feed's CreateCardTrigger ->
-    // CreateCardModal flow. New cards push into registeredCards, so the list
-    // below re-derives and shows the new post without a manual refetch.
+    // CreateCardModal flow. The post list is server-paginated, so closing the
+    // composer refreshes page 1 to surface the new post.
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [mutualModalOpen, setMutualModalOpen] = useState(false);
     const [suggestModalOpen, setSuggestModalOpen] = useState(false);
@@ -73,10 +96,6 @@ export default function UserProfileMain() {
         {label: 'Joined', value: userProfile.createdAt.split("T")[0]},
     ] 
     
-    const userCards = registeredCards.filter(uCard => uCard.userId === userProfile._id).sort((a,b) => b.createdAt.localeCompare(a.createdAt))
-
-    const countedRegisterCards = userCards.slice(0, count)
-
     // Only the owner can post from their own profile.
     const isOwnProfile = user?._id === userProfile?._id;
 
@@ -97,23 +116,47 @@ return (
             {isOwnProfile && isCreateOpen && (
                 <CreateCardModal
                     mediaButton={createMediaType}
-                    onClose={() => setIsCreateOpen(false)}
+                    onClose={() => {
+                        setIsCreateOpen(false);
+                        // The list is now server-paginated, so a new post no longer
+                        // appears just by landing in the global cards array — pull
+                        // page 1 again so it shows up at the top.
+                        refreshPosts();
+                    }}
                 />
             )}
 
-            {countedRegisterCards.map((card) => (
-                <CardItem
-                    key={card._id}
-                    card={card}
-                    onOpenCard={() => setSelectedCardId(card._id)}
-                    openCommentCardId={openCommentCardId}
-                    setOpenCommentCardId = {setOpenCommentCardId}
-                    onRemoveSavedCard = {() => handleRemoveCard(card)}
-                    onSaveCard = {() => handleFavoriteCards(card)}
-                    isSavedCard = {favoriteCards.some(c => c._id === card._id)}
-                />
-            ))}
-        
+            <InfiniteScroll
+                loading={postsLoading}
+                loadingMore={postsLoadingMore}
+                hasMore={postsHasMore}
+                error={!!postsError}
+                isEmpty={!postsLoading && userCards.length === 0}
+                onLoadMore={loadMorePosts}
+                onRetry={refreshPosts}
+                root={null}
+                emptyState={
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                        <Typography variant="body2" color="text.secondary">
+                            {isOwnProfile ? "You haven't posted yet" : 'No posts yet'}
+                        </Typography>
+                    </Box>
+                }
+            >
+                {userCards.map((card) => (
+                    <CardItem
+                        key={card._id}
+                        card={card}
+                        onOpenCard={() => setSelectedCardId(card._id)}
+                        openCommentCardId={openCommentCardId}
+                        setOpenCommentCardId = {setOpenCommentCardId}
+                        onRemoveSavedCard = {() => handleRemoveCard(card)}
+                        onSaveCard = {() => handleFavoriteCards(card)}
+                        isSavedCard = {favoriteCards.some(c => c._id === card._id)}
+                    />
+                ))}
+            </InfiniteScroll>
+
             {selectedCardId && (
                 <CardPopupModal
                     cardId = {selectedCardId}
@@ -384,23 +427,6 @@ return (
 
         </Grid>
 
-        {userCards.length > count &&(
-            <Box
-                sx={{
-                    display: 'flex',
-                    width: '100%', 
-                    justifyContent: 'center'}}
-            >
-                <Button 
-                    onClick={() => setCount(count + 10)}
-                    endIcon={<ExpandCircleDownIcon/>} 
-                    variant='outlined'
-                    sx={{borderRadius: 5}}
-                    >
-                        Load More
-                </Button>
-            </Box>
-        )}
 
         {isLoginPopupOpen && (
             <LoginPopup

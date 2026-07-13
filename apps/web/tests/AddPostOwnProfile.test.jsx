@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
 // The post composer ("Start a post...") appears on the PROFILE tab ONLY when
@@ -38,6 +38,11 @@ vi.mock('../src/providers/UsersProvider', () => ({
 vi.mock('../src/providers/CardsProvider', () => ({
     useCardsProvider: () => ({ registeredCards: [], handleCardRegister: vi.fn() }),
 }));
+// The profile post list is server-paginated now (it no longer filters the global
+// cards array), so the page fetches its own posts on mount.
+vi.mock('../src/services/apiService', () => ({
+    getExploreCards: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+}));
 vi.mock('../src/hooks/useFollowUser', () => ({
     default: () => ({
         isFollowByMe: () => false,
@@ -52,8 +57,15 @@ vi.mock('../src/hooks/useFavoriteCards', () => ({
         handleRemoveCard: vi.fn(),
     }),
 }));
+vi.mock('../src/hooks/useLikedCards', () => ({
+    default: () => ({ toggleLike: vi.fn(), isLikeByMe: () => false, getLikeCount: () => 0 }),
+}));
+vi.mock('../src/hooks/useCommentsCards', () => ({
+    default: () => ({ addComment: vi.fn(), countComments: () => 0, removeComment: vi.fn() }),
+}));
 
 import UserProfileMain from '../src/pages/userProfilePublicLayout/UserProfileMain';
+import { getExploreCards } from '../src/services/apiService';
 
 const renderProfile = (id) =>
     render(
@@ -64,7 +76,7 @@ const renderProfile = (id) =>
         </MemoryRouter>
     );
 
-afterEach(() => cleanup());
+afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe('Add-post composer on profile', () => {
     it('shows the composer on your OWN profile', () => {
@@ -75,5 +87,37 @@ describe('Add-post composer on profile', () => {
     it("does NOT show the composer on someone else's profile", () => {
         renderProfile(OTHER);
         expect(screen.queryByText('Start a post...')).not.toBeInTheDocument();
+    });
+});
+
+// The posts tab used to filter the global all-cards array. It now pages off the
+// server, so it must work with that array EMPTY (the post-retirement state) and
+// must ask for only THIS profile's posts.
+describe('Profile posts come from the server, not the global cards array', () => {
+    it("requests only this profile's posts", async () => {
+        renderProfile(OTHER);
+        await waitFor(() => expect(getExploreCards).toHaveBeenCalled());
+        // (cursor, limit, userId) — page 1 has no cursor.
+        expect(getExploreCards).toHaveBeenCalledWith(undefined, 10, OTHER);
+    });
+
+    it('renders posts returned by the server with registeredCards empty', async () => {
+        getExploreCards.mockResolvedValueOnce({
+            items: [{
+                _id: 'c1',
+                userId: OTHER,
+                title: 'Server sourced post',
+                content: 'from the endpoint',
+                likes: [],
+                comments: [],
+                likePreview: [],
+                createdAt: '2026-02-01T00:00:00.000Z',
+                creator: { _id: OTHER, name: 'Otherother', lastName: 'Tester', profilePicture: '', job: 'Builder' },
+            }],
+            nextCursor: null,
+        });
+
+        renderProfile(OTHER);
+        expect(await screen.findByText('from the endpoint')).toBeInTheDocument();
     });
 });

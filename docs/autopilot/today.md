@@ -28,12 +28,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### 3. Posts tab + MyCardsSection — paginate off the server
-- What: UserProfileMain's posts tab and MyCardsSection render a user's cards via `registeredCards.filter(c => c.userId === id)`. Migrate both to the paginated `getExploreCards(cursor, limit, userId)` endpoint (it already exists).
-- Decisions: Reuse the existing `useCursorPagination` hook + `<InfiniteScroll>` primitive — same pattern as the profile media grid / followers list. Do not hand-roll pagination. Loading skeleton + empty state + end state, consistent with the other paginated lists.
-- Done when: a profile with >1 page of posts scrolls and auto-loads page 2; the tab renders correctly with `registeredCards` empty. Browser-verify at 390/1280.
-- Type: logic
-
 ### 4. Own-user postsCount / followersCount on login
 - What: The logged-in user object (from login's `pickSafeUserFields`) has no `postsCount`/`followersCount`, so the OWN sidebar/dashboard counts fall back to the global arrays.
 - Decisions: Add both to `pickSafeUserFields` server-side (cheapest, one place, mirrors what the user-list endpoints already embed) rather than firing an extra `getSingleUser(me)` round-trip on every login. Keep the counts fresh on mutation the same way the profile already does.

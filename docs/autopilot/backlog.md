@@ -37,6 +37,13 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
+### Retire load-everything providers — task 3: profile posts tab + MyCardsSection paginate off the server — awaiting review
+- Built on branch autopilot/2026-07-13, commit <pending>. Both surfaces rendered a user's posts by filtering the global all-cards array (`registeredCards.filter(c => c.userId === id)`) behind a manual "Load More" button that just sliced further into the already-loaded array. Both now page off `GET /cards/explore?userId=` (which already supported the author filter — no server change needed), using the existing `useCursorPagination` + `<InfiniteScroll>` primitives, exactly like the sibling profile media grid.
+- UserProfileMain: 10 posts/page, auto-loading infinite scroll, with proper empty ("You haven't posted yet" / "No posts yet"), loading, error+retry and end states from `<InfiniteScroll>`. The inline media preview grid in the right column now reads the same paginated items. Creating a post from your own profile refreshes page 1 (the new post no longer appears merely by landing in the global array).
+- MyCardsSection (dashboard): 5 posts/page, same primitives. Its delete handler used to call `getAllCards()` + `fetchCards()` — reloading EVERY card in the app to reflect one deletion; it now refreshes just this list plus the feed. Editing a post refreshes the list.
+- Both manual "Load More" buttons deleted, and with them the last two client-side `.slice(0, count)` pagers on card lists.
+- Tests: AddPostOwnProfile.test.jsx extended — asserts the page requests only THIS profile's posts (`getExploreCards(undefined, 10, profileId)`) and renders server-returned posts with `registeredCards` EMPTY. web 169 green; changed files lint-clean.
+
 ### Retire load-everything providers — task 2: mutation overlay upserts — awaiting review
 - Built on branch autopilot/2026-07-13, commit 86cb72e. `registeredCards` is the overlay that carries mutation state (optimistic likes, added comments) so a change reflects on EVERY surface. Once the global getAllCards load is retired it starts EMPTY — and every CardsProvider mutation wrote to it with `.map()`, which is a SILENT NO-OP for a card the list doesn't hold. The optimistic like would simply vanish on any non-feed surface.
 - Fix: one `upsertCard(list, card)` helper — update in place if present, append if not — used by every write into the overlay (toggle like, toggle comment-like, add comment, add reply, remove comment, edit, ban). The FEED deliberately keeps a plain `.map`: a card you liked on someone's profile must NOT be injected into your feed just because you touched it.

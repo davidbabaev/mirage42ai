@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useCardsProvider } from '../../providers/CardsProvider';
 import { useAuth } from '../../providers/AuthProvider';
 import getTimeAgo from '../../utils/getTimeAgo';
@@ -6,28 +6,47 @@ import MediaDisplay from '../../components/MediaDisplay';
 import { Box, Button, Chip, Typography, useTheme } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import ExpandCircleDownIcon from '@mui/icons-material/ExpandCircleDown';
 import CreateCardModal from '../../components/CreateCardModal';
-import { getAllCards } from '../../services/apiService';
+import { getExploreCards } from '../../services/apiService';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import OnLoadingSkeletonBox from '../../components/OnLoadingSkeletonBox';
+import InfiniteScroll from '../../components/InfiniteScroll';
+import { useCursorPagination } from '../../hooks/useCursorPagination';
 
 
 
 export default function MyCardsSection() {
 
-    const {registeredCards, handleDeleteCard, refreshFeed, fetchCards} = useCardsProvider();
+    const {handleDeleteCard, refreshFeed} = useCardsProvider();
     const {user} = useAuth();
 
-    const [count, setCount] = useState(5);
     const [isExpanded, setIsExpanded] = useState(null)
     const [editingCardId, setEditingCardId] = useState(null);
     const theme = useTheme();
-    const myCards = registeredCards.filter(card => card.userId === user._id).sort((a,b) => b.createdAt.localeCompare(a.createdAt));
-    const [confirmDeleteCard, setConfirmDeleteCard] = useState(null);    
+    const [confirmDeleteCard, setConfirmDeleteCard] = useState(null);
 
-    const countedRegisterCards = myCards.slice(0, count)    
+    // My posts, paginated off the server rather than filtered out of the global
+    // all-cards array (which is being retired).
+    const myCardsFetcher = useCallback(
+        (cursor) => getExploreCards(cursor, 5, user?._id).then(r => ({
+            items: r.items ?? [],
+            nextCursor: r.nextCursor ?? null,
+        })),
+        [user?._id]
+    );
+    const {
+        items: myCards,
+        hasMore,
+        loading,
+        loadingMore,
+        error,
+        refresh: refreshMyCards,
+        loadMore,
+    } = useCursorPagination(myCardsFetcher);
 
+    useEffect(() => {
+        if (user?._id) refreshMyCards();
+    }, [user?._id, refreshMyCards]);
 
     if(!user){
         return <OnLoadingSkeletonBox/>
@@ -36,16 +55,35 @@ export default function MyCardsSection() {
 return (
 <Box>
     {editingCardId && (
-        <CreateCardModal 
+        <CreateCardModal
             card={myCards.find(c => c._id === editingCardId)}
-            onClose={() => setEditingCardId(null)}
+            onClose={() => {
+                setEditingCardId(null);
+                // The list is server-paginated now, so pull the edited card back.
+                refreshMyCards();
+            }}
             onCardPosted={() => {}}
         />
     )}
 
-    {countedRegisterCards.length === 0 && <p>You haven't created any cards yet.</p>}
-
-    {countedRegisterCards.map((card) => (
+    <InfiniteScroll
+        loading={loading}
+        loadingMore={loadingMore}
+        hasMore={hasMore}
+        error={!!error}
+        isEmpty={!loading && myCards.length === 0}
+        onLoadMore={loadMore}
+        onRetry={refreshMyCards}
+        root={null}
+        emptyState={
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+                <Typography variant="body2" color="text.secondary">
+                    You haven't created any cards yet.
+                </Typography>
+            </Box>
+        }
+    >
+    {myCards.map((card) => (
         <Box key={card._id}>
             <Box 
                 sx={{
@@ -148,23 +186,7 @@ return (
             </Box>
         </Box>
     ))}
-        {myCards.length > count &&(
-            <Box
-                sx={{
-                    display: 'flex',
-                    width: '100%', 
-                    justifyContent: 'center'}}
-            >
-                <Button 
-                    onClick={() => setCount(count + 5)}
-                    endIcon={<ExpandCircleDownIcon/>} 
-                    variant='outlined'
-                    sx={{borderRadius: 5}}
-                    >
-                        Load More
-                </Button>
-            </Box>
-        )}
+    </InfiniteScroll>
 
         {confirmDeleteCard && (
             <ConfirmationDialog
@@ -176,8 +198,10 @@ return (
                 onClose={() => setConfirmDeleteCard(null)}
                 onConfirm={async () => {
                     await handleDeleteCard(confirmDeleteCard._id);
-                    await getAllCards();
-                    await fetchCards();
+                    // Reload MY list (server-paginated) and the feed. The old
+                    // getAllCards()/fetchCards() pair reloaded every card in the
+                    // app — one of the two loads this epic is removing.
+                    await refreshMyCards();
                     await refreshFeed();
                 }}
             />
