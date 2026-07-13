@@ -19,7 +19,7 @@ export default function RetentionAnalyticsUsers() {
 
         // third block - Logged In this Week
         weeklyActiveUsersCount,
-        moreThenSevenDaysCount,
+        moreThanSevenDaysCount,
         weekLoginGrowth
     } = useAnalytics();
 
@@ -52,7 +52,7 @@ export default function RetentionAnalyticsUsers() {
 
         <UsersRetentionCardReuse 
             mainCount = {weeklyActiveUsersCount}
-            secondValue = {moreThenSevenDaysCount}
+            secondValue = {moreThanSevenDaysCount}
             percentsValue = {weekLoginGrowth}
             pFirstValue = {"Logged-in this week"}
             pVsValue = {" vs Previous week"}

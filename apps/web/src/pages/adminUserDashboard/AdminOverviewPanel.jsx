@@ -24,7 +24,7 @@ export default function AdminOverviewPanel() {
         </Typography>
       </Box>
 
-      {/* Row 1: stat cards + 30 day cahrt */}
+      {/* Row 1: stat cards + 30 day chart */}
       <Box sx={{mb: 3, display: 'flex', flexDirection:{xs: 'column', md: 'row'}, gap:2}}>
         <TotalAnalytics/>
 

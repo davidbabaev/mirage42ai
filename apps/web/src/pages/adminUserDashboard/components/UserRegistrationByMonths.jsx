@@ -6,7 +6,7 @@ import { Box, Typography } from '@mui/material';
 
 export default function UserRegistrationByMonths() {
 
-const {arrayGroupUsersRegistarationByMonth} = useAnalytics();
+const {arrayGroupUsersRegistrationByMonth} = useAnalytics();
 
   return (
     <Box
@@ -25,7 +25,7 @@ const {arrayGroupUsersRegistarationByMonth} = useAnalytics();
     <ResponsiveContainer  
         width="100%" height={300}>
         <AreaChart 
-            data={arrayGroupUsersRegistarationByMonth}
+            data={arrayGroupUsersRegistrationByMonth}
         >
             <defs>
                 <linearGradient id='regGradient' x1='0' y1='0' x2='0' y2='1'>

@@ -380,7 +380,7 @@ export default function DashboardLayout() {
 
             <Routes>
                 <Route path='/myprofile' element={<ProfileSection
-                    editMode = {editMode} // flase by default
+                    editMode = {editMode} // false by default
                     onEditMode={() => setEditMode(true)}
                     onCloseEdit={() => setEditMode(false)}
                 />}/>

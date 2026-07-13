@@ -20,7 +20,7 @@ import { useUI } from '../providers/UIProvider';
 export default function NavBar() {
 
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-    const [isProfileAvaterOpen, setIsProfileAvaterOpen] = useState(false);
+    const [isProfileAvatarOpen, setIsProfileAvatarOpen] = useState(false);
     const {isLoggedIn, user} = useAuth();
     const ref = useRef(null);
     const profileRef = useRef(null);
@@ -78,7 +78,7 @@ export default function NavBar() {
             }
 
             if(profileRef.current && !profileRef.current.contains(e.target)){
-                setIsProfileAvaterOpen(false)
+                setIsProfileAvatarOpen(false)
             }
         }
         document.addEventListener('mousedown', handler);
@@ -249,12 +249,12 @@ export default function NavBar() {
                             <Avatar
                                 sx={{cursor: 'pointer'}} 
                                 src={user?.profilePicture}
-                                onClick={() => setIsProfileAvaterOpen(!isProfileAvaterOpen)}
+                                onClick={() => setIsProfileAvatarOpen(!isProfileAvatarOpen)}
                             />
 
-                            {isProfileAvaterOpen && (
+                            {isProfileAvatarOpen && (
                                 <ProfileSettingsPopup
-                                    onClose = {() => setIsProfileAvaterOpen(false)}
+                                    onClose = {() => setIsProfileAvatarOpen(false)}
                                 />
                             )}
                         </Box>

@@ -156,8 +156,8 @@ export function AuthProvider({children}) {
         localStorage.removeItem('auth-token');
         setIsLoggedIn(false);
         setUser(null);
-        // closes the scoket
-        // (so the server forgets this user's conenction)
+        // closes the socket
+        // (so the server forgets this user's connection)
         disconnectSocket();
     }
 

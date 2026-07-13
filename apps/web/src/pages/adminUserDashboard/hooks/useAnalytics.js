@@ -91,7 +91,7 @@ const avgEngagement = ((commentsCount + likesCount) / registeredCards.length).to
 // - Users registration (Line Chart)
 // - 
 
-  const groupUsersRegistarationByMonth = users.reduce((acc, user) => {
+  const groupUsersRegistrationByMonth = users.reduce((acc, user) => {
     const userCreatedDate = user.createdAt.slice(0,7);
     if(acc[userCreatedDate]){
           acc[userCreatedDate] = acc[userCreatedDate] + 1
@@ -102,7 +102,7 @@ const avgEngagement = ((commentsCount + likesCount) / registeredCards.length).to
       return acc
   }, {})
 
-  const arrayGroupUsersRegistarationByMonth = Object.entries(groupUsersRegistarationByMonth).map((item) => {
+  const arrayGroupUsersRegistrationByMonth = Object.entries(groupUsersRegistrationByMonth).map((item) => {
     return{month: item[0], users: item[1]}
   }).sort((a,b) => new Date(a.month) - new Date(b.month))
 
@@ -208,7 +208,7 @@ const avgEngagement = ((commentsCount + likesCount) / registeredCards.length).to
 
 // =========================================================   
 // Login one day VS yesterday logics:
-// - logged in testerday
+// - logged in yesterday
 // - % Than yesterday
 
   const oneDayInMs = 1 * 24 * 60 * 60 * 1000;
@@ -244,7 +244,7 @@ const avgEngagement = ((commentsCount + likesCount) / registeredCards.length).to
   
   const weeklyActiveUsersCount = WeeklyActiveUsers.length;
   
-  const moreThenSevenDays = users.filter((user) => {
+  const moreThanSevenDays = users.filter((user) => {
     const userDate = new Date(user.lastLoginAt).getTime();
     const loggedIn = userDate >= dateInFourteenDays && userDate < dateInSevenDays
 
@@ -276,15 +276,15 @@ const avgEngagement = ((commentsCount + likesCount) / registeredCards.length).to
   newRegisteredUsers_LastWeek_count === 0 ? 0 : 
   (newRegisteredUsers_ThisWeek_count - newRegisteredUsers_LastWeek_count) / newRegisteredUsers_LastWeek_count * 100;
 
-  const moreThenSevenDaysCount = moreThenSevenDays.length;
+  const moreThanSevenDaysCount = moreThanSevenDays.length;
 
 
 // =========================================================   
 // Retention users -> Register + Loggings - Logics:
 
   const weekLoginGrowth = 
-    moreThenSevenDaysCount === 0 ? 0 :
-    (weeklyActiveUsersCount - moreThenSevenDaysCount) / moreThenSevenDaysCount * 100
+    moreThanSevenDaysCount === 0 ? 0 :
+    (weeklyActiveUsersCount - moreThanSevenDaysCount) / moreThanSevenDaysCount * 100
 
 
   const retentionUsers = newRegisteredUsers_LastWeek.filter((user) => {
@@ -301,14 +301,14 @@ const avgEngagement = ((commentsCount + likesCount) / registeredCards.length).to
 // =========================================================   
 // thirty days (Month) Loggings analytics (Chart) - "users monthly activity":
 
-  const thertyDaysInMs = 30 * 24 * 60 * 60 * 1000;
-  const dateThertyDays = date.getTime() - thertyDaysInMs;
+  const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
+  const dateThirtyDays = date.getTime() - thirtyDaysInMs;
   
   const loggedInThirtyDays = users.filter((user) => {
     const userDate = new Date(user.lastLoginAt).getTime();
 
-    const ThertyDays = userDate > dateThertyDays
-    return ThertyDays;
+    const thirtyDays = userDate > dateThirtyDays
+    return thirtyDays;
   }) 
 
     const groupUsersLoginActivity = loggedInThirtyDays.reduce((acc, user) => {
@@ -337,7 +337,7 @@ const avgEngagement = ((commentsCount + likesCount) / registeredCards.length).to
     newRegisteredUsers_ThisWeek_count,
     newRegisteredUsers_LastWeek_count,
     weeklyActiveUsersCount,
-    moreThenSevenDaysCount,
+    moreThanSevenDaysCount,
     loggedInThirtyDays,
     loggedInThirtyDaysCount,
     arrayCountPerCategory,
@@ -347,7 +347,7 @@ const avgEngagement = ((commentsCount + likesCount) / registeredCards.length).to
     lastFiveUsers,
     lastFiveCards,
     topTenCategories,
-    arrayGroupUsersRegistarationByMonth,
+    arrayGroupUsersRegistrationByMonth,
     arrayGroup_countPerGender,
     group_genderByAge,
     group_countCountriesPerUsers,

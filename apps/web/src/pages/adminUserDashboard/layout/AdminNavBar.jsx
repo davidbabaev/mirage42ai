@@ -14,7 +14,7 @@ export default function AdminNavBar({onToggle}) {
 
     const navigate = useNavigate();
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-    const [isProfileAvaterOpen, setIsProfileAvaterOpen] = useState(false);
+    const [isProfileAvatarOpen, setIsProfileAvatarOpen] = useState(false);
     const {user} = useAuth();
 
     const {
@@ -40,7 +40,7 @@ export default function AdminNavBar({onToggle}) {
             }
 
             if(profileRef.current && !profileRef.current.contains(e.target)){
-                setIsProfileAvaterOpen(false)
+                setIsProfileAvatarOpen(false)
             }
         }
         document.addEventListener('mousedown', handler);
@@ -116,10 +116,10 @@ export default function AdminNavBar({onToggle}) {
                         <Avatar
                             sx={{cursor: 'pointer'}} 
                             src={user?.profilePicture}
-                            onClick={() => setIsProfileAvaterOpen(!isProfileAvaterOpen)}
+                            onClick={() => setIsProfileAvatarOpen(!isProfileAvatarOpen)}
                             />
 
-                        {isProfileAvaterOpen && (
+                        {isProfileAvatarOpen && (
                             <ProfileSettingsPopup/>
                         )}
                     </Box>

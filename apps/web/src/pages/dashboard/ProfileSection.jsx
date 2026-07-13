@@ -25,7 +25,7 @@ export default function ProfileSection({editMode ,onEditMode, onCloseEdit}) {
     const [editEmail, setEditEmail] = useState('');
     const [editCountry, setEditCountry] = useState('');
     const [editCity, setEditCity] = useState('');
-    const [editprofilePicture, setEditprofilePicture] = useState('');
+    const [editProfilePicture, setEditProfilePicture] = useState('');
     const [editCoverImage, setEditCoverImage] = useState('');
     const [, setEditAge] = useState('');
     const [editJob, setEditJob] = useState('');
@@ -51,16 +51,16 @@ export default function ProfileSection({editMode ,onEditMode, onCloseEdit}) {
     }
 
     const previewProfilePicture = useMemo(() => {
-        if(editprofilePicture instanceof File){
-            return URL.createObjectURL(editprofilePicture)
+        if(editProfilePicture instanceof File){
+            return URL.createObjectURL(editProfilePicture)
         }
-        else if(typeof editprofilePicture === 'string'){
-            return editprofilePicture
+        else if(typeof editProfilePicture === 'string'){
+            return editProfilePicture
         }
         else{
             return null
         }
-    }, [editprofilePicture])
+    }, [editProfilePicture])
 
     const previewCoverImage = useMemo(() => {
         if(editCoverImage instanceof File){
@@ -99,7 +99,7 @@ export default function ProfileSection({editMode ,onEditMode, onCloseEdit}) {
             setEditEmail(user.email);
             setEditCountry(user.address?.country === 'Not Defined' ? '' : user.address?.country);
             setEditCity(user.address?.city ?? '');
-            setEditprofilePicture(user.profilePicture);
+            setEditProfilePicture(user.profilePicture);
             setEditCoverImage(user.coverImage);
             setEditJob(user.job);
             setEditAge(user.age)
@@ -117,7 +117,7 @@ export default function ProfileSection({editMode ,onEditMode, onCloseEdit}) {
             setEditEmail(user.email);
             setEditCountry(user.address?.country);
             setEditCity(user.address?.city ?? '');
-            setEditprofilePicture(user.profilePicture);
+            setEditProfilePicture(user.profilePicture);
             setEditCoverImage(user.coverImage);
             setEditJob(user.job);
             setEditAge(user.age)
@@ -288,7 +288,7 @@ return (
                     ref={fileInputRef}
                     type="file" 
                     accept='image/*'
-                    onChange={(e) => setEditprofilePicture(e.target.files[0])}
+                    onChange={(e) => setEditProfilePicture(e.target.files[0])}
                     style={{display: 'none'}}
                 />
 
@@ -549,7 +549,7 @@ return (
                                 formData.append('email', user.email);
                                 formData.append('address[country]', editCountry);
                                 formData.append('address[city]', editCity);
-                                formData.append('profilePicture', editprofilePicture);
+                                formData.append('profilePicture', editProfilePicture);
                                 formData.append('coverImage', editCoverImage);
                                 formData.append('age', getAgeByDate(editBirthDate));
                                 formData.append('gender', editGender);
