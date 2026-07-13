@@ -16,6 +16,7 @@ import LoginPopup from '../../components/LoginPopup';
 import useFavoriteCards from '../../hooks/useFavoriteCards';
 import OnLoadingSkeletonBox from '../../components/OnLoadingSkeletonBox';
 import { useUsersProvider } from '../../providers/UsersProvider';
+import { useProfileSubject } from './profileSubjectContext';
 
 
 export default function UserProfileMain() {
@@ -70,8 +71,10 @@ export default function UserProfileMain() {
 
     const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
     
-    const userProfile = users.find(u => u._id === id);
-    
+    // Resolved once by UserProfileLayout (from the server) and shared via context —
+    // no scan of a fully-loaded users array.
+    const userProfile = useProfileSubject();
+
     if(!userProfile){
         return <OnLoadingSkeletonBox/>
     }

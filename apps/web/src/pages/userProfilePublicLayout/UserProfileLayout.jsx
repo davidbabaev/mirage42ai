@@ -7,7 +7,6 @@ import UserProfileMain from './UserProfileMain';
 import { useAuth } from '../../providers/AuthProvider';
 import UserProfileFollowing from './UserProfileFollowing';
 import UserProfileFollowers from './UserProfileFollowers';
-import { useCardsProvider } from '../../providers/CardsProvider';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import CheckIcon from '@mui/icons-material/Check';
 import BlockIcon from '@mui/icons-material/Block';
@@ -24,17 +23,42 @@ import LoginPopup from '../../components/LoginPopup';
 import OnLoadingSkeletonBox from '../../components/OnLoadingSkeletonBox';
 import LockedProfile from './LockedProfile';
 import { useUsersProvider } from '../../providers/UsersProvider';
+import { getSingleUser } from '../../services/apiService';
+import { ProfileSubjectContext } from './profileSubjectContext';
 
 export default function UserProfileLayout() {
 
     const {id} = useParams();
-    const{users, loading, getUsers} = useUsersProvider();
+    const{getUsers} = useUsersProvider();
     const {user, isLoggedIn} = useAuth();
-    const {registeredCards} = useCardsProvider();
     const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
     function onCloseLoginPopup(){
         setIsLoginPopupOpen(false)
     }
+
+    // The profile subject comes from the server, not from a scan of a fully-loaded
+    // users array. Resolved once here and shared with the tabs via context.
+    //
+    // The resolved id is kept alongside the result so navigating from one profile
+    // to another reads as "loading" immediately, rather than flashing the previous
+    // person's profile while the new fetch is in flight. (It also keeps every
+    // setState inside the async callbacks — none in the effect body.)
+    const [resolved, setResolved] = useState({ status: 'loading', id: null, user: null });
+
+    useEffect(() => {
+        if(!id) return;
+        let cancelled = false;
+        getSingleUser(id)
+            .then(u => { if(!cancelled) setResolved({ status: 'ready', id, user: u }); })
+            // A blocked relationship (either direction) and a non-existent user
+            // both 404 by design — indistinguishable, and both land here.
+            .catch(() => { if(!cancelled) setResolved({ status: 'error', id, user: null }); });
+        return () => { cancelled = true; };
+    }, [id]);
+
+    const isResolvedForThisId = resolved.id === id;
+    const profileLoading = !isResolvedForThisId || resolved.status === 'loading';
+    const userProfile = isResolvedForThisId && resolved.status === 'ready' ? resolved.user : null;
     
     const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
     const {toggleBlock, isBlockedByMe} = useBlockUser();
@@ -52,11 +76,9 @@ export default function UserProfileLayout() {
     }, [messageOpen])
 
     
-    const userProfile = users.find(u => u._id === id);
-    
     const navigate = useNavigate();
 
-    const postsAmount = userProfile?.postsCount ?? registeredCards.filter((card) => card.userId === id).length
+    const postsAmount = userProfile?.postsCount ?? 0
 
     // A user I've blocked is hidden everywhere else; reaching their profile (only
     // possible from the Blocked-users settings list) shows the locked placeholder.
@@ -73,10 +95,10 @@ export default function UserProfileLayout() {
     }
 
     if(!userProfile){
-        // Still loading the users list -> skeleton. Loaded but absent means the
-        // account is unavailable (e.g. they blocked you) — show a dead-end-free
-        // message instead of an endless skeleton.
-        if(loading || users.length === 0) return <OnLoadingSkeletonBox/>
+        // In flight -> skeleton. Resolved-but-absent (404: no such user, or a block
+        // in either direction) means the account is unavailable — show a
+        // dead-end-free message instead of an endless skeleton.
+        if(profileLoading) return <OnLoadingSkeletonBox/>
         return (
             <Container maxWidth='sm' sx={{ py: 8, textAlign: 'center' }}>
                 <Typography variant='h6' sx={{ mb: 1 }}>This account is unavailable</Typography>
@@ -719,14 +741,18 @@ export default function UserProfileLayout() {
             />
         )}
 
-      <Routes>
-        <Route index element = {<UserProfileMain/>}/>
-        <Route path='/profilemain' element = {<UserProfileMain/>}/>
-        <Route path='/about' element = {<UserProfileAbout/>}/>
-        <Route path='/following' element = {<UserProfileFollowing/>}/>
-        <Route path='/followers' element = {<UserProfileFollowers/>}/>
-        <Route path='/media' element = {<UserProfileMedia/>}/>
-      </Routes>
+      {/* The subject is resolved once above; the tabs read it from context instead
+          of each running their own lookup. Rendering here means it's non-null. */}
+      <ProfileSubjectContext.Provider value={userProfile}>
+        <Routes>
+          <Route index element = {<UserProfileMain/>}/>
+          <Route path='/profilemain' element = {<UserProfileMain/>}/>
+          <Route path='/about' element = {<UserProfileAbout/>}/>
+          <Route path='/following' element = {<UserProfileFollowing/>}/>
+          <Route path='/followers' element = {<UserProfileFollowers/>}/>
+          <Route path='/media' element = {<UserProfileMedia/>}/>
+        </Routes>
+      </ProfileSubjectContext.Provider>
     </Container>
   )
 }

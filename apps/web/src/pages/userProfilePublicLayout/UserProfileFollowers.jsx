@@ -1,25 +1,24 @@
 import React, { useCallback, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../providers/AuthProvider';
 import useFollowUser from '../../hooks/useFollowUser';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { Avatar, Box, Button, Paper, Typography } from '@mui/material';
 import OnLoadingSkeletonBox from '../../components/OnLoadingSkeletonBox';
-import { useUsersProvider } from '../../providers/UsersProvider';
 import { useCursorPagination } from '../../hooks/useCursorPagination';
 import InfiniteScroll from '../../components/InfiniteScroll';
 import { getFollowers } from '../../services/apiService';
+import { useProfileSubject } from './profileSubjectContext';
 
 
 export default function UserProfileFollowers() {
 
-  const {id} = useParams();
-  const {users} = useUsersProvider();
   const {user} = useAuth();
   const {toggleFollow, isFollowByMe, getFollowersCount} = useFollowUser();
   const navigate = useNavigate();
 
-  const currentUserProfile = users.find((userP) => userP._id === id);
+  // Resolved once by UserProfileLayout (from the server) and shared via context.
+  const currentUserProfile = useProfileSubject();
   const profileId = currentUserProfile?._id;
 
   const fetcher = useCallback(

@@ -28,12 +28,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### 6. Profile resolution — `getSingleUser(id)` instead of `users.find`
-- What: UserProfileLayout / Main / About / Media / Followers all resolve the profile subject via `users.find(id)`.
-- Decisions: Resolve once at the layout level via `getSingleUser(id)` and pass the subject down to the sub-routes — do NOT fetch the same user five times, one per sub-route. Skeleton while loading, "user not found" on 404 (no perpetual skeleton — same bug class slice 5 fixed for cards).
-- Done when: all five profile sub-routes render with the users array empty; a 404 shows not-found rather than hanging. Browser-verify at 390/1280.
-- Type: logic
-
 ### 7. AllCardsPage creator filter — async search
 - What: The creator filter client-filters the FULL users list. Assume 100k+ users — that never scales.
 - Decisions: Use the existing `searchUsers(q)` / `GET /users/search` endpoint with a debounced async autocomplete, matching the admin panel's creator-search pattern shipped in sweep phase 7. Never a dropdown over all users.

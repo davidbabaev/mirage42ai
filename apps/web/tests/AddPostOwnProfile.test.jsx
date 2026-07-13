@@ -66,15 +66,22 @@ vi.mock('../src/hooks/useCommentsCards', () => ({
 
 import UserProfileMain from '../src/pages/userProfilePublicLayout/UserProfileMain';
 import { getExploreCards } from '../src/services/apiService';
+import { ProfileSubjectContext } from '../src/pages/userProfilePublicLayout/profileSubjectContext';
 
-const renderProfile = (id) =>
-    render(
+// The profile subject is resolved once by UserProfileLayout (server-side) and
+// handed to the tabs through context — the tabs no longer look it up themselves.
+const renderProfile = (id) => {
+    const subject = [meUser, otherUser].find(u => u._id === id);
+    return render(
         <MemoryRouter initialEntries={[`/profiledashboard/${id}/profilemain`]}>
-            <Routes>
-                <Route path="/profiledashboard/:id/*" element={<UserProfileMain />} />
-            </Routes>
+            <ProfileSubjectContext.Provider value={subject}>
+                <Routes>
+                    <Route path="/profiledashboard/:id/*" element={<UserProfileMain />} />
+                </Routes>
+            </ProfileSubjectContext.Provider>
         </MemoryRouter>
     );
+};
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 

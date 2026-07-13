@@ -37,6 +37,14 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
+### Retire load-everything providers — task 6: profile subject resolved from the server — awaiting review
+- Built on branch autopilot/2026-07-13, commit <pending>. All five profile surfaces (Layout, Main, About, Media, Followers) each ran their own `users.find(u => u._id === id)` against the global users array. UserProfileLayout now resolves the subject ONCE from `GET /users/:id` and shares it with the tabs through a small `ProfileSubjectContext` — one resolve, not five fetches. (The layout renders its children via a nested `<Routes>`, not an `<Outlet>`, so context is the natural channel.)
+- States: skeleton while in flight; "This account is unavailable" when it doesn't resolve — a 404 covers both "no such user" and "a block exists in either direction", which are deliberately indistinguishable server-side. The old code showed an ENDLESS SKELETON whenever the users array happened not to contain the id; that dead-end is gone.
+- The resolved id is stored alongside the result, so navigating from one profile straight to another reads as "loading" instead of flashing the previous person's profile while the new fetch is in flight.
+- Field parity checked before migrating: `GET /users/:id` returns the same projection the global list did (public fields for others incl. followersCount/postsCount/followingCount; full safe fields for your own record), so email/phone/birthDate on About behave exactly as before — present on your own profile, absent on someone else's.
+- UserProfileFollowing needed no change (it already used the raw route id).
+- Tests: new apps/web/tests/ProfileSubjectFetch.test.jsx — renders the profile with the users array mocked EMPTY (proving it no longer needs the global load) and asserts a 404 shows "unavailable" rather than hanging on a skeleton. AddPostOwnProfile.test.jsx updated to supply the subject via context. web 173 green; the profile folder is now fully lint-clean (zero errors).
+
 ### Retire load-everything providers — task 5: addAuthorToFeed fetches from the server — awaiting review
 - Built on branch autopilot/2026-07-13, commit 3516b02. Following someone surfaces their posts in the feed immediately (no refetch, no scroll jump). That worked by splicing their cards out of `registeredCards` — which only worked because that array held EVERY card in the app. `addAuthorToFeed` now fetches the author's first page from `GET /cards/explore?userId=` and merges it in, keeping the existing dedupe + date-sort so feed order is preserved.
 - First page only (10): the feed is cursor-paginated by recency, so scrolling on pulls the rest of their posts in order anyway. A failed fetch is caught and logged, not surfaced — a follow whose posts don't merge is not a failed follow, and the next feed refresh picks them up.

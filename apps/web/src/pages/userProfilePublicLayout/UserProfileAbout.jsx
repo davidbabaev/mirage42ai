@@ -1,15 +1,14 @@
 import React from 'react'
-import { useParams } from 'react-router-dom';
 import { Box, Paper, Typography } from '@mui/material';
 import OnLoadingSkeletonBox from '../../components/OnLoadingSkeletonBox';
-import { useUsersProvider } from '../../providers/UsersProvider';
+import { useProfileSubject } from './profileSubjectContext';
 
 export default function UserProfileAbout() {
 
-  const {users} = useUsersProvider();
-  const {id} = useParams();
-
-  const userProfile = users.find((user) => user._id === id);
+  // Resolved once by UserProfileLayout (from the server) and shared via context.
+  // Note: email / phone / birthDate are only present on your OWN profile — the
+  // server's public projection strips them for other users, as it did before.
+  const userProfile = useProfileSubject();
 
   if(!userProfile) {
     return <OnLoadingSkeletonBox/>

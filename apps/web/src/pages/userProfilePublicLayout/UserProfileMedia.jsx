@@ -1,19 +1,16 @@
 import { Box, Paper, Typography } from '@mui/material'
 import React, { useState, useCallback, useEffect } from 'react'
-import { useParams } from 'react-router-dom';
 import CardPopupModal from '../../components/card/CardPopupModal';
 import { useAuth } from '../../providers/AuthProvider';
 import LoginPopup from '../../components/LoginPopup';
 import OnLoadingSkeletonBox from '../../components/OnLoadingSkeletonBox';
-import { useUsersProvider } from '../../providers/UsersProvider';
 import { useCursorPagination } from '../../hooks/useCursorPagination';
 import InfiniteScroll from '../../components/InfiniteScroll';
 import { getExploreCards } from '../../services/apiService';
+import { useProfileSubject } from './profileSubjectContext';
 
 export default function UserProfileMedia() {
 
-    const {users} = useUsersProvider();
-    const {id} = useParams();
     const [selectedCardId, setSelectedCardId] = useState(null);
     const {isLoggedIn} = useAuth();
 
@@ -22,7 +19,8 @@ export default function UserProfileMedia() {
         setIsLoginPopupOpen(false)
     }
 
-    const userProfile = users.find(u => u._id === id);
+    // Resolved once by UserProfileLayout (from the server) and shared via context.
+    const userProfile = useProfileSubject();
     const profileId = userProfile?._id;
 
     const fetcher = useCallback(
