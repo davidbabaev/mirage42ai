@@ -25,7 +25,9 @@ export default function FavoriteCards() {
         {!countedRegisterCards[0] && (<Typography color='text.secondary'>You didn't selected users yet</Typography>)}
 
         {countedRegisterCards.map((favCard) => {
-            const currentUser = users.find(user => favCard.userId === user._id) 
+            // Prefer the server-embedded post author; fall back to the global
+            // users array until it is retired.
+            const currentUser = favCard.creator ?? users.find(user => favCard.userId === user._id)
             if(!currentUser) return;
 
             return(

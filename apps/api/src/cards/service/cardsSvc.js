@@ -91,7 +91,7 @@ const getCards = async (requesterId, isAdmin) => {
         if(hidden.size) filter.userId = { $nin: [...hidden] };
         const cards = await Card.find(filter)
         const mapped = cards.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
-        return attachCommentAuthors(mapped);
+        return enrichCards(mapped);
 }
 
 // The caller's saved posts, hydrated fresh from the DB (so edits/bans reflect,
@@ -113,7 +113,7 @@ const getFavoriteCards = async (userId, requesterId, isAdmin) => {
         const order = new Map(favoriteIds.map((id, i) => [id, i]));
         cards.sort((a, b) => order.get(String(a._id)) - order.get(String(b._id)));
         const mapped = cards.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
-        return attachCommentAuthors(mapped);
+        return enrichCards(mapped);
 }
 
 // Raw fetch for internal/owner operations (edit, delete, like, comment):
@@ -133,7 +133,7 @@ const getPublicCard = async (cardId, requesterId, isAdmin) => {
         // A blocked author's post is invisible to the requester (either direction).
         const hidden = await getHiddenUserIds(requesterId);
         if(hidden.has(String(card.userId))) throw createError(404, "Card not found")
-        return attachCommentAuthorsToCard(stripBlockedComments(pickSafeCardFields(card), hidden));
+        return enrichCard(stripBlockedComments(pickSafeCardFields(card), hidden));
 }
 
 const updateCard = async (cardId, upCard) => {
@@ -175,7 +175,7 @@ const likeCard = async (cardById, userId) => {
     const savedCard = await card.save();
 
     // 4. return
-    return attachCommentAuthorsToCard(pickSafeCardFields(savedCard));
+    return enrichCard(pickSafeCardFields(savedCard));
 }
 
 // Toggle a like on an embedded comment. Mirrors likeCard: same string-array
@@ -207,7 +207,7 @@ const likeComment = async (cardId, commentId, userId) => {
     }
 
     const savedCard = await card.save();
-    return attachCommentAuthorsToCard(pickSafeCardFields(savedCard));
+    return enrichCard(pickSafeCardFields(savedCard));
 }
 
 const addComment = async (cardId, userId, commentText) => {
@@ -229,7 +229,7 @@ const addComment = async (cardId, userId, commentText) => {
     // save after changes
     const saveComment = await card.save();
     // return picked with comment authors embedded
-    return attachCommentAuthorsToCard(pickSafeCardFields(saveComment));
+    return enrichCard(pickSafeCardFields(saveComment));
 }
 
 // Add a single-level reply to an embedded comment. Mirrors addComment, but the
@@ -258,7 +258,7 @@ const addReply = async (cardId, commentId, userId, replyText) => {
     }
 
     const savedCard = await card.save();
-    return attachCommentAuthorsToCard(pickSafeCardFields(savedCard));
+    return enrichCard(pickSafeCardFields(savedCard));
 }
 
 const removeComment = async (cardId, commentId) => {
@@ -268,7 +268,7 @@ const removeComment = async (cardId, commentId) => {
     card.comments = card.comments.filter(comment => comment._id.toString() !== commentId)
 
     const saveComment = await card.save();
-    return attachCommentAuthorsToCard(pickSafeCardFields(saveComment));
+    return enrichCard(pickSafeCardFields(saveComment));
 }
 
 // Attach a `likePreview` array (first n liker objects) to each plain card object
@@ -368,14 +368,55 @@ const attachCommentAuthors = async (cards) => {
     }));
 };
 
-// Single-card convenience wrapper (mutation responses, single-card reads).
-const attachCommentAuthorsToCard = async (card) => (await attachCommentAuthors([card]))[0];
-
 // Enrich a bare comments array returned by GET /cards/:id/comments.
 const attachAuthorsToComments = async (comments) => {
     const byId = await _buildCommentAuthorMap(comments);
     return _decorateCommentList(comments, byId);
 };
+
+// ── Card-creator (post author) embed ─────────────────────────────────────────
+// Attach a `creator` sub-object to each card so the client renders the post
+// author's name/avatar/job without scanning the global users array. One
+// User.find for the union of card.userId across the whole batch (no N+1).
+// Same field name the admin cards aggregation already emits, so both surfaces
+// read `card.creator`.
+const attachCreator = async (cards) => {
+    const idSet = new Set();
+    for (const card of cards) {
+        if (card.userId) idSet.add(String(card.userId));
+    }
+    if (!idSet.size) return cards;
+
+    const creators = await User.find(
+        { _id: { $in: [...idSet] } },
+        'name lastName profilePicture job'
+    ).lean();
+
+    const byId = new Map(creators.map(u => [String(u._id), u]));
+
+    return cards.map(card => {
+        const u = byId.get(String(card.userId));
+        return {
+            ...card,
+            // null (not undefined) for a deleted author, so the client can tell
+            // "not loaded" from "no such user" — same contract as comment authors.
+            creator: u
+                ? { _id: u._id, name: u.name, lastName: u.lastName, profilePicture: u.profilePicture || '', job: u.job || '' }
+                : null,
+        };
+    });
+};
+
+// ── The card enrichment pipeline ─────────────────────────────────────────────
+// Every card payload the client renders goes through this, so a card can never
+// reach the UI with its comment authors embedded but its creator missing (or
+// vice versa). Adding a new card-returning endpoint? Call enrichCards/enrichCard
+// and it gets every sub-object the components expect. Two batched User.finds
+// (different projections/id-sets); still O(1) queries per request, not N+1.
+const enrichCards = async (cards) => attachCommentAuthors(await attachCreator(cards));
+
+// Single-card convenience wrapper (mutation responses, single-card reads).
+const enrichCard = async (card) => (await enrichCards([card]))[0];
 
 // Cursor-paginated feed. Returns { cards, nextCursor } where nextCursor is an
 // opaque keyset cursor (createdAt + _id) or null at the end. opts: { cursor, limit }.
@@ -426,9 +467,9 @@ const getFeedCards = async (userId, isAdmin, opts = {}) => {
     // scanning the global users array on the client. One batch User.find;
     // returns cards as plain objects with `likePreview` added.
     const cardsWithPreview = await attachLikePreview(cards);
-    // Embed comment/reply authors so the comment panel renders without a global
-    // users scan. Second batch User.find (separate projection, different fields).
-    const cardsEnriched = await attachCommentAuthors(cardsWithPreview);
+    // Embed the post author + comment/reply authors so the card renders without a
+    // global users scan. Batched User.finds (separate projections/id-sets).
+    const cardsEnriched = await enrichCards(cardsWithPreview);
     return { cards: cardsEnriched, nextCursor };
 }
 
@@ -532,7 +573,7 @@ const getCardsPage = async (requesterId, isAdmin, opts = {}) => {
 
     const { page, nextCursor } = await runKeysetPage(Card, baseFilter, decoded, pageSize);
     const stripped = page.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
-    const items = await attachCommentAuthors(stripped);
+    const items = await enrichCards(stripped);
 
     return { items, nextCursor };
 };
@@ -702,7 +743,7 @@ const getCardsSearch = async (requesterId, isAdmin, opts = {}) => {
         : null;
 
     const stripped = page.map(card => stripBlockedComments(pickSafeCardFields(card), hidden));
-    const items = await attachCommentAuthors(stripped);
+    const items = await enrichCards(stripped);
     return { items, nextCursor };
 };
 

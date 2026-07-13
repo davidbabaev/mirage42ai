@@ -69,7 +69,9 @@ export default function CardDetailsPage() {
         return <OnLoadingSkeletonBox />;
     }
 
-    const creator = users.find((userC) => userC._id === currentCard.userId)
+    // Prefer the server-embedded post author; fall back to the global users array
+    // until it is retired.
+    const creator = currentCard.creator ?? users.find((userC) => userC._id === currentCard.userId)
     
   return (
     <div>

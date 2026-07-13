@@ -100,7 +100,9 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
             return <OnLoadingSkeletonBox />;
         }
         
-        const creator = users.find((userC) => userC._id === currentCard.userId)
+        // Prefer the server-embedded post author; fall back to the global users
+        // array until it is retired.
+        const creator = currentCard.creator ?? users.find((userC) => userC._id === currentCard.userId)
 
         // Use server-embedded likePreview when available (feed cards) to avoid
         // scanning the global users array. Fall back to the users array for

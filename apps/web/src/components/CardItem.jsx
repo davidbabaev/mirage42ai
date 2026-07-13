@@ -57,7 +57,9 @@ export default function CardItem({
     const {users} = useUsersProvider(); 
     // const {favoriteCards ,handleFavoriteCards} = useFavoriteCards();
 
-    const creator = users.find(u => u._id === card.userId);
+    // Prefer the server-embedded post author; fall back to the global users array
+    // for any surface not yet enriched (removed once the array is retired).
+    const creator = card.creator ?? users.find(u => u._id === card.userId);
 
     // Use server-embedded likePreview when available (feed cards) to avoid
     // scanning the global users array. Fall back to the users array for non-feed

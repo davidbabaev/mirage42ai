@@ -28,12 +28,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### 1. Card-author embed — `creator` on every card payload
-- What: CardItem / CardDetailsModal / CardDetailsPage resolve the POST AUTHOR with `users.find(card.userId)` on every card. Server-embed `creator { _id, name, lastName, profilePicture, job }` on card payloads and read it. This is the single biggest remaining consumer of BOTH global arrays.
-- Decisions: Mirror the existing `likePreview` / comment-`author` pattern exactly — a shared `attachCreator(cards)` helper in cardsSvc, ONE batched `User.find({_id:$in})`, no N+1. Apply it at ALL card-serializing paths (getCards, getFavoriteCards, getFeedCards, getCardsPage, getCardsSearch, getExploreCards, getPublicCard, and the like/comment mutation responses) — the same reason slice 4 had to: CardsComments/CardsProvider reconcile items by REPLACING them from the server card, so a path that omits `creator` would blank the author. Frontend reads `card.creator ?? users.find(...)` (keep the fallback until task 11).
-- Done when: every card-returning endpoint carries `creator`; feed + modal + profile show author name/avatar/job with the users array mocked EMPTY in a web test; API tests cover creator present/shape on a list path and a mutation path. Browser-verify at 390/1280.
-- Type: logic
-
 ### 2. Overlay-upsert — mutations must not depend on registeredCards being populated
 - What: `handleToggleLike` / `handleToggleCommentLike` / `handleAddComment` (and the other CardsProvider mutations) currently `.map` over `registeredCards` to update in place. With `registeredCards` empty (task 11) those maps are no-ops and optimistic updates vanish on non-feed surfaces.
 - Decisions: Change the mutations to UPSERT — if the card isn't in the overlay, insert it (from the card object the caller already passes after slice 6a) and then apply the mutation; if it is, update in place. Keep the existing optimistic-then-reconcile-then-revert-on-error semantics from the optimistic-like work — do not redesign them.
