@@ -5,7 +5,7 @@ import useDebounce from '../hooks/useDebounce';
 import useFavoriteCards from '../hooks/useFavoriteCards';
 import { useCursorPagination } from '../hooks/useCursorPagination';
 import { CARD_CATEGORIES } from '../constants/cardsCategories';
-import { getCardsSearch, searchUsers } from '../services/apiService';
+import { getCardsSearch, searchUsers, getUsersBrowse } from '../services/apiService';
 import SearchIcon from '@mui/icons-material/Search';
 import { Avatar, Box, Button, Checkbox, Chip, Container, Grid, IconButton, InputAdornment, Paper, TextField, Typography } from '@mui/material';
 import CardItem from '../components/CardItem';
@@ -93,8 +93,20 @@ export default function AllCardsPage() {
 
     useEffect(() => {
         let cancelled = false;
-        searchUsers(debouncedCreatorSearch, 10)
-            .then(res => { if(!cancelled) setFilterCreators(res?.items ?? res ?? []); })
+        const term = debouncedCreatorSearch.trim();
+
+        // With a term: a bounded server-side name search.
+        // WITHOUT one: a bounded first page of people — NOT searchUsers(''), which
+        // hits GET /users with no q and returns the ENTIRE users collection. That is
+        // the very load-everything call this epic removed; the picker must never
+        // reach for it. (ShareDialog guards the same way, falling back to recent
+        // contacts.)
+        const request = term
+            ? searchUsers(term, 10).then(res => res?.items ?? res ?? [])
+            : getUsersBrowse(undefined, 10).then(res => res?.items ?? []);
+
+        request
+            .then(items => { if(!cancelled) setFilterCreators(items); })
             .catch(() => { if(!cancelled) setFilterCreators([]); });
         return () => { cancelled = true; };
     }, [debouncedCreatorSearch]);

@@ -9,6 +9,7 @@ import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('../src/services/apiService', () => ({
     searchUsers: vi.fn().mockResolvedValue({ items: [] }),
+    getUsersBrowse: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
     getCardsSearch: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
 }));
 vi.mock('../src/providers/AuthProvider', () => ({
@@ -25,22 +26,36 @@ vi.mock('../src/hooks/useCommentsCards', () => ({
 }));
 
 import AllCardsPage from '../src/pages/AllCardsPage';
-import { searchUsers, getCardsSearch } from '../src/services/apiService';
+import { searchUsers, getUsersBrowse, getCardsSearch } from '../src/services/apiService';
 
 const renderPage = () => render(<MemoryRouter><AllCardsPage /></MemoryRouter>);
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe('creator filter searches the server', () => {
+    // The regression this guards: the picker used to call searchUsers('') on mount.
+    // An EMPTY term makes the server skip its limit and return the ENTIRE users
+    // collection — reintroducing the exact load-everything call this epic removed.
+    // A browser network trace caught it; no mocked test could.
+    it('does NOT reach for the unbounded user list when the box is empty', async () => {
+        renderPage();
+
+        await waitFor(() => expect(getUsersBrowse).toHaveBeenCalled());
+        // The default list is a BOUNDED page...
+        expect(getUsersBrowse).toHaveBeenCalledWith(undefined, 10);
+        // ...and the search endpoint is never called with an empty term.
+        for (const call of searchUsers.mock.calls) {
+            expect(String(call[0] ?? '').trim()).not.toBe('');
+        }
+    });
+
     it('queries the server as you type, instead of filtering a loaded users array', async () => {
         searchUsers.mockResolvedValue({
             items: [{ _id: 'u1', name: 'Ada', lastName: 'Lovelace', profilePicture: '' }],
         });
 
         renderPage();
-
-        // Fires an initial (empty-term) search to populate the picker.
-        await waitFor(() => expect(searchUsers).toHaveBeenCalled());
+        await waitFor(() => expect(getUsersBrowse).toHaveBeenCalled());
 
         const input = screen.getByPlaceholderText('Search people..');
         fireEvent.change(input, { target: { value: 'Ada' } });
@@ -51,8 +66,10 @@ describe('creator filter searches the server', () => {
     });
 
     it('selecting a creator drives the server-side card query', async () => {
-        searchUsers.mockResolvedValue({
+        // The default (empty-box) list comes from the bounded browse page.
+        getUsersBrowse.mockResolvedValue({
             items: [{ _id: 'u1', name: 'Ada', lastName: 'Lovelace', profilePicture: '' }],
+            nextCursor: null,
         });
 
         renderPage();

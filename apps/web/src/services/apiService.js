@@ -88,11 +88,24 @@ const httpRequestFormData = (endpoint, method, body) => send(endpoint, method, b
 // Users Requests
 export const loginUser = (userData) => httpRequest('/users/login', 'POST', userData);
 export const registerUser = (userData) => httpRequest('/users', 'POST', userData);
+// EVERY user in the database, unbounded. The only legitimate caller is the admin
+// analytics panel, which genuinely needs the whole set and fetches it on demand.
+// Nothing on a normal user's path may call this.
 export const getAllUsers = () => httpRequest('/users', 'GET');
-// Server-side people search for pickers (recipient autocomplete etc.) so we
-// never load every user into the client.
-export const searchUsers = (q, limit = 10) =>
-    httpRequest(`/users?q=${encodeURIComponent(q)}&limit=${limit}`, 'GET');
+
+// Server-side people search for pickers (recipient autocomplete etc.) so we never
+// load every user into the client.
+//
+// GUARD: the server bounds this route by `limit` ONLY when `q` is non-empty — with
+// an empty q, GET /users returns the entire users collection. So an empty term here
+// would quietly become a load-everything call. It returns nothing instead; callers
+// wanting a default list must ask for a bounded one (getUsersBrowse / recent
+// contacts / suggestions).
+export const searchUsers = (q, limit = 10) => {
+    const term = (q ?? '').trim();
+    if (!term) return Promise.resolve([]);
+    return httpRequest(`/users?q=${encodeURIComponent(term)}&limit=${limit}`, 'GET');
+};
 export const getSingleUser = (id) => httpRequest(`/users/${id}`, 'GET');
 // The caller's own blocked users (id + name + avatar) for the settings list.
 export const getBlockedUsers = () => httpRequest('/users/blocked', 'GET');
