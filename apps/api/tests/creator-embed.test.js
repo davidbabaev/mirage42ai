@@ -61,6 +61,9 @@ beforeAll(async () => {
     );
     tokenB = regB.body.token;
 
+    // B follows A, so A has exactly 1 follower — the number the card byline shows.
+    await request(app).patch(`/users/${userAId}/follow`).set('auth-token', tokenB);
+
     const card = await request(app)
         .post('/cards').set('auth-token', tokenA)
         .field('title', 'Creator Embed Card').field('content', 'testing creator embed').field('category', 'general')
@@ -88,6 +91,10 @@ const expectCreator = (creator) => {
     expect(creator.lastName.toLowerCase()).toBe('poster');
     expect(creator).toHaveProperty('profilePicture');
     expect(creator.job).toBe('Photographer');
+    // The byline renders "N followers" straight off this. Asserting the real NUMBER,
+    // not just the field: a browser check caught every card reading "0 followers"
+    // because the embed carried no count and the client had nothing to fall back on.
+    expect(creator.followersCount).toBe(1);   // B follows A (see beforeAll)
 };
 
 const findCard = (cards) => cards.find(c => String(c._id) === String(cardId));

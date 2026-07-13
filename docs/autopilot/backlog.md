@@ -42,6 +42,12 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
+### BROWSER VERIFICATION of the provider retirement (+ the regression it caught) — awaiting review
+- Built on branch autopilot/2026-07-13, commit <pending>. Verified in a real Chromium at 390px and 1280px, logging in through the actual login form. Ran against a throwaway in-memory Mongo on separate ports (8182/5174), deliberately NOT the Atlas database in apps/api/.env and without touching David's running dev servers.
+- **RESULT — the epic's goal is confirmed live.** On login the app fires NO `GET /users` and NO `GET /cards`. Every request is bounded: `POST /users/login`, `GET /chats?limit=15`, `GET /cards/feed?limit=15`, `GET /notifications?limit=20`, `GET /users/me/favorites`, `GET /users/suggested?limit=20`, plus socket.io. Zero console errors at both widths. Feed, byline, own-profile counts, PYMK panel and the messaging dock all render.
+- **REGRESSION CAUGHT — and this is why the browser check matters.** Every feed card rendered "**0 followers**". The `creator` embed projected only name/lastName/profilePicture/job, so it carried no follower count — and task 11 had removed the users-array scan that `getFollowersCount` used to fall back to. NONE of the 185 web tests caught it: they all mock `useFollowUser`, so the count never went through the real resolution path. Fixed by embedding `followersCount` on `creator` (one extra aggregation per page, batched over the whole card set — no N+1), and the creator-embed test now asserts the real NUMBER (1 follower), not merely that the field exists. Re-verified in the browser: the byline reads "1 followers".
+- api 375 green.
+
 ### `?card=` deep-linked post modal wouldn't close — awaiting review
 - Built on branch autopilot/2026-07-13, commit 980cffd. A post opened from a deep link (`/allcards?card=<id>` — what the chat shared-post card, the external share link and the notification links all use) could not be closed: the sync effect re-applied the still-present query param and immediately reopened the modal. Tap-to-open closed fine, so this only ever hit people arriving from a shared link — the exact path a new visitor takes.
 - Two-part fix: the effect now applies the param only when it CHANGES (tracked in a ref), and closing the modal CLEARS `card` + `comment` from the URL with `replace: true`, so the post URL doesn't linger and Back doesn't step onto the reopened post.

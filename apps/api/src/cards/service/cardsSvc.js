@@ -387,12 +387,25 @@ const attachCreator = async (cards) => {
     }
     if (!idSet.size) return cards;
 
-    const creators = await User.find(
-        { _id: { $in: [...idSet] } },
-        'name lastName profilePicture job'
-    ).lean();
+    const ids = [...idSet];
+
+    // The card byline shows "N followers", so the creator carries its own count.
+    // Without it the client would have to scan a global users array to work it out —
+    // which is exactly what this epic removed. One aggregation for the whole page
+    // (a user's followers = everyone whose `following` contains their id), mirroring
+    // countFollowersFor in usersSvc.
+    const [creators, followerRows] = await Promise.all([
+        User.find({ _id: { $in: ids } }, 'name lastName profilePicture job').lean(),
+        User.aggregate([
+            { $match: { following: { $in: ids } } },
+            { $unwind: '$following' },
+            { $match: { following: { $in: ids } } },
+            { $group: { _id: '$following', count: { $sum: 1 } } },
+        ]),
+    ]);
 
     const byId = new Map(creators.map(u => [String(u._id), u]));
+    const followersById = new Map(followerRows.map(r => [String(r._id), r.count]));
 
     return cards.map(card => {
         const u = byId.get(String(card.userId));
@@ -401,7 +414,14 @@ const attachCreator = async (cards) => {
             // null (not undefined) for a deleted author, so the client can tell
             // "not loaded" from "no such user" — same contract as comment authors.
             creator: u
-                ? { _id: u._id, name: u.name, lastName: u.lastName, profilePicture: u.profilePicture || '', job: u.job || '' }
+                ? {
+                    _id: u._id,
+                    name: u.name,
+                    lastName: u.lastName,
+                    profilePicture: u.profilePicture || '',
+                    job: u.job || '',
+                    followersCount: followersById.get(String(u._id)) || 0,
+                }
                 : null,
         };
     });
