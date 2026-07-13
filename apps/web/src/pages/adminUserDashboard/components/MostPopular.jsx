@@ -1,5 +1,5 @@
 import React from 'react'
-import MostPupularCardReuse from './reusable components/MostPupularCardReuse';
+import MostPopularCardReuse from './shared/MostPopularCardReuse';
 import useAnalytics from '../hooks/useAnalytics';
 import { Box } from '@mui/material';
 import CampaignIcon from '@mui/icons-material/Campaign';
@@ -20,7 +20,7 @@ export default function MostPopular() {
       alignItems: 'start', 
       gap: 2
     }}>
-        <MostPupularCardReuse
+        <MostPopularCardReuse
             valueTitle = {mostActiveUser?.name}
             title = {"Most Active User"}
             valueCount = {mostActiveUser?.posts}
@@ -28,7 +28,7 @@ export default function MostPopular() {
             icon = {<CampaignIcon/>}
             />    
 
-        <MostPupularCardReuse
+        <MostPopularCardReuse
             valueTitle = {mostLikesCard?.title}
             title = {"Most like card"}
             valueCount = {mostLikesCard?.likes.length}

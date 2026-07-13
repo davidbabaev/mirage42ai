@@ -1,6 +1,6 @@
 import React from 'react'
 import useAnalytics from '../hooks/useAnalytics'
-import StatCardReuse from './reusable components/StatCardReuse';
+import StatCardReuse from './shared/StatCardReuse';
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import { Box } from '@mui/material';

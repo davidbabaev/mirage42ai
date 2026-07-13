@@ -1,7 +1,7 @@
 import { Avatar, Box, Typography } from '@mui/material'
 import React from 'react'
 
-export default function MostPupularCardReuse({
+export default function MostPopularCardReuse({
     valueTitle, 
     valueCount, 
     title, 

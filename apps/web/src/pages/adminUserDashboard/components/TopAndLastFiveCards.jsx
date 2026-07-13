@@ -1,5 +1,5 @@
 import React from 'react'
-import TopAndLastFiveCardReuse from './reusable components/TopAndLastFiveCardReuse'
+import TopAndLastFiveCardReuse from './shared/TopAndLastFiveCardReuse'
 import useAnalytics from '../hooks/useAnalytics'
 import { Box, Divider, Typography } from '@mui/material';
 import { useAdminAnalyticsData } from '../hooks/adminAnalyticsContext';

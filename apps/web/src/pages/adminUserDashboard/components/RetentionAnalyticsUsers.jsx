@@ -1,6 +1,6 @@
 import React from 'react'
 import useAnalytics from '../hooks/useAnalytics'
-import UsersRetentionCardReuse from './reusable components/UsersRetentionCardReuse';
+import UsersRetentionCardReuse from './shared/UsersRetentionCardReuse';
 import { Box } from '@mui/material';
 import RetentionUserRegisterLoginLastTwoWeeks from './RetentionUserRegisterLoginLastTwoWeeks';
 
