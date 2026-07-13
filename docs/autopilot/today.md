@@ -28,12 +28,6 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-### 10. Admin analytics — fetch on demand, not at app mount
-- What: `useAnalytics` makes 13 passes over the full users+cards arrays. It's the last consumer forcing EVERY user to load both collections at mount — for an admin-only panel.
-- Decisions: Do NOT build the full server-aggregation endpoint suite in this run — that's a bigger piece of work and it is not on the critical path. Instead make the admin OverView panel fetch `getAllUsers`/`getAllCards` ON DEMAND at panel mount (admin-only, admin-guarded), so the providers stop loading them for everyone. Log this as a deliberate interim step and leave a backlog item for the proper aggregation endpoints. Rationale: it unblocks task 11 today, is fully reversible, and the cost lands only on the handful of admins who open that panel.
-- Done when: the admin OverView panel still renders correct analytics, and its data loads only when the panel mounts (not at app mount). Browser-verify at 390/1280.
-- Type: logic
-
 ### 11. THE DELETION — remove the mount-time global loads
 - What: Delete the mount-time `getAllUsers` from UsersProvider and `getAllCards` from CardsProvider. `registeredCards` becomes the empty-start mutation overlay; the users array goes away (or becomes the overlay from task 9). Remove the now-dead `?? users.find(...)` / `?? registeredCards.filter(...)` fallbacks left behind by tasks 1–10.
 - Decisions: This is the payoff task — do it only after 1–10 are green. If any consumer is still reading a global array, fix that consumer rather than keeping the load.

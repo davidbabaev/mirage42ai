@@ -2,6 +2,7 @@ import { Link, Route, Routes } from "react-router-dom";
 import AdminUsersPanel from "../AdminUsersPanel";
 import AdminOverViewPanel from "../AdminOverViewPanel";
 import AdminCardsPanel from "../AdminCardsPanel";
+import AdminAnalyticsProvider from "../AdminAnalyticsProvider";
 import { useState } from "react";
 import AdminNavBar from "./AdminNavBar";
 import { Box } from "@mui/material";
@@ -22,7 +23,14 @@ export default function AdminDashboardLayout() {
             <Box sx={{flex: 1, overflow: 'auto'}}>
               <Routes>
                 <Route path="/userspanel" element={<AdminUsersPanel/>}/>
-                <Route path="/overviewpanel" element={<AdminOverViewPanel/>}/>
+                {/* The analytics dataset (all users + all cards) is fetched when THIS
+                    panel mounts — admin-only, on demand — instead of being loaded at
+                    app mount for every visitor by the global providers. */}
+                <Route path="/overviewpanel" element={
+                  <AdminAnalyticsProvider>
+                    <AdminOverViewPanel/>
+                  </AdminAnalyticsProvider>
+                }/>
                 <Route path="/cardspanel" element={<AdminCardsPanel/>}/>
               </Routes>
 

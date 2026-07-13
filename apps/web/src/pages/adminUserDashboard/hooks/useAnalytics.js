@@ -1,10 +1,12 @@
-import { useCardsProvider } from '../../../providers/CardsProvider';
-import { useUsersProvider } from '../../../providers/UsersProvider';
+import { useAdminAnalyticsData } from './adminAnalyticsContext';
 
 function useAnalytics() {
 
-  const {registeredCards} = useCardsProvider();
-  const {users} = useUsersProvider();
+  // The whole users + cards dataset, fetched ON DEMAND by AdminAnalyticsProvider when
+  // the admin Overview panel mounts — not from the global providers, which used to
+  // load both collections at APP mount for every visitor just so this admin-only
+  // panel could compute its totals.
+  const {users, cards: registeredCards} = useAdminAnalyticsData();
 
   const registeredCardsLength = registeredCards.length;
   const usersLength = users.length;

@@ -2,7 +2,7 @@ import React from 'react'
 import TopAndLastFiveCardReuse from './reusable components/TopAndLastFiveCardReuse'
 import useAnalytics from '../hooks/useAnalytics'
 import { Box, Divider, Typography } from '@mui/material';
-import { useUsersProvider } from '../../../providers/UsersProvider';
+import { useAdminAnalyticsData } from '../hooks/adminAnalyticsContext';
 
 export default function TopAndLastFiveCards() {
 
@@ -10,7 +10,9 @@ export default function TopAndLastFiveCards() {
         topFiveCards,
         lastFiveCards,
     } = useAnalytics();
-    const {users} = useUsersProvider();
+    // From the admin analytics dataset (fetched on panel mount), not the global
+    // users provider — the card-creator lookup here is admin-only.
+    const {users} = useAdminAnalyticsData();
 
   return (
     <Box sx={{display: 'flex', flexDirection: {xs: 'column', md: 'row'} ,gap: 2}}>

@@ -30,12 +30,23 @@ Mark items [done] when finished so they drop out of the active list.
 - Not read-time block-aware (notifications): blocks are enforced at notification CREATION (block-hardening); the read endpoint was never block-filtered, so pagination preserved that. Read-time filtering is a separable follow-up if wanted.
 - Notes: DO NOT build ad-hoc. This is the same work as Phase D cursor pagination — belongs there to avoid building it twice.
 
+### Admin analytics → server-side aggregation endpoints
+- What: The admin Overview panel currently fetches ALL users + ALL cards on mount (AdminAnalyticsProvider, added 2026-07-13) and computes ~13 analytics passes client-side. That was the deliberate interim step that let us retire the global load-everything providers for every OTHER user — but it does not scale: at 100k+ users an admin opening Overview would pull the entire database into the browser.
+- Do: replace with dedicated server aggregation endpoints (totals, engagement, gender/age + country distributions, registrations by month, retention, top-10 active users, most-popular categories, top/last-5 cards, last-5 joined). MongoDB `$facet` aggregations, admin-guarded, mirroring the GET /users/admin + GET /cards/admin pattern from pagination sweep phase 7.
+- Type: phase-d follow-up. Not urgent while the dataset is small; REQUIRED before the admin panel runs against a large production dataset.
+
 ### TASK B — Messaging stops after a long session  [BACKLOG ONLY — DO NOT BUILD THIS RUN]
 - Type: bug → diagnose-only, handled in a separate session
 - Symptom: After a long logged-in session the user can't send DMs; sends silently fail until logout + relogin. Likely token expiry interacting with the socket/auth layer.
 - Notes: Queued investigation task. Do not implement now; handled in a separate session.
 
 ## Awaiting review
+
+### Retire load-everything providers — task 10: admin analytics fetch on demand — awaiting review
+- Built on branch autopilot/2026-07-13, commit <pending>. `useAnalytics` makes ~13 passes over the FULL users+cards arrays, feeding 13 admin chart components. It was the last consumer forcing EVERY visitor to load both entire collections at app mount — for a panel only admins can open.
+- The analytics genuinely DO need the whole dataset (totals, distributions, rankings across every user and post). What was wrong was where it came from. New `AdminAnalyticsProvider` fetches getAllUsers + getAllCards when the admin Overview panel MOUNTS and serves them through `adminAnalyticsContext`; `useAnalytics` reads from that instead of the global providers. TopAndLastFiveCards' creator lookup moved to the same dataset. Spinner while loading, error state on failure.
+- DECISION (as planned): did NOT build the server-side aggregation endpoint suite. That's a bigger piece of work, it is not on the critical path, and this step already achieves the goal — the providers stop loading both collections for everyone. Fully reversible. **Follow-up item added below** for the proper aggregation endpoints; until then an admin opening Overview still pulls both full collections, which will not scale to 100k+ users and should be replaced before the admin panel is used against a large production dataset.
+- Tests: new apps/web/tests/AdminAnalyticsOnDemand.test.jsx (nothing is fetched until the panel mounts; the dataset is then served to consumers; a failed fetch shows an error state rather than a broken panel). web 179 green; admin folder lint-clean.
 
 ### Retire load-everything providers — task 9: user overlay keeps follower counts live — awaiting review
 - Built on branch autopilot/2026-07-13, commit 2d65513. A user's follower count was derived by SCANNING the global users array ("how many loaded users have this id in their `following`?"), and `syncUser` patched my own record into that array after a follow so the count moved everywhere at once. With the array empty that scan returns 0, and following someone would have nowhere to record that their count just went up.
