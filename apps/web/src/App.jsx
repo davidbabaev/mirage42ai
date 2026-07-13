@@ -6,8 +6,8 @@ import { CardsProvider } from './providers/CardsProvider'
 import NavBar from './components/NavBar'
 import LoginPage from './pages/LoginPage'
 import ProtectedRoute from './components/ProtectedRoute'
-import CardsRegisterPage from './pages/CardsRegisterPage'
-import RegisteredPage from './pages/RegisteredPage'
+import CreateCardPage from './pages/CreateCardPage'
+import SignUpPage from './pages/SignUpPage'
 import AllCardsPage from './pages/AllCardsPage'
 import DashboardLayout from './pages/dashboard/DashboardLayout'
 import UserProfileLayout from './pages/userProfilePublicLayout/UserProfileLayout'
@@ -107,7 +107,7 @@ export default function App(){
                     }/>
                     <Route path='/createnewcard' element={
                       <ProtectedRoute>
-                        <CardsRegisterPage/>
+                        <CreateCardPage/>
                       </ProtectedRoute>
                     }/>
                     <Route path='/allusers' element ={
@@ -118,7 +118,7 @@ export default function App(){
                     <Route path='/*' element ={<PageNotFound/>}/>
                     <Route path='/registered' element ={
                       <PublicOnlyRoute>
-                        <RegisteredPage/>
+                        <SignUpPage/>
                       </PublicOnlyRoute>
                     }/>
                     <Route path='/allcards' element ={

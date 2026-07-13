@@ -15,7 +15,7 @@ import bgImgMobile from '../assets/Gemini_Generated_Image_78keg978keg978ke.png'
 
 const STEPS = ['Account', 'About you', 'Location'];
 
-export default function RegisteredPage() {
+export default function SignUpPage() {
 
     const theme = useTheme();
 

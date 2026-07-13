@@ -491,7 +491,7 @@ function UserRow({ user: u, isFollowing, onFollow }) {
 
 // ─── Step 3: Finish Profile ────────────────────────────────────────────────────
 // Only shown to Google-login users (form-registered users already provided
-// this data). Uses the same built-in select components as RegisteredPage and
+// this data). Uses the same built-in select components as SignUpPage and
 // ProfileSection to ensure consistent UX and valid values.
 function ProfileStep({ values, onChange, error }) {
     const { apiCountriesList } = useCountries();

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import CreateCardForm from '../components/CreateCardForm';
 
-export default function CardsRegisterPage() {
+export default function CreateCardPage() {
 
     const navigate = useNavigate();
 
