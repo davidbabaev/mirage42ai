@@ -43,7 +43,7 @@ Mark items [done] when finished so they drop out of the active list.
 ## Awaiting review
 
 ### `?card=` deep-linked post modal wouldn't close — awaiting review
-- Built on branch autopilot/2026-07-13, commit <pending>. A post opened from a deep link (`/allcards?card=<id>` — what the chat shared-post card, the external share link and the notification links all use) could not be closed: the sync effect re-applied the still-present query param and immediately reopened the modal. Tap-to-open closed fine, so this only ever hit people arriving from a shared link — the exact path a new visitor takes.
+- Built on branch autopilot/2026-07-13, commit 980cffd. A post opened from a deep link (`/allcards?card=<id>` — what the chat shared-post card, the external share link and the notification links all use) could not be closed: the sync effect re-applied the still-present query param and immediately reopened the modal. Tap-to-open closed fine, so this only ever hit people arriving from a shared link — the exact path a new visitor takes.
 - Two-part fix: the effect now applies the param only when it CHANGES (tracked in a ref), and closing the modal CLEARS `card` + `comment` from the URL with `replace: true`, so the post URL doesn't linger and Back doesn't step onto the reopened post.
 - web 185 green.
 
