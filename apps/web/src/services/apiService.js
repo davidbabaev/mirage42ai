@@ -23,7 +23,12 @@ const requestRefresh = async () => {
     return data?.token || null;
 }
 
-const refreshAccessToken = () => {
+// Exported so the SOCKET can refresh too. HTTP requests refresh on a 401, but the
+// socket has no 401 — its handshake is just refused. Without this it would retry
+// forever with the same dead token (which is exactly why DMs died after 15 minutes
+// and only logout+login brought them back). Single-flight, so a socket reconnect and
+// an in-flight HTTP call share one round-trip rather than racing.
+export const refreshAccessToken = () => {
     if(!refreshPromise){
         refreshPromise = requestRefresh().finally(() => { refreshPromise = null; })
     }

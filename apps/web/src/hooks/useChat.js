@@ -107,7 +107,30 @@ function useChat(
             }
         }
         else{
-            getSocket().emit('send-message', message)
+            // A text DM used to be a bare fire-and-forget emit. socket.io SILENTLY
+            // BUFFERS an emit on a disconnected client — the message never reaches
+            // the server and nothing throws, so a user whose socket was stuck (an
+            // expired token refused the reconnect) just watched their messages
+            // vanish. A message that cannot be delivered has to say so.
+            const socket = getSocket();
+
+            if(!socket?.connected){
+                setSendError("You're offline. Message not sent — check your connection and try again.");
+                return;
+            }
+
+            // Ack + timeout: the server answers when it has actually stored the
+            // message. No answer (or an error) means it did NOT send, and the user
+            // gets told — the Snackbar for this already exists; nothing was feeding it.
+            socket.timeout(10000).emit('send-message', message, (timeoutErr, ack) => {
+                if(timeoutErr){
+                    setSendError('Message not sent — the server did not respond. Please try again.');
+                    return;
+                }
+                if(ack?.error){
+                    setSendError(ack.error);
+                }
+            })
         }
     }
 

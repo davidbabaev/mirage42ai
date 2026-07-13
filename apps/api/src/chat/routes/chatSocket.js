@@ -61,7 +61,11 @@ module.exports = (io) => {
             }
         });
 
-        socket.on('send-message', async (message) => {
+        // `ack` is optional: socket.io passes it only when the client emits with a
+        // callback. Answering it is what lets the sender know the message was really
+        // stored — without it a send that never arrives is indistinguishable from one
+        // that did, which is how DMs could fail silently.
+        socket.on('send-message', async (message, ack) => {
             try{
                 const conversation = await getOrCreateConversation(socket.userId, message.toUser)
 
@@ -71,10 +75,12 @@ module.exports = (io) => {
                 )
 
                 io.to(socket.userId).to(message.toUser).emit('receive-message', newMessage)
+                if(typeof ack === 'function') ack({ ok: true, message: newMessage });
             }
             catch(err){
                 console.log('send-message error:', err.message);
                 socket.emit('send-message-error', {message: err.message});
+                if(typeof ack === 'function') ack({ error: err.message });
             }
         })
     })
