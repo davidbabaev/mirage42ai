@@ -59,6 +59,10 @@ export default function CardItem({
     const creator = card.creator;
     const getLikesUsers = (card.likePreview ?? []).slice(0, 4);
 
+    // A banned/removed post (only admins ever see one in the feed). Cards with no
+    // status set are treated as active — that's the default for every normal post.
+    const isActiveCard = !card.status || card.status === 'active';
+
     const cardRef = useRef(null);
 
     // Defensive: pause this card's video at click time so even if the modal's
@@ -356,24 +360,30 @@ export default function CardItem({
                 px: 1
             }}>
 
-                {/* Favorite */}
-                {isSavedCard ? (
-                    <Button
-                        size='small'
-                        startIcon={<BookmarkAddedIcon/>}
-                        onClick={() => isLoggedIn ? onRemoveSavedCard() : setIsLoginPopupOpen(true)}
-                        >
-                        saved
-                    </Button>
-                ) : (
-                    <Button
-                        size='small'
-                        startIcon={<BookmarkBorderOutlinedIcon/>}
-                        onClick={() => isLoggedIn ? onSaveCard() : setIsLoginPopupOpen(true)}
-                        >
-                        save
-                    </Button>
-                )}
+                {/* Favorite.
+                    Hidden on a banned post: the server refuses to save one (404), so
+                    the button could only ever fail and silently revert. Only admins
+                    see banned posts in the feed at all. Hidden rather than disabled —
+                    a dead control on a removed post is just noise. */}
+                {isActiveCard ? (
+                    isSavedCard ? (
+                        <Button
+                            size='small'
+                            startIcon={<BookmarkAddedIcon/>}
+                            onClick={() => isLoggedIn ? onRemoveSavedCard() : setIsLoginPopupOpen(true)}
+                            >
+                            saved
+                        </Button>
+                    ) : (
+                        <Button
+                            size='small'
+                            startIcon={<BookmarkBorderOutlinedIcon/>}
+                            onClick={() => isLoggedIn ? onSaveCard() : setIsLoginPopupOpen(true)}
+                            >
+                            save
+                        </Button>
+                    )
+                ) : <Box />}
 
                 {/* Like */}
                 <Button
