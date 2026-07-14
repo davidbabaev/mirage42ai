@@ -15,7 +15,7 @@ const CLOUDINARY = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_A
 // deep-links (shareRoutes) build user-facing URLs from it, and the localhost
 // fallback would silently point real users at a dev origin.
 const PROD_REQUIRED = [...CLOUDINARY, 'ALLOWED_ORIGINS', 'CLIENT_URL'];
-const OTHER_OPTIONAL = ['PORT', 'SERVER_URL', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'];
+const OTHER_OPTIONAL = ['PORT', 'SERVER_URL', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'SENTRY_DSN', 'SENTRY_ENVIRONMENT'];
 
 function validateEnv() {
     const isSet = (k) => typeof process.env[k] === 'string' && process.env[k].trim() !== '';

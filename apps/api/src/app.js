@@ -9,6 +9,12 @@ try {
     process.exit(1);
 }
 
+// Sentry must be initialised before Express and other instrumentable modules
+// are require()'d so that its OpenTelemetry auto-instrumentation can patch them
+// early.  Safe no-op when SENTRY_DSN is absent.
+const { initSentry, applySentryErrorHandler } = require('./utils/sentry');
+initSentry();
+
 const morgan = require('morgan');
 const express = require('express');
 const passport = require('passport');
@@ -85,6 +91,11 @@ app.use(chatRoutes(io))
 // app.get('/{*splat}', (req,res) => {
 //     res.sendFile(__dirname + '/public/index.html')
 // })
+
+// Sentry captures the error first, then calls next(err) so the handler below
+// remains in full control of what the client sees — no stack traces leak.
+// Safe no-op when SENTRY_DSN was absent at boot.
+applySentryErrorHandler(app);
 
 // this line handle errors global on our all files. prevent server collapse
 app.use((err, req, res, next ) => {

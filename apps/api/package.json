@@ -16,6 +16,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@sentry/node": "^10.65.0",
     "bcryptjs": "^3.0.3",
     "chalk": "4.1",
     "cloudinary": "^2.9.0",
