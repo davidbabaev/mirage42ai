@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act, cleanup, waitFor } from '@testing-library/react';
+import { act, cleanup, waitFor } from '@testing-library/react';
 
 // TASK B — "after a long session the user can't send DMs; sends silently fail until
 // logout + relogin."

@@ -5,6 +5,13 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Active
 
+### `npm run lint` is already RED on main — 39 errors in 29 files
+- What: `apps/web` eslint fails on main (`67bb624`) with 39 errors across 29 files, independent of any current task. `apps/api` lint is clean. There is also no root `lint` script — run-instruction says to run `npm run lint`, but that script does not exist; lint only exists per-workspace (`apps/web`, `apps/api`).
+- Why it matters: run-instruction makes a clean lint a MANDATORY gate for every task ("CI runs the same lint and a lint failure BLOCKS deploys"). That gate is currently unpassable, so it is being skipped by default — which means it is protecting nothing. This will block Phase E deployment.
+- Breakdown: ~26 errors are `react-refresh/only-export-components` (a provider file exporting both a component and its hook/context — the standard fix is to split the hook/context into its own file); the rest are unused imports in tests and one `'global' is not defined` in `tests/CreateCardModal.test.jsx` (needs the vitest/node env in the eslint config).
+- Do: fix in ONE dedicated lint-cleanup run, not bundled into a feature or bug branch. Add a root `lint` script that runs both workspaces so the gate is actually runnable.
+- Type: chore / tech debt. Should be done BEFORE Phase E, since CI lint blocks deploys.
+
 ### Infrastructure hardening (deployment task — do with Render staging/production)
 - What: Add network-level protection at the host: firewall rules, DDoS/WAF protection (e.g. Cloudflare in front), restrict inbound to required ports, lock down Atlas network access to known IPs.
 - Type: infrastructure (not a code task — done at deploy time, verified in the host dashboards)
@@ -17,14 +24,15 @@ Mark items [done] when finished so they drop out of the active list.
 - Do: replace with dedicated server aggregation endpoints (totals, engagement, gender/age + country distributions, registrations by month, retention, top-10 active users, most-popular categories, top/last-5 cards, last-5 joined). MongoDB `$facet` aggregations, admin-guarded, mirroring the GET /users/admin + GET /cards/admin pattern from pagination sweep phase 7.
 - Type: phase-d follow-up. Not urgent while the dataset is small; REQUIRED before the admin panel runs against a large production dataset.
 
-### TASK B — Messaging stops after a long session  [BACKLOG ONLY — DO NOT BUILD THIS RUN]
-- Type: bug → diagnose-only, handled in a separate session
-- Symptom: After a long logged-in session the user can't send DMs; sends silently fail until logout + relogin. Likely token expiry interacting with the socket/auth layer.
-- Notes: Queued investigation task. Do not implement now; handled in a separate session.
-
 ## Awaiting review
 
-(nothing awaiting review)
+### TASK B — Messaging stops after a long session
+- Type: bug (logic + visual verification)
+- Symptom: After a long logged-in session the user can't send DMs; sends silently fail until logout + relogin.
+- Built on branch `autopilot/2026-07-14`, commits `25decfc` (fix + tests) and `00d1324` (verification record) — awaiting review/merge.
+- Root cause: TWO causes, not one. (1) The socket authenticates once at connect with the token captured at that moment; when the access token expired (15 min) the server refused the re-handshake and nothing ever told the socket to get a fresh one — HTTP self-heals on a 401, a socket handshake just gets refused. (2) The reason it was SILENT: socket.io silently buffers an emit on a disconnected client, so `send-message` sat in a client-side buffer forever — no throw, no error, no server round-trip.
+- Fix: socket auth is now a callback (every reconnect re-reads the CURRENT token) + an auth-shaped `connect_error` triggers the single-flight `refreshAccessToken()` and reconnects; AND the DM send is no longer fire-and-forget — it emits with an ack + 10s timeout, and disconnected/timed-out/rejected all surface to the user.
+- Verified: 375/375 API, 190/190 web (incl. 2 new chat tests). Browser-verified at 390 and 1280 against a real API with an 8s token TTL: the DM vanished silently BEFORE the fix and survives a page reload AFTER it. The baseline run against the reverted code is the half that matters — a check that passes both before and after proves nothing.
 
 ## Done
 
