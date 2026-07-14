@@ -5,12 +5,12 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Active
 
-### `npm run lint` is already RED on main — 39 errors in 29 files
-- What: `apps/web` eslint fails on main (`67bb624`) with 39 errors across 29 files, independent of any current task. `apps/api` lint is clean. There is also no root `lint` script — run-instruction says to run `npm run lint`, but that script does not exist; lint only exists per-workspace (`apps/web`, `apps/api`).
-- Why it matters: run-instruction makes a clean lint a MANDATORY gate for every task ("CI runs the same lint and a lint failure BLOCKS deploys"). That gate is currently unpassable, so it is being skipped by default — which means it is protecting nothing. This will block Phase E deployment.
-- Breakdown: ~26 errors are `react-refresh/only-export-components` (a provider file exporting both a component and its hook/context — the standard fix is to split the hook/context into its own file); the rest are unused imports in tests and one `'global' is not defined` in `tests/CreateCardModal.test.jsx` (needs the vitest/node env in the eslint config).
-- Do: fix in ONE dedicated lint-cleanup run, not bundled into a feature or bug branch. Add a root `lint` script that runs both workspaces so the gate is actually runnable.
-- Type: chore / tech debt. Should be done BEFORE Phase E, since CI lint blocks deploys.
+### Follow-ups deliberately deferred during Phase D #16 (small, not urgent)
+- **`ProfileSection.jsx` — extract an `<EditProfileForm key={editMode}>` child.** Two of the 15 lint disables live here: one effect re-seeds ~11 edit fields whenever Edit is clicked, and another calls the PARENT's `onEditMode()` (which cannot move to render — React throws "Cannot update a component while rendering a different component"). The clean fix is extracting the edit form into a keyed child so it remounts with fresh values. Real refactor, ~half a day; behavior is correct today.
+- **`PeopleModal.jsx` — key-based remount instead of the open-time snapshot effect.** It snapshots the `users` prop when opened so in-flight follow actions don't recompute the list under the user. A `key` would work but the timing is delicate; left as a justified disable.
+- **MUI Tabs warning on `/dashboard`.** The browser console logs "The `value` provided to the Tabs component is invalid. None of the Tabs' children match with '/dashboard'" on every dashboard render, at both viewports. Pre-existing, cosmetic (console noise only, the page renders fine) — the tabs `value` doesn't match any tab's route for the bare `/dashboard` path. Likely needs a default/redirect to the first tab.
+- **No `.gitattributes`.** Windows git here has `core.autocrlf=true`, WSL git does not — Windows sees a clean tree, WSL sees ~110 files as modified (pure CRLF noise, byte-identical). Harmless while every commit is made from Windows, but a commit made from inside WSL would produce a 110-file line-ending diff. Add `* text=auto eol=lf`.
+
 
 ### Infrastructure hardening (deployment task — do with Render staging/production)
 - What: Add network-level protection at the host: firewall rules, DDoS/WAF protection (e.g. Cloudflare in front), restrict inbound to required ports, lock down Atlas network access to known IPs.
@@ -25,6 +25,16 @@ Mark items [done] when finished so they drop out of the active list.
 - Type: phase-d follow-up. Not urgent while the dataset is small; REQUIRED before the admin panel runs against a large production dataset.
 
 ## Awaiting review
+
+### Phase D #16 — provider/hook cleanup (web lint 39 → 0, and it is now a hard gate)
+- Type: chore / tech debt
+- Built on branch `autopilot/2026-07-14`, commits `540f910` (trivial 4), `9d91b16` (provider split), `4126229` (the 26 effect errors + CI gate) — awaiting review/merge.
+- What it was: `apps/web` eslint had 39 errors, and CI ran web lint with `continue-on-error: true` so they never blocked anything and just accumulated.
+- Done: all 39 cleared. `continue-on-error` REMOVED from ci.yml — web lint is now a hard gate like api lint. Added the root `lint` + `test` scripts that run-instruction assumed existed but didn't.
+- Shape of the fix: 9 providers had their hook+context split into sibling `*Context.js` modules (matching the convention already used by `profileSubjectContext.js`) — a 93-file churn, but every edit is an import-path swap. 9 effects were genuinely fixed (derive-during-render / lazy-init / key-based remount, deleting the state entirely in several cases). 15 sites got NEXT-LINE scoped disables with a written reason: the React Compiler rule is conservative about legitimate async, and for a few the "obvious" fix silently breaks the feature (see below).
+- REVIEW THESE FIRST — the load-bearing disables: `useConversationThread` (`conversationId` has three writers — initial, new-chat adoption, delete — so it cannot be derived from `resolved`) and `AllCardsPage` (the `appliedCardParam` ref guard is the only thing letting the `?card=` modal close).
+- Found and fixed a REAL bug on the way: the compose box was only cleared in the click handler, missing the deep-link path that opens a chat with someone you have no conversation with yet — a draft typed to Alice survived into Bob's chat and could be sent to the wrong person. Covered by `tests/ChatComposeBoxClears.test.jsx` (verified to fail against the bug).
+- Verified: 0 lint errors, 191/191 web, 375/375 API, browser-checked at 390 and 1280 (all routes render, zero page errors, DMs still survive token expiry).
 
 ### TASK B — Messaging stops after a long session
 - Type: bug (logic + visual verification)

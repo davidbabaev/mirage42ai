@@ -14,11 +14,21 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-(none — the queue below is next)
-
 TASK B (DMs silently stop working after a long session) is COMPLETE and moved to
 "## Awaiting review" in backlog.md — built on `autopilot/2026-07-14`, commits `25decfc`
 + `00d1324`. Suites green (375/375 API, 190/190 web) and browser-verified at 390 and 1280.
+
+**Phase D #16 (provider/hook cleanup) is COMPLETE** and moved to "## Awaiting review" —
+commits `540f910`, `9d91b16`, `4126229`. Web lint 39 → 0, and `continue-on-error` is off:
+web lint is now a HARD CI GATE. Root `npm run lint` / `npm run test` scripts added.
+Found and fixed a real bug on the way (a chat draft could follow you into a different
+person's conversation — `tests/ChatComposeBoxClears.test.jsx`).
+
+### 1. Phase E (code parts only)
+- What: Dockerized local env (Dockerfile + compose), Sentry wiring, and promote the untracked TASK-B harness into the CHECKED-IN Playwright smoke pack.
+- Decisions: hosting, DNS, prod env vars and Render/Vercel/Cloudflare settings are Guardrail-7 STOP-AND-ASK — build only the CODE. The smoke pack must keep the TASK-B pattern (in-memory Mongo, tiny token TTL, real `setOffline` outage, reload-as-assertion).
+- Done when: `docker compose up` boots api+web locally; Sentry initialises from env and is a no-op without a DSN; the smoke pack runs green from an npm script.
+- Type: feature
 
 ---
 
