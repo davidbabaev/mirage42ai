@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "../providers/AuthProvider";
+import { useAuth } from "../providers/authContext";
 
  function useSelectedUsers() {
 

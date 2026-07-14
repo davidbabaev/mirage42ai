@@ -1,11 +1,5 @@
-import { createContext, useCallback, useContext, useState } from 'react';
-
-// Global state for the LinkedIn-style docked messaging. Lives above the router
-// so it persists across navigation. There is a single persistent "Messaging" bar
-// (rendered by <ChatDock/>) plus AT MOST ONE open chat window at a time — opening
-// a different conversation replaces the current window. Desktop-only rendering is
-// decided by <ChatDock/>; on mobile callers fall back to the full-screen /chat.
-const ChatDockContext = createContext(null);
+import { useCallback, useState } from 'react';
+import { ChatDockContext } from './chatDockContext';
 
 export function ChatDockProvider({ children }) {
     // the other user of the single open chat window (null = no window open)
@@ -39,6 +33,3 @@ export function ChatDockProvider({ children }) {
     );
 }
 
-export function useChatDock() {
-    return useContext(ChatDockContext);
-}

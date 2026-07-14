@@ -1,5 +1,5 @@
 import React from 'react'
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/authContext';
 import OnLoadingSkeletonBox from './OnLoadingSkeletonBox';
 import LoginWall from './LoginWall';
 

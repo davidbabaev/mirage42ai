@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import BrokenImageOutlinedIcon from '@mui/icons-material/BrokenImageOutlined';
-import { useManagedVideo } from '../providers/VideoCoordinatorProvider';
+import { useManagedVideo } from '../providers/videoCoordinatorContext';
 import ZoomableImage from './ZoomableImage';
 
 // Coordinated video: participates in the single-active-video coordinator.

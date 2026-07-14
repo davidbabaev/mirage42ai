@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import useDebounce from '../../hooks/useDebounce';
-import { useAuth } from '../../providers/AuthProvider';
+import { useAuth } from '../../providers/authContext';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import { CARD_CATEGORIES } from '../../constants/cardsCategories';
 import getTimeAgo from '../../utils/getTimeAgo';

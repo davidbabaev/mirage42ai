@@ -20,14 +20,14 @@ import { MemoryRouter } from 'react-router-dom';
 const ADMIN_ID = 'admin-1';
 const OTHER_ID = 'other-1';
 
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: { _id: ADMIN_ID } }),
 }));
 
 // AdminCardsPanel no longer reads registeredCards from CardsProvider; it calls
 // getAdminCards directly. We still mock the module to prevent import errors in
 // case anything indirectly imports it.
-vi.mock('../src/providers/CardsProvider', () => ({
+vi.mock('../src/providers/cardsContext', () => ({
     useCardsProvider: () => ({
         registeredCards: [],
         refreshFeed: vi.fn(),
@@ -38,7 +38,7 @@ vi.mock('../src/providers/CardsProvider', () => ({
 }));
 
 // AdminCardsPanel no longer reads users from UsersProvider.
-vi.mock('../src/providers/UsersProvider', () => ({
+vi.mock('../src/providers/usersContext', () => ({
     useUsersProvider: () => ({
         loading: false,
         getUsers: vi.fn(),

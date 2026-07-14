@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/authContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Alert, Box, Button, Divider, TextField, Typography, useTheme } from '@mui/material';
 import GoogleIcon from '@mui/icons-material/Google';

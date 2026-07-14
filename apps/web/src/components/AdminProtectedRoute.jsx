@@ -1,5 +1,5 @@
 import React from 'react'
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/authContext';
 import { Navigate } from 'react-router-dom';
 import OnLoadingSkeletonBox from './OnLoadingSkeletonBox';
 

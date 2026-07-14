@@ -1,7 +1,7 @@
 import { Box, Paper, Typography } from '@mui/material'
 import React, { useState, useCallback, useEffect } from 'react'
 import CardPopupModal from '../../components/card/CardPopupModal';
-import { useAuth } from '../../providers/AuthProvider';
+import { useAuth } from '../../providers/authContext';
 import LoginPopup from '../../components/LoginPopup';
 import OnLoadingSkeletonBox from '../../components/OnLoadingSkeletonBox';
 import { useCursorPagination } from '../../hooks/useCursorPagination';

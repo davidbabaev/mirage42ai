@@ -23,7 +23,7 @@ const mockSetUser = vi.fn((updater) => {
     }
 });
 
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: mockUser, setUser: mockSetUser }),
 }));
 

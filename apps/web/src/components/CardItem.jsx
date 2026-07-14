@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/authContext';
 import useLikedCards from '../hooks/useLikedCards';
 import { useNavigate } from 'react-router-dom';
 import useCommentsCards from '../hooks/useCommentsCards';

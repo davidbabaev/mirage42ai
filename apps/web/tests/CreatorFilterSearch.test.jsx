@@ -12,7 +12,7 @@ vi.mock('../src/services/apiService', () => ({
     getUsersBrowse: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
     getCardsSearch: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
 }));
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: { _id: 'me' }, isLoggedIn: true }),
 }));
 vi.mock('../src/hooks/useFavoriteCards', () => ({

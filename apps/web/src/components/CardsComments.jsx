@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/authContext';
 import { Avatar, Box, Button, IconButton, TextField, Tooltip, Typography } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import useFollowUser from '../hooks/useFollowUser';

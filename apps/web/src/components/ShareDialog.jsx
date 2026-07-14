@@ -5,7 +5,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SendIcon from '@mui/icons-material/Send';
 import IosShareIcon from '@mui/icons-material/IosShare';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/authContext';
 import { getSocket } from '../services/socketService';
 import { searchUsers, getRecentContacts } from '../services/apiService';
 import useDebounce from '../hooks/useDebounce';

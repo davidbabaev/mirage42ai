@@ -8,7 +8,7 @@ import { MemoryRouter } from 'react-router-dom';
 // optimistic add reverted silently. Hidden now, not disabled: a dead control on a
 // removed post is just noise.
 
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: { _id: 'me' }, isLoggedIn: true }),
 }));
 vi.mock('../src/hooks/useLikedCards', () => ({

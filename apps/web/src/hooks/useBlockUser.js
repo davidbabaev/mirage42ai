@@ -1,5 +1,5 @@
-import { useAuth } from "../providers/AuthProvider";
-import { useCardsProvider } from "../providers/CardsProvider";
+import { useAuth } from "../providers/authContext";
+import { useCardsProvider } from "../providers/cardsContext";
 
 // Block/unblock another user. On block we also drop their posts from the feed
 // in place; the rest of the hiding (lists, suggestions, profile, messaging) is

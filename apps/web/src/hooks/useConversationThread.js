@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import useChat from './useChat';
-import { useAuth } from '../providers/AuthProvider';
-import { useChatList } from '../providers/ChatProvider';
+import { useAuth } from '../providers/authContext';
+import { useChatList } from '../providers/chatContext';
 
 // Encapsulates a single conversation thread (message load + send + receive +
 // smart-scroll + media/emoji input state), so it can drive a docked chat window

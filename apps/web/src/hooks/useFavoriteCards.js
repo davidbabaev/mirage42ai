@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAuth } from "../providers/AuthProvider";
+import { useAuth } from "../providers/authContext";
 import {
     getMyFavorites,
     addFavorite as apiAddFavorite,

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { useCardsProvider } from '../../providers/CardsProvider';
-import { useAuth } from '../../providers/AuthProvider';
+import { useCardsProvider } from '../../providers/cardsContext';
+import { useAuth } from '../../providers/authContext';
 import getTimeAgo from '../../utils/getTimeAgo';
 import MediaDisplay from '../../components/MediaDisplay';
 import { Box, Button, Chip, Typography, useTheme } from '@mui/material';

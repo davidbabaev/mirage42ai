@@ -11,7 +11,7 @@ import {
     Alert,
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
-import { useAuth } from '../../providers/AuthProvider';
+import { useAuth } from '../../providers/authContext';
 import { updateNotificationPrefs } from '../../services/apiService';
 
 // Per-type labels and descriptions — matches Instagram / X settings patterns.

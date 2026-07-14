@@ -4,7 +4,7 @@ import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness';
 import CheckIcon from '@mui/icons-material/Check';
-import { useThemeContext } from '../providers/ThemeProvider';
+import { useThemeContext } from '../providers/themeContext';
 
 // Single shared theme control used by BOTH the main NavBar and the AdminNavBar
 // so the Light/Dark/System choice can't drift between them. Modeled on the

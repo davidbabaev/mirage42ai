@@ -10,7 +10,7 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
 const ME = 'me-id';
 const SARAH = { _id: 'sarah-id', name: 'Sarah', lastName: 'Levi', displayName: 'Sarah Levi', profilePicture: '' };
 
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: { _id: ME } }),
 }));
 const emit = vi.fn();

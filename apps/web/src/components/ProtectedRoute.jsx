@@ -1,6 +1,6 @@
 import React from 'react'
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/authContext';
 import OnLoadingSkeletonBox from './OnLoadingSkeletonBox';
 
 export default function ProtectedRoute({children}) {

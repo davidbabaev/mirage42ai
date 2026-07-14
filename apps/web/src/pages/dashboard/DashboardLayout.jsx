@@ -7,15 +7,15 @@ import FavoriteCards from './FavoriteCards'
 import BlockedUsersSection from './BlockedUsersSection'
 import NotificationSettingsSection from './NotificationSettingsSection'
 import useFollowUser from '../../hooks/useFollowUser'
-import { useAuth } from '../../providers/AuthProvider'
-import { useCardsProvider } from '../../providers/CardsProvider'
+import { useAuth } from '../../providers/authContext'
+import { useCardsProvider } from '../../providers/cardsContext'
 import { Avatar, Box, Button, Container, IconButton, Paper, Tab, Tabs, Toolbar, Tooltip, Typography } from '@mui/material'
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ConfirmationDialog from '../../components/ConfirmationDialog'
 import RemoveRedEyeIcon from '@mui/icons-material/RemoveRedEye';
 import OnLoadingSkeletonBox from '../../components/OnLoadingSkeletonBox'
-import { useUsersProvider } from '../../providers/UsersProvider'
+import { useUsersProvider } from '../../providers/usersContext'
 
 export default function DashboardLayout() {
 

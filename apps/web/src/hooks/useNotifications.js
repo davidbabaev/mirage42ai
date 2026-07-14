@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { deleteOneNotification, getNotifications, markNotificationsAsRead } from "../services/apiService";
-import { useAuth } from "../providers/AuthProvider";
+import { useAuth } from "../providers/authContext";
 import { useCursorPagination } from "./useCursorPagination";
 
 const PAGE_SIZE = 20;

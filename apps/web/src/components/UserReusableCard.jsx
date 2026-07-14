@@ -7,8 +7,8 @@ import useFollowUser from '../hooks/useFollowUser';
 import { useNavigate } from 'react-router-dom';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import { useAuth } from '../providers/AuthProvider';
-import { usePresence } from '../providers/PresenceProvider';
+import { useAuth } from '../providers/authContext';
+import { usePresence } from '../providers/presenceContext';
 import OnlineBadge from './OnlineBadge';
 import LoginPopup from './LoginPopup';
 

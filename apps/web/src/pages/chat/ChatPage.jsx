@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import useChat from '../../hooks/useChat'
-import { useAuth } from '../../providers/AuthProvider';
+import { useAuth } from '../../providers/authContext';
 import { Alert, Box, Container, Grid, Snackbar } from '@mui/material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { getSingleUser } from '../../services/apiService';
-import { useUI } from '../../providers/UIProvider';
-import { useChatList } from '../../providers/ChatProvider';
+import { useUI } from '../../providers/uiContext';
+import { useChatList } from '../../providers/chatContext';
 import ConversationList from './components/ConversationList';
 import ChatHeader from './components/ChatHeader';
 import MessageList from './components/MessageList';

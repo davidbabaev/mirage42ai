@@ -13,7 +13,7 @@ let pathname = '/';
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig()), useLocation: () => ({ pathname }) }));
 
 let loggedIn = true;
-vi.mock('../src/providers/AuthProvider', () => ({ useAuth: () => ({ isLoggedIn: loggedIn }) }));
+vi.mock('../src/providers/authContext', () => ({ useAuth: () => ({ isLoggedIn: loggedIn }) }));
 
 // Stub the heavy children (they pull in the whole chat/socket/presence stack).
 vi.mock('../src/components/chatDock/DockedChatWindow', () => ({
@@ -23,7 +23,8 @@ vi.mock('../src/components/chatDock/MessagingBar', () => ({
     default: () => <div>messaging-bar</div>,
 }));
 
-import { ChatDockProvider, useChatDock } from '../src/providers/ChatDockProvider';
+import { ChatDockProvider } from '../src/providers/ChatDockProvider';
+import { useChatDock } from '../src/providers/chatDockContext';
 import ChatDock from '../src/components/chatDock/ChatDock';
 
 function Controls() {

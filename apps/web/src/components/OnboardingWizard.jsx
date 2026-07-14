@@ -23,7 +23,7 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import CheckIcon from '@mui/icons-material/Check';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/authContext';
 import { getSuggestedUsers, updateOnboarding, searchUsers } from '../services/apiService';
 import { CARD_CATEGORIES } from '../constants/cardsCategories';
 import { JOB_INDUSTRIES } from '../constants/usersJobIndustries';

@@ -1,17 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getChats, markChatRead, deleteChat } from '../services/apiService';
 import { getSocket } from '../services/socketService';
-import { useAuth } from './AuthProvider';
-
-// Single source of truth for the conversation list, per-conversation unread,
-// last-message preview, and the nav total — kept live via sockets. Mounted
-// above NavBar and ChatPage so both share it.
-//
-// The list is keyset-paginated (newest-first by updatedAt), so the client may
-// only hold the first page(s). Because of that, `totalUnread` can NOT be summed
-// from the loaded rows — it is seeded from the server on the first page and kept
-// live by socket deltas (mirrors how the notifications badge is handled).
-const ChatContext = createContext(null);
+import { useAuth } from './authContext';
+import { ChatContext } from './chatContext';
 
 export function ChatProvider({ children }) {
     const { user, isLoggedIn } = useAuth();
@@ -178,6 +169,3 @@ export function ChatProvider({ children }) {
     return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
 }
 
-export function useChatList() {
-    return useContext(ChatContext);
-}

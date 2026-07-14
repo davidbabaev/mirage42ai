@@ -1,5 +1,5 @@
-import { useCardsProvider } from '../../providers/CardsProvider';
-import { useAuth } from '../../providers/AuthProvider';
+import { useCardsProvider } from '../../providers/cardsContext';
+import { useAuth } from '../../providers/authContext';
 import useFavoriteCards from '../../hooks/useFavoriteCards';
 import CardsComments from '../CardsComments';
 import { getCard } from '../../services/apiService';

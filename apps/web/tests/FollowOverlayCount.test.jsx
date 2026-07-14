@@ -16,10 +16,10 @@ vi.mock('../src/services/apiService', () => ({
 
 // Follow returns MY updated record (with the target now in my `following`).
 const handleToggleFollow = vi.fn(async () => ({ _id: 'me', following: ['target1'] }));
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: { _id: 'me', following: [] }, isLoggedIn: true, handleToggleFollow }),
 }));
-vi.mock('../src/providers/CardsProvider', () => ({
+vi.mock('../src/providers/cardsContext', () => ({
     useCardsProvider: () => ({ addAuthorToFeed: vi.fn(), removeAuthorFromFeed: vi.fn() }),
 }));
 

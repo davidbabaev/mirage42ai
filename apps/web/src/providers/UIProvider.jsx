@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useState } from 'react'
-
-const UIContext = createContext();
+import React, { useState } from 'react'
+import { UIContext } from './uiContext';
 
 export function UIProvider({children}) {
 
@@ -13,6 +12,3 @@ export function UIProvider({children}) {
   )
 }
 
-export function useUI(){
-    return useContext(UIContext);
-}

@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { CARD_CATEGORIES } from '../constants/cardsCategories';
-import { useCardsProvider } from '../providers/CardsProvider';
+import { useCardsProvider } from '../providers/cardsContext';
 import EmojiPicker from 'emoji-picker-react';
 import MediaDisplay from './MediaDisplay';
 import { Alert, Avatar, Box, Button, CircularProgress, IconButton, Input, InputAdornment, MenuItem, TextField, Tooltip, Typography, useTheme } from '@mui/material';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/authContext';
 import MovieIcon from '@mui/icons-material/Movie';
 import InsertPhotoIcon from '@mui/icons-material/InsertPhoto';
 import AddLinkIcon from '@mui/icons-material/AddLink';

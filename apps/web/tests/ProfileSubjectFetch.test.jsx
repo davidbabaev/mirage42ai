@@ -36,12 +36,12 @@ vi.mock('../src/services/apiService', () => ({
     getFollowing: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
     getMutualFollowing: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
 }));
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: { _id: 'me' }, isLoggedIn: true }),
 }));
 // The global users array is EMPTY — the state after the load-everything provider
 // is retired. The profile must still render.
-vi.mock('../src/providers/UsersProvider', () => ({
+vi.mock('../src/providers/usersContext', () => ({
     useUsersProvider: () => ({ users: [], loading: false, getUsers: vi.fn() }),
 }));
 vi.mock('../src/hooks/useFollowUser', () => ({
@@ -62,7 +62,7 @@ vi.mock('../src/hooks/useLikedCards', () => ({
 vi.mock('../src/hooks/useCommentsCards', () => ({
     default: () => ({ addComment: vi.fn(), countComments: () => 0, removeComment: vi.fn() }),
 }));
-vi.mock('../src/providers/ChatDockProvider', () => ({
+vi.mock('../src/providers/chatDockContext', () => ({
     useChatDock: () => ({ openDock: vi.fn() }),
 }));
 

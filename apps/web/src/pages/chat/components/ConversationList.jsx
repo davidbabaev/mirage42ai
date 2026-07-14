@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Avatar, Badge, Box, Paper, Typography } from '@mui/material';
 import getTimeAgo from '../../../utils/getTimeAgo';
-import { usePresence } from '../../../providers/PresenceProvider';
+import { usePresence } from '../../../providers/presenceContext';
 import OnlineBadge from '../../../components/OnlineBadge';
 import InfiniteScroll from '../../../components/InfiniteScroll';
 

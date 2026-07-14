@@ -1,8 +1,7 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { banUser, deleteUser, promoteUser} from "../services/apiService";
-import { useAuth } from "./AuthProvider";
-
-const UsersContext = createContext();
+import { useAuth } from "./authContext";
+import { UsersContext } from './usersContext';
 
 // This provider used to load EVERY user in the database at app mount (GET /users)
 // and hand the array to the whole app, which then answered questions like "who is
@@ -109,6 +108,3 @@ export function UsersProvider({children}) {
     ) 
 }
 
-export function useUsersProvider(){
-    return useContext(UsersContext);
-}

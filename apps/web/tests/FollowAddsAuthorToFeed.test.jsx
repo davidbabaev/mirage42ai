@@ -15,11 +15,12 @@ vi.mock('../src/services/apiService', () => ({
     likeUnlikeCard: vi.fn(), addComment: vi.fn(), removeComment: vi.fn(),
     likeUnlikeComment: vi.fn(), addReply: vi.fn(), banCard: vi.fn(),
 }));
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: { _id: 'me' }, isLoggedIn: true, refreshMe: vi.fn() }),
 }));
 
-import { CardsProvider, useCardsProvider } from '../src/providers/CardsProvider';
+import { CardsProvider } from '../src/providers/CardsProvider';
+import { useCardsProvider } from '../src/providers/cardsContext';
 import { getExploreCards } from '../src/services/apiService';
 
 const AUTHOR = 'author1';

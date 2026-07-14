@@ -1,7 +1,7 @@
 import React from 'react'
 import useAnalytics from '../hooks/useAnalytics'
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../providers/AuthProvider';
+import { useAuth } from '../../../providers/authContext';
 import useFollowUser from '../../../hooks/useFollowUser';
 import { Avatar, Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
 import getTimeAgo from '../../../utils/getTimeAgo';

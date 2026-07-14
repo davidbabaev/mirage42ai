@@ -1,7 +1,7 @@
 import { Box, useMediaQuery, useTheme } from '@mui/material';
 import { useLocation } from 'react-router-dom';
-import { useChatDock } from '../../providers/ChatDockProvider';
-import { useAuth } from '../../providers/AuthProvider';
+import { useChatDock } from '../../providers/chatDockContext';
+import { useAuth } from '../../providers/authContext';
 import DockedChatWindow from './DockedChatWindow';
 import MessagingBar from './MessagingBar';
 

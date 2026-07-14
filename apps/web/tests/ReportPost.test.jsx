@@ -20,11 +20,11 @@ import { MemoryRouter } from 'react-router-dom';
 const ME = 'me-id';
 const OTHER = 'other-id';
 
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: { _id: ME }, isLoggedIn: true }),
 }));
 
-vi.mock('../src/providers/UsersProvider', () => ({
+vi.mock('../src/providers/usersContext', () => ({
     useUsersProvider: () => ({
         users: [
             { _id: ME, name: 'Me', lastName: 'User', job: 'Self', profilePicture: '' },

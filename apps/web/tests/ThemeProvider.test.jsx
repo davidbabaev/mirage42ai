@@ -1,7 +1,8 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
-import { ThemeProvider, useThemeContext } from '../src/providers/ThemeProvider';
+import { ThemeProvider } from '../src/providers/ThemeProvider';
+import { useThemeContext } from '../src/providers/themeContext';
 
 // Layer 2: the theme SELECTION ('light'|'dark'|'system', default 'system') is
 // persisted under localStorage 'theme'; 'system' resolves to the OS preference

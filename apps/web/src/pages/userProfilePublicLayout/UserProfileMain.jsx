@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useAuth } from '../../providers/AuthProvider';
+import { useAuth } from '../../providers/authContext';
 import CardItem from '../../components/CardItem';
 import InfiniteScroll from '../../components/InfiniteScroll';
 import { useCursorPagination } from '../../hooks/useCursorPagination';

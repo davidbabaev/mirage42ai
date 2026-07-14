@@ -1,7 +1,7 @@
 import { Avatar, Box, Button, Input, Paper, Typography } from '@mui/material'
 import MovieIcon from '@mui/icons-material/Movie';
 import InsertPhotoIcon from '@mui/icons-material/InsertPhoto';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/authContext';
 import { useNavigate } from 'react-router-dom';
 
 

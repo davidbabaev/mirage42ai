@@ -7,7 +7,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import UserReusableCard from '../components/UserReusableCard';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import CloseIcon from '@mui/icons-material/Close';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/authContext';
 import { useCursorPagination } from '../hooks/useCursorPagination';
 import InfiniteScroll from '../components/InfiniteScroll';
 import { getUsersSearch, getUserCountries } from '../services/apiService';

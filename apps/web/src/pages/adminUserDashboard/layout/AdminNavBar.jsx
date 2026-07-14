@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MirageLogo from '../../../assets/MirageLogo';
 import ThemeMenu from '../../../components/ThemeMenu';
-import { useAuth } from '../../../providers/AuthProvider';
+import { useAuth } from '../../../providers/authContext';
 import Notifications from '../../../components/Notifications';
 import useNotifications from '../../../hooks/useNotifications';
 import NotificationsIcon from '@mui/icons-material/Notifications';

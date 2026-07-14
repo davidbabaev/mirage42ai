@@ -26,10 +26,10 @@ vi.mock('../src/services/apiService', () => ({
 
 // ---------- mock useLikedCards / useCommentsCards / useFollowUser / etc --
 // (CardItem pulls many providers; we mock them all to keep tests isolated)
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: { _id: 'me' }, isLoggedIn: true }),
 }));
-vi.mock('../src/providers/UsersProvider', () => ({
+vi.mock('../src/providers/usersContext', () => ({
     useUsersProvider: () => ({ users: [] }),
 }));
 vi.mock('../src/hooks/useLikedCards', () => ({
@@ -46,7 +46,7 @@ vi.mock('../src/hooks/useCommentsCards', () => ({
 vi.mock('../src/hooks/useFavoriteCards', () => ({
     default: () => ({ favoriteCards: [], handleFavoriteCards: vi.fn() }),
 }));
-vi.mock('../src/providers/CardsProvider', () => ({
+vi.mock('../src/providers/cardsContext', () => ({
     useCardsProvider: () => ({ registeredCards: [] }),
 }));
 

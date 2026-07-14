@@ -25,7 +25,7 @@ const userWithDupes = {
     address: { country: 'Wonderland', city: 'Capital' },
 };
 
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: { _id: ME }, isLoggedIn: true }),
 }));
 vi.mock('../src/hooks/useFollowUser', () => ({

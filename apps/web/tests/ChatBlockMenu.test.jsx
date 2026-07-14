@@ -79,11 +79,11 @@ vi.mock('../src/hooks/useBlockUser', () => ({
     default: () => ({ toggleBlock }),
 }));
 
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: ME }),
 }));
 
-vi.mock('../src/providers/PresenceProvider', () => ({
+vi.mock('../src/providers/presenceContext', () => ({
     usePresence: () => ({ isOnline: () => false }),
 }));
 

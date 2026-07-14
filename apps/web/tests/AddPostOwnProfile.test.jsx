@@ -29,13 +29,13 @@ const mkUser = (id, name) => ({
 const meUser = mkUser(ME, 'Mememe');
 const otherUser = mkUser(OTHER, 'Otherother');
 
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: { _id: ME }, isLoggedIn: true }),
 }));
-vi.mock('../src/providers/UsersProvider', () => ({
+vi.mock('../src/providers/usersContext', () => ({
     useUsersProvider: () => ({ users: [meUser, otherUser], loading: false }),
 }));
-vi.mock('../src/providers/CardsProvider', () => ({
+vi.mock('../src/providers/cardsContext', () => ({
     useCardsProvider: () => ({ registeredCards: [], handleCardRegister: vi.fn() }),
 }));
 // The profile post list is server-paginated now (it no longer filters the global

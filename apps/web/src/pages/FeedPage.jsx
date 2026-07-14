@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import CardItem from '../components/CardItem'
 import FeedCardSkeleton from '../components/FeedCardSkeleton'
-import { useCardsProvider } from '../providers/CardsProvider';
-import { useAuth } from '../providers/AuthProvider';
+import { useCardsProvider } from '../providers/cardsContext';
+import { useAuth } from '../providers/authContext';
 import useFollowUser from '../hooks/useFollowUser';
 import { useNavigate } from 'react-router-dom';
 import useDebounce from '../hooks/useDebounce';

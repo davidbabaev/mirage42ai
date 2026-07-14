@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 const navigate = vi.fn();
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig()), useNavigate: () => navigate }));
 
-vi.mock('../src/providers/CardsProvider', () => ({
+vi.mock('../src/providers/cardsContext', () => ({
     useCardsProvider: () => ({ registeredCards: [] }),
 }));
 

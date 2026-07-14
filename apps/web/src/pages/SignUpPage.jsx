@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { useAuth } from '../providers/AuthProvider'
+import { useAuth } from '../providers/authContext'
 import { useNavigate } from 'react-router-dom';
 import useCountries from '../hooks/useCountries';
 import useCities from '../hooks/useCities';

@@ -1,5 +1,5 @@
-import { useAuth } from "../providers/AuthProvider";
-import { useCardsProvider } from "../providers/CardsProvider";
+import { useAuth } from "../providers/authContext";
+import { useCardsProvider } from "../providers/cardsContext";
 
 // Single-level replies on a comment, mirroring useLikedComments: a thin wrapper
 // over the provider handler that no-ops when logged out.

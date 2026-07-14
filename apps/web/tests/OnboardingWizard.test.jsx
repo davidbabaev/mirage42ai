@@ -52,7 +52,7 @@ let mockUser = null;
 const mockSetUser = vi.fn();
 const mockEditUser = vi.fn(() => Promise.resolve({ success: true }));
 
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({
         user:      mockUser,
         setUser:   mockSetUser,
@@ -72,12 +72,12 @@ vi.mock('../src/hooks/useCities', () => ({
 }));
 
 // ─── Mock providers used by useFollowUser internally ─────────────────────────
-vi.mock('../src/providers/UsersProvider', () => ({
+vi.mock('../src/providers/usersContext', () => ({
     useUsersProvider: () => ({ users: [], syncUser: vi.fn() }),
     UsersProvider: ({ children }) => <>{children}</>,
 }));
 
-vi.mock('../src/providers/CardsProvider', () => ({
+vi.mock('../src/providers/cardsContext', () => ({
     useCardsProvider: () => ({
         feedCards: [],
         registeredCards: [],

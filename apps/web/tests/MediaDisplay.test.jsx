@@ -11,7 +11,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 
 // useManagedVideo is only invoked when a video renders; stub it so importing
 // MediaDisplay never touches the real VideoCoordinator context.
-vi.mock('../src/providers/VideoCoordinatorProvider', () => ({
+vi.mock('../src/providers/videoCoordinatorContext', () => ({
     useManagedVideo: () => {},
 }));
 

@@ -31,7 +31,7 @@ vi.mock('../src/services/socketService', () => ({
     connectSocket: () => fakeSocket,
     disconnectSocket: () => {},
 }));
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: { _id: 'me' }, isLoggedIn: true }),
 }));
 vi.mock('../src/services/apiService', () => ({

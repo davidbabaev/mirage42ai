@@ -10,10 +10,10 @@ import { MemoryRouter } from 'react-router-dom';
 // byline. Mocking users as [] is the whole point of the test — don't "fix" it
 // by seeding a user here.
 
-vi.mock('../src/providers/UsersProvider', () => ({
+vi.mock('../src/providers/usersContext', () => ({
     useUsersProvider: () => ({ users: [] }),
 }));
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: { _id: 'me' }, isLoggedIn: true }),
 }));
 vi.mock('../src/hooks/useLikedCards', () => ({

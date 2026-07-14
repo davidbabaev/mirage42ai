@@ -11,13 +11,13 @@ const mocks = vi.hoisted(() => ({
     edit: vi.fn(),
 }));
 
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({
         user: { _id: 'u1', name: 'Alice', lastName: 'A', profilePicture: '' },
     }),
 }));
 
-vi.mock('../src/providers/CardsProvider', () => ({
+vi.mock('../src/providers/cardsContext', () => ({
     useCardsProvider: () => ({
         handleCardRegister: mocks.register,
         handleEditCard: mocks.edit,

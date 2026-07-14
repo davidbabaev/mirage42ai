@@ -1,8 +1,8 @@
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/authContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import useNotifications from '../hooks/useNotifications';
-import { useChatList } from '../providers/ChatProvider';
+import { useChatList } from '../providers/chatContext';
 import Notifications from './Notifications';
 import { AppBar, Avatar, Badge, Box, Button, Container, IconButton, Toolbar, Typography } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home'
@@ -15,7 +15,7 @@ import ThemeMenu from './ThemeMenu';
 import CreateCardModal from './CreateCardModal';
 import MirageLogo from '../assets/MirageLogo';
 import MessageIcon from '@mui/icons-material/Message';
-import { useUI } from '../providers/UIProvider';
+import { useUI } from '../providers/uiContext';
 
 export default function NavBar() {
 

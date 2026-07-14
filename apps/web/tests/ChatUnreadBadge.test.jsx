@@ -40,13 +40,13 @@ vi.mock('../src/services/apiService', () => ({
     markChatRead: vi.fn().mockResolvedValue({}),
     deleteChat: vi.fn().mockResolvedValue({}),
 }));
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: { _id: 'me' }, isLoggedIn: true }),
 }));
-vi.mock('../src/providers/UsersProvider', () => ({
+vi.mock('../src/providers/usersContext', () => ({
     useUsersProvider: () => ({ users: [{ _id: 'sarah', name: 'Sarah', profilePicture: '' }] }),
 }));
-vi.mock('../src/providers/UIProvider', () => ({
+vi.mock('../src/providers/uiContext', () => ({
     useUI: () => ({ setIsChatOpen: vi.fn() }),
 }));
 // useChat owns the open-thread socket wiring; stub it so this test only
@@ -85,7 +85,8 @@ vi.mock('../src/hooks/useBlockUser', () => ({
     default: () => ({ toggleBlock: vi.fn(), isBlockedByMe: () => false }),
 }));
 
-import { ChatProvider, useChatList } from '../src/providers/ChatProvider';
+import { ChatProvider } from '../src/providers/ChatProvider';
+import { useChatList } from '../src/providers/chatContext';
 import ChatPage from '../src/pages/chat/ChatPage';
 
 function Harness() {

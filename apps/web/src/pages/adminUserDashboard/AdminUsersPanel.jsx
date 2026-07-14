@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import useDebounce from '../../hooks/useDebounce';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../providers/AuthProvider';
+import { useAuth } from '../../providers/authContext';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import CountryFlag from '../../components/CountryFlag';
 import { Box, CircularProgress, InputAdornment, MenuItem, TextField } from '@mui/material';

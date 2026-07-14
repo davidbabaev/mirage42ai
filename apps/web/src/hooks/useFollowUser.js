@@ -1,6 +1,6 @@
-import { useAuth } from "../providers/AuthProvider";
-import { useUsersProvider } from "../providers/UsersProvider";
-import { useCardsProvider } from "../providers/CardsProvider";
+import { useAuth } from "../providers/authContext";
+import { useUsersProvider } from "../providers/usersContext";
+import { useCardsProvider } from "../providers/cardsContext";
 
 // Module-level in-flight guard, shared across every component using this hook:
 // a follow/unfollow request for a given user id ignores re-entry until it

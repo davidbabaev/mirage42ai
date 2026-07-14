@@ -22,7 +22,7 @@ vi.mock('../src/services/apiService', () => ({
     likeUnlikeComment: vi.fn(), addReply: vi.fn(), banCard: vi.fn(),
     getExploreCards: vi.fn(), banUser: vi.fn(), deleteUser: vi.fn(), promoteUser: vi.fn(),
 }));
-vi.mock('../src/providers/AuthProvider', () => ({
+vi.mock('../src/providers/authContext', () => ({
     useAuth: () => ({ user: { _id: 'me' }, isLoggedIn: true }),
 }));
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { useAuth } from '../../providers/AuthProvider';
+import { useAuth } from '../../providers/authContext';
 import useCountries from '../../hooks/useCountries';
 import { JOB_INDUSTRIES } from '../../constants/usersJobIndustries';
 import useCities from '../../hooks/useCities';

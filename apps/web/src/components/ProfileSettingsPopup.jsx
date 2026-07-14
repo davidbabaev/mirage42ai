@@ -1,5 +1,5 @@
 import React from 'react'
-import { useAuth } from '../providers/AuthProvider'
+import { useAuth } from '../providers/authContext'
 import { Avatar, Box, Container, Divider, Toolbar, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import PersonIcon from '@mui/icons-material/Person';

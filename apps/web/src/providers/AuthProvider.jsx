@@ -1,10 +1,9 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { followUnfollowUser, blockUnblockUser, loginUser, registerUser, updateUser, getSingleUser, logout, FORCE_LOGOUT_EVENT } from '../services/apiService';
 import { jwtDecode } from 'jwt-decode';
 import { connectSocket, disconnectSocket } from '../services/socketService';
 import { useNavigate } from 'react-router-dom';
-
-const UseAuthCheck = createContext();
+import { AuthContext } from './authContext';
 
 export function AuthProvider({children}) {
 
@@ -191,13 +190,9 @@ export function AuthProvider({children}) {
 
     
   return (
-    <UseAuthCheck.Provider 
+    <AuthContext.Provider
         value={{isLoggedIn, user, handleLogin, handleLogout, handleRegister, editUser, setUser, handleToggleFollow, handleToggleBlock, isUserLoaded, refreshMe}}>
             {children}
-    </UseAuthCheck.Provider>
+    </AuthContext.Provider>
   )
-}
-
-export function useAuth(){
-    return useContext(UseAuthCheck)
 }

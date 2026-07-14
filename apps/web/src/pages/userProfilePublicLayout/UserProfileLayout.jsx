@@ -1,10 +1,10 @@
 import { Link, Route, Routes, useNavigate, useParams } from 'react-router-dom'
 import useFollowUser from '../../hooks/useFollowUser';
 import useBlockUser from '../../hooks/useBlockUser';
-import { useChatDock } from '../../providers/ChatDockProvider';
+import { useChatDock } from '../../providers/chatDockContext';
 import UserProfileAbout from './UserProfileAbout';
 import UserProfileMain from './UserProfileMain';
-import { useAuth } from '../../providers/AuthProvider';
+import { useAuth } from '../../providers/authContext';
 import UserProfileFollowing from './UserProfileFollowing';
 import UserProfileFollowers from './UserProfileFollowers';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';

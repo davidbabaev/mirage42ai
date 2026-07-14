@@ -1,5 +1,5 @@
-import { useAuth } from "../providers/AuthProvider";
-import { useCardsProvider } from "../providers/CardsProvider";
+import { useAuth } from "../providers/authContext";
+import { useCardsProvider } from "../providers/cardsContext";
 
 // Comment-level likes, mirroring useLikedCards but operating on an embedded
 // comment. The helpers take the comment object directly (it's already in hand

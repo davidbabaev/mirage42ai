@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useAuth } from '../../providers/AuthProvider';
+import { useAuth } from '../../providers/authContext';
 import useFollowUser from '../../hooks/useFollowUser';
 import { Avatar, Box, Button, Paper, Typography } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';

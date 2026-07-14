@@ -1,5 +1,5 @@
-import { useAuth } from "../providers/AuthProvider";
-import { useCardsProvider } from "../providers/CardsProvider";
+import { useAuth } from "../providers/authContext";
+import { useCardsProvider } from "../providers/cardsContext";
 
 function useLikedCards() {
     const {user} = useAuth();

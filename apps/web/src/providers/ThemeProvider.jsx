@@ -1,9 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { getTheme } from '../theme/mirageTheme';
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles'
 import { CssBaseline, useMediaQuery } from '@mui/material';
-
-const ThemeContext = createContext()
+import { ThemeContext } from './themeContext';
 
 // The user's SELECTION is persisted under "theme" as the string 'light' | 'dark'
 // | 'system' (default 'system'). A pre-existing 'light'/'dark' (written by Layer
@@ -77,6 +76,3 @@ export function ThemeProvider({children}) {
   )
 }
 
-export function useThemeContext(){
-    return useContext(ThemeContext);
-}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getSocket } from '../services/socketService';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/authContext';
 import { getSingleChatMessages, uploadChatMedia } from '../services/apiService';
 
 // Owns the OPEN conversation thread (messages + send). The conversation list,

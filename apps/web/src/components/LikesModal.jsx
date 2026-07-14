@@ -9,7 +9,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import InfiniteScroll from './InfiniteScroll';
 import { useCursorPagination } from '../hooks/useCursorPagination';
 import useFollowUser from '../hooks/useFollowUser';
-import { useAuth } from '../providers/AuthProvider';
+import { useAuth } from '../providers/authContext';
 import { getCardLikes } from '../services/apiService';
 
 // Modal that lists users who liked a card. Fetches from GET /cards/:id/likes

@@ -1,9 +1,8 @@
-import React, { createContext, useContext, useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { createCard, deleteCard, updateCard, likeUnlikeCard, addComment, removeComment, likeUnlikeComment, addReply, getFeedCards, getExploreCards, banCard} from '../services/apiService';
 import { useCursorPagination } from '../hooks/useCursorPagination';
-import { useAuth } from './AuthProvider';
-
-const CardsContext = createContext();
+import { useAuth } from './authContext';
+import { CardsContext } from './cardsContext';
 
 export function CardsProvider({children}) {
 
@@ -388,6 +387,3 @@ const handleCardRegister = async (cardData) => {
   )
 }
 
-export function useCardsProvider(){
-    return useContext(CardsContext);
-}
