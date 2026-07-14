@@ -26,6 +26,15 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
+### Phase E — deployment, the CODE half
+- Type: feature / infra-code
+- Built on branch `autopilot/2026-07-14`, commits `e2527a8` (docker), `0f82391` (e2e smoke pack), `4ad8f6d` (Sentry) — awaiting review/merge.
+- **Playwright smoke pack — CHECKED IN at last.** `npm run test:e2e` boots its own API (real API + in-memory mongo, never Atlas, never the 8181/5173 dev servers) and web, runs 2 specs × 2 viewports, tears down. VERIFIED: 4 passed from a clean state. `@playwright/test` is a real devDependency now — it was previously an `--no-save` install, which is why the harness kept evaporating and being rebuilt from scratch (three times).
+- **Dockerized local env.** `docker compose up --build` → mongo + api + web, no cloud credentials needed. ⚠️ **NEVER BUILT — docker is not installed in the agent environment.** The compose file parses and every referenced path exists; that is ALL that can be claimed. Someone with docker must build it once before trusting it. This is the one deliverable in this run that is not verified.
+- **Sentry.** Wired into both apps, inert without a DSN (lazy-require on the API, so the package isn't even loaded in dev/CI/tests). Covered by no-op tests. Also adds the root ErrorBoundary the app never had — a crash used to be a white screen.
+- **`.env.example`** was an empty placeholder; now documents every var the app actually reads.
+- STILL DAVID'S (Guardrail 7, untouched): hosting (Render/Vercel), DNS/Cloudflare, HTTPS, the production env vars, and the real Sentry DSN. Also: wiring e2e into CI needs a browser-download step — a human call, noted in e2e/README.md.
+
 ### Phase D #16 — provider/hook cleanup (web lint 39 → 0, and it is now a hard gate)
 - Type: chore / tech debt
 - Built on branch `autopilot/2026-07-14`, commits `540f910` (trivial 4), `9d91b16` (provider split), `4126229` (the 26 effect errors + CI gate) — awaiting review/merge.

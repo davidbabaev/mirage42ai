@@ -14,32 +14,48 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-TASK B (DMs silently stop working after a long session) is COMPLETE and moved to
-"## Awaiting review" in backlog.md — built on `autopilot/2026-07-14`, commits `25decfc`
-+ `00d1324`. Suites green (375/375 API, 190/190 web) and browser-verified at 390 and 1280.
+(empty — everything queued for this run is finished and awaiting review)
 
-**Phase D #16 (provider/hook cleanup) is COMPLETE** and moved to "## Awaiting review" —
-commits `540f910`, `9d91b16`, `4126229`. Web lint 39 → 0, and `continue-on-error` is off:
-web lint is now a HARD CI GATE. Root `npm run lint` / `npm run test` scripts added.
-Found and fixed a real bug on the way (a chat draft could follow you into a different
-person's conversation — `tests/ChatComposeBoxClears.test.jsx`).
+## Done this run — branch `autopilot/2026-07-14`
 
-### 1. Phase E (code parts only)
-- What: Dockerized local env (Dockerfile + compose), Sentry wiring, and promote the untracked TASK-B harness into the CHECKED-IN Playwright smoke pack.
-- Decisions: hosting, DNS, prod env vars and Render/Vercel/Cloudflare settings are Guardrail-7 STOP-AND-ASK — build only the CODE. The smoke pack must keep the TASK-B pattern (in-memory Mongo, tiny token TTL, real `setOffline` outage, reload-as-assertion).
-- Done when: `docker compose up` boots api+web locally; Sentry initialises from env and is a no-op without a DSN; the smoke pack runs green from an npm script.
-- Type: feature
+All three items are in backlog.md under "## Awaiting review".
 
----
+1. **TASK B — DMs silently died after a long session** (`25decfc`, `00d1324`, `402ce64`)
+   Two causes, not one: the socket never learned about a refreshed token, AND socket.io
+   silently buffers an emit on a disconnected client — so the message sat in a client-side
+   buffer forever with no throw and no error. Both halves fixed. Browser-proved: the DM
+   vanished silently BEFORE the fix and survives a reload AFTER it, at 390 and 1280.
 
-## After this run (own orders, in this sequence)
+2. **Phase D #16 — provider/hook cleanup** (`540f910`, `9d91b16`, `4126229`, `ddea9bc`)
+   Web lint 39 → 0, and `continue-on-error` is now OFF in ci.yml: web lint is a HARD GATE.
+   Found a real bug on the way — a chat draft typed to one person could follow you into a
+   different person's conversation (`tests/ChatComposeBoxClears.test.jsx`).
 
-1. **Phase E — deployment**: Dockerized local env · staging + prod hosting · Sentry · Playwright smoke pack · domain/HTTPS/deploy pipeline. Unlocks the **network/infra hardening** item.
-   - The throwaway browser harness (now used FOUR times) should become the CHECKED-IN Playwright smoke pack here. It has caught four bugs that ~190 unit tests could not — TASK B is the clearest case yet: every unit test passed while DMs were silently dying in a real browser.
-   - The TASK-B harness is still on disk, UNTRACKED — `apps/api/pw-boot.cjs`, `apps/web/pw-verify.cjs`, `apps/web/.env.pwverify`. Promote it, don't rewrite it. It needs `npm i --no-save playwright` to run (deliberately kept out of package.json).
-   - The pattern worth keeping: real API + in-memory Mongo (NEVER Atlas, NEVER David's dev servers on 8181/5173), a deliberately tiny token TTL so "a long session" happens in seconds, a REAL network outage via `context.setOffline` long enough to outlast socket.io's ping cycle (25s + 20s), and a PAGE RELOAD as the assertion — a locally-rendered bubble proves nothing.
-   - NOTE: hosting, DNS and prod env vars are Guardrail-7 "stop and ask" — the CODE parts (Dockerfile/compose, Sentry wiring, smoke pack) can be built on the branch; the account-level setup is David's.
-2. **Admin analytics aggregation endpoints** — the debt taken deliberately in the provider-retirement run (the admin Overview panel still pulls both full collections on mount, admin-only).
+3. **Phase E — the CODE half** (`e2527a8`, `0f82391`, `4ad8f6d`)
+   Docker local env · checked-in Playwright smoke pack · Sentry (inert without a DSN) ·
+   a real `.env.example` · the root ErrorBoundary the app never had.
+
+Gates: **0 lint errors · 377/377 API · 193/193 web · e2e 4/4** (2 specs × 2 viewports).
+
+## ⚠️ The one thing NOT verified
+`docker compose up` has **never been run** — docker is not installed in the agent
+environment. The compose file parses and every path it references exists, and that is all
+that can be honestly claimed. Build it once on a machine with docker before trusting it.
+
+## Next up (in this sequence)
+
+1. **Phase E — the half that is David's** (Guardrail 7, needs a human):
+   staging + prod hosting, DNS/Cloudflare, HTTPS, production env vars, the real Sentry DSN.
+   Then the **network/infra hardening** item unlocks.
+   - Also a human call: wiring `npm run test:e2e` into CI. It needs a browser-download step
+     (`npx playwright install chromium`) and adds a few minutes to the run. See e2e/README.md.
+2. **Admin analytics aggregation endpoints** — the debt taken deliberately in the
+   provider-retirement run: the admin Overview panel still pulls BOTH full collections on
+   mount and computes ~13 analytics passes in the browser. Fine at today's size; it does not
+   survive 100k users. Replace with `$facet` aggregations behind the admin guard.
+3. The small deferred follow-ups now listed under "## Active" in backlog.md (the
+   ProfileSection `<EditProfileForm>` extraction, PeopleModal, the MUI Tabs warning on
+   /dashboard, and the missing `.gitattributes`).
 
 ## Phase F — Agents (the product vision; starts after the app-hardening items above)
 - Data model (`kind`, personas, memory) + `apps/agents` skeleton + kill-switch. (`apps/agents` does not exist yet; `packages/shared` is still an empty .gitkeep.)
@@ -47,7 +63,3 @@ person's conversation — `tests/ChatComposeBoxClears.test.jsx`).
 - In-character DMs with memory + human-feeling delays.
 - Consistent-face image pipeline → reference sets for 3 personas → admin approval queue.
 - 3-agent pilot on staging.
-
-## Housekeeping for the next run
-- **`.gitattributes` is missing.** Windows git here has `core.autocrlf=true`, WSL git does not. Windows git sees a clean tree; WSL git sees ~110 files as modified — pure CRLF noise, byte-identical content. Harmless while every commit is made from Windows, but a commit made from inside WSL would produce a 110-file line-ending diff. Worth a `.gitattributes` (`* text=auto eol=lf`) before that happens.
-- The two `.claude/hooks/*.py` files show as modified in a permanently-dirty way: it is a FILE-MODE change only (`100755 → 100644`, exec bit dropped by the WSL/Windows filesystem), zero content lines. Not anyone's edit; left untouched.
