@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { screen, cleanup, within } from '@testing-library/react';
+import { screen, cleanup } from '@testing-library/react';
 import { renderWithRouter } from './test-utils/render-with-router';
 
 // Regression test for: the logged-in user should NOT appear in the all-users

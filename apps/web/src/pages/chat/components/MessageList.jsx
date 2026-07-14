@@ -67,10 +67,6 @@ export default function MessageList({ messages, currentUserId, otherUser, contai
 
                 const showDate = i === 0 || !sameDay(prev.createdAt, message.createdAt);
 
-                const firstOfGroup = showDate
-                    || prev.userId !== message.userId
-                    || (new Date(message.createdAt) - new Date(prev.createdAt)) > GROUP_GAP_MS;
-
                 const lastOfGroup = i === messages.length - 1
                     || next.userId !== message.userId
                     || !sameDay(next.createdAt, message.createdAt)
