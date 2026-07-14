@@ -26,36 +26,35 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-### Phase E — deployment, the CODE half
-- Type: feature / infra-code
-- Built on branch `autopilot/2026-07-14`, commits `e2527a8` (docker), `0f82391` (e2e smoke pack), `4ad8f6d` (Sentry) — awaiting review/merge.
-- **Playwright smoke pack — CHECKED IN at last.** `npm run test:e2e` boots its own API (real API + in-memory mongo, never Atlas, never the 8181/5173 dev servers) and web, runs 2 specs × 2 viewports, tears down. VERIFIED: 4 passed from a clean state. `@playwright/test` is a real devDependency now — it was previously an `--no-save` install, which is why the harness kept evaporating and being rebuilt from scratch (three times).
-- **Dockerized local env.** `docker compose up --build` → mongo + api + web, no cloud credentials needed. ⚠️ **NEVER BUILT — docker is not installed in the agent environment.** The compose file parses and every referenced path exists; that is ALL that can be claimed. Someone with docker must build it once before trusting it. This is the one deliverable in this run that is not verified.
-- **Sentry.** Wired into both apps, inert without a DSN (lazy-require on the API, so the package isn't even loaded in dev/CI/tests). Covered by no-op tests. Also adds the root ErrorBoundary the app never had — a crash used to be a white screen.
-- **`.env.example`** was an empty placeholder; now documents every var the app actually reads.
-- STILL DAVID'S (Guardrail 7, untouched): hosting (Render/Vercel), DNS/Cloudflare, HTTPS, the production env vars, and the real Sentry DSN. Also: wiring e2e into CI needs a browser-download step — a human call, noted in e2e/README.md.
-
-### Phase D #16 — provider/hook cleanup (web lint 39 → 0, and it is now a hard gate)
-- Type: chore / tech debt
-- Built on branch `autopilot/2026-07-14`, commits `540f910` (trivial 4), `9d91b16` (provider split), `4126229` (the 26 effect errors + CI gate) — awaiting review/merge.
-- What it was: `apps/web` eslint had 39 errors, and CI ran web lint with `continue-on-error: true` so they never blocked anything and just accumulated.
-- Done: all 39 cleared. `continue-on-error` REMOVED from ci.yml — web lint is now a hard gate like api lint. Added the root `lint` + `test` scripts that run-instruction assumed existed but didn't.
-- Shape of the fix: 9 providers had their hook+context split into sibling `*Context.js` modules (matching the convention already used by `profileSubjectContext.js`) — a 93-file churn, but every edit is an import-path swap. 9 effects were genuinely fixed (derive-during-render / lazy-init / key-based remount, deleting the state entirely in several cases). 15 sites got NEXT-LINE scoped disables with a written reason: the React Compiler rule is conservative about legitimate async, and for a few the "obvious" fix silently breaks the feature (see below).
-- REVIEW THESE FIRST — the load-bearing disables: `useConversationThread` (`conversationId` has three writers — initial, new-chat adoption, delete — so it cannot be derived from `resolved`) and `AllCardsPage` (the `appliedCardParam` ref guard is the only thing letting the `?card=` modal close).
-- Found and fixed a REAL bug on the way: the compose box was only cleared in the click handler, missing the deep-link path that opens a chat with someone you have no conversation with yet — a draft typed to Alice survived into Bob's chat and could be sent to the wrong person. Covered by `tests/ChatComposeBoxClears.test.jsx` (verified to fail against the bug).
-- Verified: 0 lint errors, 191/191 web, 375/375 API, browser-checked at 390 and 1280 (all routes render, zero page errors, DMs still survive token expiry).
-
-### TASK B — Messaging stops after a long session
-- Type: bug (logic + visual verification)
-- Symptom: After a long logged-in session the user can't send DMs; sends silently fail until logout + relogin.
-- Built on branch `autopilot/2026-07-14`, commits `25decfc` (fix + tests) and `00d1324` (verification record) — awaiting review/merge.
-- Root cause: TWO causes, not one. (1) The socket authenticates once at connect with the token captured at that moment; when the access token expired (15 min) the server refused the re-handshake and nothing ever told the socket to get a fresh one — HTTP self-heals on a 401, a socket handshake just gets refused. (2) The reason it was SILENT: socket.io silently buffers an emit on a disconnected client, so `send-message` sat in a client-side buffer forever — no throw, no error, no server round-trip.
-- Fix: socket auth is now a callback (every reconnect re-reads the CURRENT token) + an auth-shaped `connect_error` triggers the single-flight `refreshAccessToken()` and reconnects; AND the DM send is no longer fire-and-forget — it emits with an ack + 10s timeout, and disconnected/timed-out/rejected all surface to the user.
-- Verified: 375/375 API, 190/190 web (incl. 2 new chat tests). Browser-verified at 390 and 1280 against a real API with an 8s token TTL: the DM vanished silently BEFORE the fix and survives a page reload AFTER it. The baseline run against the reverted code is the half that matters — a check that passes both before and after proves nothing.
+(nothing awaiting review)
 
 ## Done
 
 (finished items move here, newest on top)
+
+### Phase E — deployment, the CODE half — DONE
+- Merged to main as 7fb30ae (branch autopilot/2026-07-14, clean fast-forward; api 377 green on main after the merge). Commits e2527a8 (docker), 0f82391 (e2e pack), 4ad8f6d (Sentry).
+- **The Playwright smoke pack is finally CHECKED IN.** `npm run test:e2e` boots its own API (real API + IN-MEMORY mongo — never Atlas, never the 8181/5173 dev servers) and web server, runs 2 specs × 2 viewports, tears them down. Verified 4/4 from a clean machine. `@playwright/test` is a real devDependency now — it had been an `--no-save` install, which is exactly why the harness kept evaporating and being hand-rebuilt from scratch three times. It has caught FOUR bugs the unit tests could not.
+- The three load-bearing oddities are documented in e2e/README.md with a DO-NOT-SHORTEN warning, because each is the difference between the test proving something and proving nothing: an 8s ACCESS_TOKEN_TTL (so "a long session" happens in seconds), a 50s offline window (it must outlast socket.io's 25s+20s ping cycle or the socket never actually dies), and a PAGE RELOAD as the assertion (a locally-rendered bubble proves nothing — that is exactly what the TASK B bug looked like).
+- **Sentry** wired into both apps, inert without a DSN — enforced structurally: @sentry/node is LAZY-REQUIRED inside initSentry(), so with no SENTRY_DSN the package is never even loaded in dev/CI/tests. Covered by no-op tests. It captures errors but does not change what the client sees, so no stack traces leak.
+- **The root ErrorBoundary the app never had.** A crash used to be a white screen — a dead end. Now an MUI-themed AppCrashFallback with a way back. Works with or without Sentry.
+- **Dockerized local env** — `docker compose up --build` → mongo + api + web, no cloud credentials needed. ⚠️ **NEVER BUILT: docker is not installed in the agent environment.** The compose file parses and every referenced path exists; that is all that was ever claimed. BUILD IT ONCE on a machine with docker before trusting it. This is the only unverified thing in the run.
+- **.env.example** was an empty placeholder; now documents every var the app actually reads (grepped from source), which are optional, and what happens when they are blank.
+- STILL DAVID'S (Guardrail 7, deliberately untouched): hosting (Render/Vercel), DNS/Cloudflare, HTTPS, production env vars, the real Sentry DSN. Also a human call: wiring e2e into CI needs a browser-download step (see e2e/README.md).
+
+### Phase D #16 — provider/hook cleanup (web lint 39 → 0, now a HARD GATE) — DONE
+- Merged to main as 7fb30ae (branch autopilot/2026-07-14). Commits 540f910, 9d91b16, 4126229.
+- `continue-on-error: true` is REMOVED from ci.yml — web lint now fails the build like api lint, instead of being debt that quietly accumulated. Added the root `lint` + `test` scripts that run-instruction had been telling agents to run, but which never existed.
+- 9 providers had their hook+context split into sibling `*Context.js` modules, matching the convention the codebase already used in profileSubjectContext.js. A 93-file churn, but every edit is an import-path swap (useAuth alone had 51 consumers + 24 test files whose vi.mock paths pointed at the old module).
+- 9 effects genuinely fixed (derived during render / lazy-init / key-based remount — several deleted the useState outright). 15 sites got NEXT-LINE scoped disables with a written reason; no file-level disables. The React Compiler rule is conservative about legitimate async, and for a few the "obvious" fix silently breaks the feature.
+- THE TWO LOAD-BEARING DISABLES, if anyone revisits this: `useConversationThread` — `conversationId` has THREE writers (initial, new-chat adoption, delete), so it cannot be derived from `resolved`. `AllCardsPage` — the `appliedCardParam` ref guard is the only thing that lets the `?card=` modal close at all.
+- **Found and fixed a real bug on the way**: the compose box was cleared only in the click handler, missing the deep-link path that opens a chat with someone you have no conversation with yet. A draft typed to Alice survived into Bob's chat and could be SENT TO THE WRONG PERSON. Covered by tests/ChatComposeBoxClears.test.jsx, verified to fail against the bug.
+
+### TASK B — DMs silently stopped working after a long session — DONE
+- Merged to main as 7fb30ae (branch autopilot/2026-07-14). Commits 25decfc (fix + tests), 00d1324, 402ce64.
+- **TWO causes, not one.** (1) The socket authenticated once at connect with whatever token existed then; when the 15-minute access token expired the server refused the re-handshake and nothing ever told the socket to fetch a fresh one — HTTP self-heals on a 401, but a socket handshake is simply refused. (2) The reason it was SILENT: socket.io **silently buffers an emit on a disconnected client**, so `send-message` sat in a client-side buffer forever — no throw, no error event, no server round-trip. The message looked sent and never was. Only logout+login (which mints a new token and builds a new socket) broke the cycle.
+- Fix, both halves: socket auth is now a callback so every reconnect re-reads the CURRENT token, and an auth-shaped `connect_error` triggers the single-flight `refreshAccessToken()` then reconnects; AND the DM send is no longer fire-and-forget — it emits with an ack + 10s timeout, so disconnected / timed-out / rejected all surface to the user. The Snackbar already existed; nothing was feeding it.
+- Browser-proved at 390 and 1280 against a real API with an 8s token TTL: the DM vanished SILENTLY before the fix and survives a page reload after it. The baseline run against the reverted code is the half that matters — a check that passes both before and after proves nothing. Now permanent as e2e/tests/chat-token-expiry.spec.js.
 
 ### Folder/naming sweep (master-plan #20) — DONE
 - Merged to main as 3dcca81 (branch autopilot/2026-07-14, fast-forward from b64f934; api 375 green on main after the merge). The "one restructure, done LAST once the architecture has settled" — due because the provider-retirement epic is merged and the file layout has stopped moving. Seven commits, one concern each, suites green after every one.
