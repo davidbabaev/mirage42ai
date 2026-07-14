@@ -1,0 +1,70 @@
+# Local dockerized environment: mongo + api + web, self-contained.
+#
+#   docker compose up --build
+#   web -> http://localhost:5173
+#   api -> http://localhost:8181
+#
+# This runs its OWN mongo in a container. It never touches Atlas — the whole
+# point is that you can boot the stack with no cloud credentials at all.
+# Copy .env.example to .env first; every value below has a working default for
+# local use, and the optional integrations (Google OAuth, Cloudinary) simply
+# stay disabled if you leave them blank.
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      # The api must not start against a mongo that isn't accepting writes yet.
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "8181:8181"
+    environment:
+      NODE_ENV: production
+      PORT: 8181
+      DB_CONNECTION_STRING: mongodb://mongo:27017/mirage42
+      JWT_SECRET: ${JWT_SECRET:-dev-only-not-a-real-secret}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:5173}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
+      SERVER_URL: ${SERVER_URL:-http://localhost:8181}
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
+      REFRESH_TOKEN_TTL_MS: ${REFRESH_TOKEN_TTL_MS:-604800000}
+      # Optional. Blank = the related feature is disabled, not broken.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Baked into the bundle at BUILD time — Vite inlines import.meta.env.
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8181}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "5173:80"
+
+volumes:
+  mongo-data:

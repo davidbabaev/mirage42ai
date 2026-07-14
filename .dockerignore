@@ -1,0 +1,27 @@
+# Keep the build context small and, more importantly, keep secrets OUT of the
+# image. Without this, `COPY apps/api ./apps/api` would happily bake a local
+# .env into a layer.
+.env
+.env.*
+!.env.example
+
+node_modules
+**/node_modules
+**/dist
+**/coverage
+
+.git
+.github
+.claude
+docs
+e2e
+
+**/*.test.js
+**/*.test.jsx
+**/tests
+
+Dockerfile
+**/Dockerfile
+docker-compose.yml
+.dockerignore
+README.md
