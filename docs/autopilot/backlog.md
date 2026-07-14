@@ -9,7 +9,6 @@ Mark items [done] when finished so they drop out of the active list.
 - **`ProfileSection.jsx` — extract an `<EditProfileForm key={editMode}>` child.** Two of the 15 lint disables live here: one effect re-seeds ~11 edit fields whenever Edit is clicked, and another calls the PARENT's `onEditMode()` (which cannot move to render — React throws "Cannot update a component while rendering a different component"). The clean fix is extracting the edit form into a keyed child so it remounts with fresh values. Real refactor, ~half a day; behavior is correct today.
 - **`PeopleModal.jsx` — key-based remount instead of the open-time snapshot effect.** It snapshots the `users` prop when opened so in-flight follow actions don't recompute the list under the user. A `key` would work but the timing is delicate; left as a justified disable.
 - **MUI Tabs warning on `/dashboard`.** The browser console logs "The `value` provided to the Tabs component is invalid. None of the Tabs' children match with '/dashboard'" on every dashboard render, at both viewports. Pre-existing, cosmetic (console noise only, the page renders fine) — the tabs `value` doesn't match any tab's route for the bare `/dashboard` path. Likely needs a default/redirect to the first tab.
-- **No `.gitattributes`.** Windows git here has `core.autocrlf=true`, WSL git does not — Windows sees a clean tree, WSL sees ~110 files as modified (pure CRLF noise, byte-identical). Harmless while every commit is made from Windows, but a commit made from inside WSL would produce a 110-file line-ending diff. Add `* text=auto eol=lf`.
 
 
 ### Infrastructure hardening (deployment task — do with Render staging/production)
@@ -31,6 +30,13 @@ Mark items [done] when finished so they drop out of the active list.
 ## Done
 
 (finished items move here, newest on top)
+
+### `.gitattributes` — CRLF vs LF settled for good — DONE
+- Merged to main as 79a76f7 (branch autopilot/2026-07-14-2; api 377 green on main after the merge).
+- The symptom that forced it: WSL git reported **191 modified files** while Windows git reported a clean tree. All 191 were byte-identical — only line endings differed. It nearly caused a 191-file commit containing ZERO real changes, which would have buried any genuine work inside it.
+- The repo itself was always storing LF correctly; only the checked-out WORKING TREE was CRLF (written by Windows git with `core.autocrlf=true`). So there was never anything to commit — just a missing rule.
+- Fix: `* text=auto eol=lf` overrides `core.autocrlf` in BOTH environments — LF in the repo, LF in the working tree, one source of truth. The 57 tracked binaries are explicitly marked `binary` so normalization can never corrupt them. SVG is deliberately left as text (it's XML and diffs usefully). The working tree was then re-materialised through the rule.
+- Result: WSL git 191 modified → **0**. Both gits now agree. Lint clean, 377 API + 193 web still green.
 
 ### Phase E — deployment, the CODE half — DONE
 - Merged to main as 7fb30ae (branch autopilot/2026-07-14, clean fast-forward; api 377 green on main after the merge). Commits e2527a8 (docker), 0f82391 (e2e pack), 4ad8f6d (Sentry).
