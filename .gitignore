@@ -14,3 +14,6 @@ apps/*/package-lock.json
 # Playwright e2e output
 /e2e/test-results/
 /e2e/playwright-report/
+# playwright resolves these relative to the repo root, not the config dir
+/test-results/
+/playwright-report/
