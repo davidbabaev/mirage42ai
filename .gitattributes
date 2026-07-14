@@ -1,0 +1,29 @@
+# Line endings, settled once and for all.
+#
+# THE PROBLEM THIS FIXES: this repo is edited from Windows AND from WSL. Windows
+# git has core.autocrlf=true, WSL git does not. So the two disagreed about every
+# text file in the repo: Windows git saw a clean tree, while WSL git reported
+# ~191 files as "modified" — all of them byte-identical apart from CRLF vs LF.
+# Committing that noise would have produced a 191-file diff containing zero real
+# changes, and a commit made from inside WSL would have done exactly that.
+#
+# `text=auto eol=lf` overrides core.autocrlf in BOTH environments: LF in the
+# repository, LF in the working tree, everywhere. One source of truth.
+* text=auto eol=lf
+
+# Binaries must never be touched — normalizing these corrupts them.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.mp4   binary
+*.webm  binary
+*.pdf   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary
+
+# SVG is text (it's XML) and diffs usefully, so it is deliberately NOT binary.
