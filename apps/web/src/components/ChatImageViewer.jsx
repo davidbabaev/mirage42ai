@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Box, CircularProgress, Dialog, IconButton, Typography } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
@@ -22,16 +22,11 @@ import ZoomableImage from './ZoomableImage';
 //   open   — boolean
 //   onClose — called to close the viewer
 export default function ChatImageViewer({ src, open, onClose }) {
+    // MUI Dialog does not use keepMounted by default, so children unmount when
+    // closed and remount on open — useState('loading') reinitialises automatically.
     const [status, setStatus] = useState('loading'); // 'loading' | 'loaded' | 'error'
     const touchStartY = useRef(null);
     const touchStartX = useRef(null);
-
-    // Reset loading state each time the viewer opens (or src changes while open).
-    // Without this, reopening with the same src would show the previous 'loaded'
-    // state before the img fires onLoad again.
-    useEffect(() => {
-        if (open) setStatus('loading');
-    }, [open, src]);
 
     const handleLoad = () => setStatus('loaded');
     const handleError = () => setStatus('error');

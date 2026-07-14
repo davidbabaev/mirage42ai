@@ -67,6 +67,8 @@ export default function CardDetailsModal({cardId, onClose, highlightCommentId}) 
         // only when cardId changes, so it doesn't loop.
         useEffect(() => {
             if (localCard) {
+                // Sync reset: card is now in local state, clear any stale fetch result.
+                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setFetchedCard(null);
                 setFetchError(null);
                 return;

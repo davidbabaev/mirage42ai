@@ -57,6 +57,10 @@ export default function AllCardsPage() {
         const commentParam = searchParams.get('comment');
         if (appliedCardParam.current === cardParam) return;
         appliedCardParam.current = cardParam;
+        // Ref-guard prevents reopening a modal the user dismissed. Deriving
+        // selectedCardId from searchParams during render would make the modal
+        // impossible to close (param still in URL after close).
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (cardParam) setSelectedCardId(cardParam);
         setHighlightCommentId(commentParam || null);
     }, [searchParams]);

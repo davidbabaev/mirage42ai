@@ -89,7 +89,7 @@ export default function ChatPage() {
         })
     }, [])
 
-    const handleMessageReceived = useCallback((newMessage) => {
+    const handleMessageReceived = (newMessage) => {
         setSelectedChat(prev => {
             if(!prev) return prev;
             if(prev.conversationId !== null) return prev;
@@ -106,7 +106,7 @@ export default function ChatPage() {
             }
             return prev;
         })
-    }, [user?._id])
+    }
 
     const {
         handleOpenConversation,
@@ -232,10 +232,6 @@ export default function ChatPage() {
         prevLastIdRef.current = lastId;
     }, [chatMessages, user?._id])
 
-    useEffect(() => {
-        setMessageText('');
-    }, [selectedChat?.conversationId])
-
     const [searchParams, setSearchParams] = useSearchParams();
     const toUserId = searchParams.get('to')
 
@@ -249,7 +245,12 @@ export default function ChatPage() {
 
         if(conversation){
             // Partner is embedded on the conversation by the server.
+            // Sync setters together: ready-state reset, compose-box clear, and chat
+            // selection must fire atomically in the same effect that owns the
+            // `cancelled` cancel flag (shared with the async path below).
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setIsChatReady(false);
+            setMessageText(''); // clear compose box on deep-link conversation switch
             setSelectedChat({
                 conversationId: conversation._id,
                 otherUser: conversation.otherUser
@@ -265,7 +266,14 @@ export default function ChatPage() {
         if(selectedChat?.otherUser?._id === toUserId) return;
         let cancelled = false;
         getSingleUser(toUserId)
-            .then(u => { if(!cancelled) setSelectedChat({ conversationId: null, otherUser: u }); })
+            .then(u => {
+                if(cancelled) return;
+                // This opens a chat with a DIFFERENT person, so the compose box has to
+                // be cleared here too — otherwise a draft typed to the previous chat
+                // follows you into this one and can be sent to the wrong user.
+                setMessageText('');
+                setSelectedChat({ conversationId: null, otherUser: u });
+            })
             .catch(() => {});
         return () => { cancelled = true; };
 
@@ -273,6 +281,7 @@ export default function ChatPage() {
 
     const handleSelectChat = (chat, otherUser) => {
         setIsChatReady(false);
+        setMessageText(''); // clear compose box when switching conversations
         setSelectedChat({
             conversationId: chat._id,
             otherUser: otherUser

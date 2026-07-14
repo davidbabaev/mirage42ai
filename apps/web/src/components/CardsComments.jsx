@@ -89,6 +89,9 @@ export default function CardsComments({card, addComment, removeComment, focusRef
             if (hasMore && !loadingMore && !loading) loadMore();
             return;
         }
+        // Highlight fires only once the target comment is in the loaded list,
+        // reacting to async paginated data arriving — not a derivable value.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setHighlightedId(highlightCommentId);
         const scrollTimer = setTimeout(() => {
             const el = commentRefs.current.get(highlightCommentId);

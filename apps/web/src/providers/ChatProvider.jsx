@@ -66,6 +66,9 @@ export function ChatProvider({ children }) {
 
     // Fetch on login; clear on logout (mirrors UsersProvider/CardsProvider).
     useEffect(() => {
+        // Auth lifecycle: fetchChats and the clear setters are intentional reactions
+        // to the login/logout event, not derivable from render-time state.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (isLoggedIn) fetchChats();
         else {
             applyConversations([]);

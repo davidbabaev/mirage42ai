@@ -28,6 +28,9 @@ export default function BlockedUsersSection() {
         }
     }, []);
 
+    // Async fetch kickoff: load() arms the spinner then awaits the server; the
+    // setLoading(true) inside it is a legitimate async kickoff pattern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { load(); }, [load]);
 
     const handleUnblock = async (id) => {

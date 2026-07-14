@@ -25,6 +25,9 @@ export default function PeopleModal({ open, onClose, title, users = [], mode = '
     // recompute it away — removal is controlled by the linger timer instead.
     useEffect(() => {
         if (open) {
+            // Snapshot the list at open time so in-flight follows don't
+            // recompute it away; key-based remount is timing-sensitive here.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setItems(users);
             setVisible(PAGE);
         }

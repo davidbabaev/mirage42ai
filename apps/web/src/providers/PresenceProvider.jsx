@@ -10,6 +10,9 @@ export function PresenceProvider({ children }) {
     useEffect(() => {
         const socket = getSocket();
         if (!socket || !isLoggedIn) {
+            // Auth lifecycle: synchronously clear presence on logout or before socket
+            // listeners attach, so stale online indicators never show.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setOnlineIds(new Set());
             return undefined;
         }

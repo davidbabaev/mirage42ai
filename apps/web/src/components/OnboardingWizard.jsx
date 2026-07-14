@@ -38,6 +38,22 @@ const REDUCED_MOTION =
         ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
         : false;
 
+// Pure helper: maps server user fields to the profile-step form values,
+// stripping "Not Defined" sentinels. Called at lazy-init time so no effect needed.
+function deriveProfileValues(user) {
+    if (!user) return {};
+    return {
+        job:       user.job === 'Not Defined'      ? '' : (user.job      || ''),
+        phone:     user.phone                      || '',
+        age:       user.age                        || '',
+        gender:    user.gender === 'Unknown'       ? '' : (user.gender   || ''),
+        aboutMe:   user.aboutMe === 'Not Defined'  ? '' : (user.aboutMe  || ''),
+        country:   user.address?.country === 'Not Defined' ? '' : (user.address?.country || ''),
+        city:      user.address?.city              || '',
+        birthDate: user.birthDate                  || '',
+    };
+}
+
 // ─── Main wizard ───────────────────────────────────────────────────────────────
 export default function OnboardingWizard() {
     const { user, setUser, isLoggedIn, editUser } = useAuth();
@@ -72,8 +88,9 @@ export default function OnboardingWizard() {
     const [searchLoading, setSearchLoading] = useState(false);
     const debouncedSearch = useDebounce(searchQuery, 400);
 
-    // Step 3 — profile fields
-    const [profileValues, setProfileValues] = useState({});
+    // Step 3 — profile fields. Lazy-init from user at mount; wizard only renders
+    // when logged in, so user exists on the first render.
+    const [profileValues, setProfileValues] = useState(() => deriveProfileValues(user));
     const [profileError, setProfileError] = useState(null);
 
     // ── Focus step heading on step change ───────────────────────────────────────
@@ -83,25 +100,13 @@ export default function OnboardingWizard() {
         return () => clearTimeout(t);
     }, [activeStep, open]);
 
-    // ── Pre-fill profile form from user context ──────────────────────────────────
-    useEffect(() => {
-        if (!user) return;
-        setProfileValues({
-            job:       user.job === 'Not Defined'      ? '' : (user.job      || ''),
-            phone:     user.phone                      || '',
-            age:       user.age                        || '',
-            gender:    user.gender === 'Unknown'       ? '' : (user.gender   || ''),
-            aboutMe:   user.aboutMe === 'Not Defined'  ? '' : (user.aboutMe  || ''),
-            country:   user.address?.country === 'Not Defined' ? '' : (user.address?.country || ''),
-            city:      user.address?.city              || '',
-            birthDate: user.birthDate                  || '',
-        });
-    }, [user?._id]);
-
     // ── Fetch suggested users when entering step 2 ──────────────────────────────
     useEffect(() => {
         if (activeStep !== 1 || !open) return;
         let cancelled = false;
+        // Async fetch kickoff: setSuggestedLoading arms the spinner before the
+        // promise resolves; results arrive in the async callbacks below.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSuggestedLoading(true);
         setSuggestedError(null);
         getSuggestedUsers(20)
@@ -114,6 +119,9 @@ export default function OnboardingWizard() {
     // ── Search users (debounced) ─────────────────────────────────────────────────
     useEffect(() => {
         if (!debouncedSearch.trim()) {
+            // Synchronous clear: immediately empties stale results when the query
+            // is cleared so the UI doesn't flash old data before the next fetch.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setSearchResults([]);
             return;
         }

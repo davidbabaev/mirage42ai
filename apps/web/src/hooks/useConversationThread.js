@@ -22,6 +22,11 @@ export default function useConversationThread(otherUser, active) {
 
     const [conversationId, setConversationId] = useState(resolved);
     useEffect(() => {
+        // One-directional sync of conversationId from resolved. Cannot be a pure
+        // derivation: three writers (initial, onReceived adopting a new-chat id,
+        // onDeleted nulling it) share this state — making it derived from `resolved`
+        // alone would break new-chat adoption and race the delete handler.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (resolved && resolved !== conversationId) setConversationId(resolved);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [resolved]);

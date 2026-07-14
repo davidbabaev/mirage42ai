@@ -20,13 +20,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Web lint is non-blocking: it has pre-existing Phase-D debt
-      # (set-state-in-effect, react-refresh) — it reports in the logs but does
-      # NOT fail the build. Remove continue-on-error to make it a hard gate once
-      # Phase D #16 (provider/hook cleanup) clears the errors.
+      # Web lint is now a HARD GATE. Phase D #16 (provider/hook cleanup) cleared
+      # the last of the debt — 39 errors -> 0 — so continue-on-error is gone.
+      # Keep it that way: a new lint error should fail the build, not pile up.
       - name: Lint (web)
         run: npm run lint --workspace apps/web
-        continue-on-error: true
 
       # API lint IS a hard gate — the api baseline is clean (Phase C #11).
       - name: Lint (api)

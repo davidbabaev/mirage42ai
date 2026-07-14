@@ -17,6 +17,9 @@ export default function useCities(countryName) {
 
     useEffect(() => {
         if (!countryName) {
+            // Sync clear: immediately empties city list when country is deselected,
+            // before the async import resolves.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setCities([]);
             return;
         }

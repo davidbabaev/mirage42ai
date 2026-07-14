@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import BrokenImageOutlinedIcon from '@mui/icons-material/BrokenImageOutlined';
 import { useManagedVideo } from '../providers/videoCoordinatorContext';
@@ -26,9 +26,9 @@ function ManagedVideo({ mediaUrl, style, mode }) {
 // or deleted Cloudinary asset) instead of showing the browser's broken-image
 // glyph. Reports the failure to the caller via onError so composers can react.
 function ImageWithFallback({ mediaUrl, style, onError }) {
+    // key={mediaUrl} on every usage ensures this component remounts when the URL
+    // changes, so useState(false) re-initializes cleanly without an effect.
     const [errored, setErrored] = useState(false);
-
-    useEffect(() => { setErrored(false); }, [mediaUrl]);
 
     if (errored) {
         return (
@@ -75,5 +75,5 @@ export default function MediaDisplay({mediaUrl, mediaType, style, videoMode = 'p
     if (zoomable) {
         return <ZoomableImage mediaUrl={mediaUrl} />
     }
-    return <ImageWithFallback mediaUrl={mediaUrl} style={style} onError={onError} />
+    return <ImageWithFallback key={mediaUrl} mediaUrl={mediaUrl} style={style} onError={onError} />
 }

@@ -40,6 +40,8 @@ export default function ShareDialog({ card, open, onClose }) {
     useEffect(() => {
         if (!open) return;
         let active = true;
+        // Async fetch kickoff: arms the spinner before the promise resolves.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLoadingRecent(true);
         getRecentContacts(10)
             .then((res) => { if (active) setRecent((res || []).filter((u) => u._id !== user?._id)); })
@@ -51,6 +53,8 @@ export default function ShareDialog({ card, open, onClose }) {
     // Debounced server-side search; scales to any number of users.
     const debouncedQuery = useDebounce(query, 300);
     useEffect(() => {
+        // Sync clear: immediately empties stale results when the query is cleared.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (!debouncedQuery) { setSearchResults([]); return; }
         let active = true;
         setSearching(true);

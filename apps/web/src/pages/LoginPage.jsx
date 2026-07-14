@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { useAuth } from '../providers/authContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Alert, Box, Button, Divider, TextField, Typography, useTheme } from '@mui/material';
@@ -11,7 +11,6 @@ export default function LoginPage() {
 
   const[password, setPassword] = useState('')
   const[email, setEmail] = useState('')
-  const [error, setError] = useState('');
   const theme = useTheme();
 
   const {handleLogin} = useAuth();
@@ -19,10 +18,12 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const errorParam = searchParams.get('error');
 
-  useEffect(() => {
-    if(errorParam === 'banned') setError('You Banned :(')
-    if(errorParam === 'deleted') setError('Your account no longer exists')
-  },[]);
+  // Lazy-init maps the ?error= URL param to a message string at mount time.
+  const [error, setError] = useState(() =>
+    errorParam === 'banned'  ? 'You Banned :('
+    : errorParam === 'deleted' ? 'Your account no longer exists'
+    : ''
+  );
 
 
   const handleSubmit = async (e) => {

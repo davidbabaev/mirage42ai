@@ -71,6 +71,9 @@ useEffect(() => {
     if(isLoggedIn){
         refreshFeed();
     } else {
+        // Auth lifecycle: clear the previous user's data on logout so it isn't
+        // left in state when the next user logs in.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setRegisteredCards([]);
         resetFeed();
     }

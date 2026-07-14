@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { banUser, deleteUser, promoteUser} from "../services/apiService";
 import { useAuth } from "./authContext";
 import { UsersContext } from './usersContext';
@@ -25,11 +25,15 @@ export function UsersProvider({children}) {
     // count just went up — so the count would sit stale on every surface until a
     // refetch. Consumers read through the overlay first, then the user object's own
     // server-sent count.
-    const [userOverlay, setUserOverlay] = useState({});
+    const [userOverlayRaw, setUserOverlayRaw] = useState({});
+
+    // Derived during render: clear the previous user's overlay on logout
+    // without an effect. Consumers always read the derived value.
+    const userOverlay = isLoggedIn ? userOverlayRaw : {};
 
     const patchUser = (userId, patch) => {
         if (!userId) return;
-        setUserOverlay(prev => ({
+        setUserOverlayRaw(prev => ({
             ...prev,
             [userId]: { ...(prev[userId] || {}), ...patch },
         }));
@@ -87,13 +91,6 @@ export function UsersProvider({children}) {
             }
         }
     }
-
-    // Drop the previous user's mutation state on logout. (There is no users list to
-    // fetch on login any more — that was the app-mount load of the entire user
-    // collection, and it is gone.)
-    useEffect(() => {
-        if(!isLoggedIn) setUserOverlay({});
-    }, [isLoggedIn])
 
     return(
         <UsersContext.Provider value={{

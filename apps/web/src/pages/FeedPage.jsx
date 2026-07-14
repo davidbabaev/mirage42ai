@@ -44,13 +44,9 @@ export default function FeedPage() {
 
 
     // ----------------------------------------------------
-    
-    const [isFilled, setIsFilled] = useState(false)
 
-    useEffect(() => {
-        if(!user) return;
-        setIsFilled(isProfileIncomplete(user));
-    }, [])
+    // Derived during render — no effect needed.
+    const isFilled = user ? isProfileIncomplete(user) : false;
 
     const [openCommentCardId, setOpenCommentCardId] = useState(null);
     const [suggestModalOpen, setSuggestModalOpen] = useState(false);

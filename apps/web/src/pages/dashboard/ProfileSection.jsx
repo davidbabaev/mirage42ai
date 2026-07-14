@@ -94,6 +94,11 @@ export default function ProfileSection({editMode ,onEditMode, onCloseEdit}) {
     useEffect(() => {
         if(state?.editMode === true){
             onEditMode();
+            // onEditMode() above calls a parent state setter from this effect —
+            // moving it to render would throw "Cannot update a component while
+            // rendering a different component". The bulk field seeding below
+            // would need an <EditProfileForm key={editMode}> extraction — out of scope.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setEditName(user.name);
             setEditLastName(user.lastName);
             setEditEmail(user.email);
@@ -112,6 +117,9 @@ export default function ProfileSection({editMode ,onEditMode, onCloseEdit}) {
 
     useEffect(() => {
         if(editMode === true){
+            // Re-seeds ~11 edit fields when editMode flips true. The clean fix is
+            // extracting an <EditProfileForm key={editMode}> child — out of scope.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setEditName(user.name);
             setEditLastName(user.lastName);
             setEditEmail(user.email);
