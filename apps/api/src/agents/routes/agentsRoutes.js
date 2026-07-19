@@ -6,6 +6,11 @@ const { getAgentRoster } = require('../service/agentsSvc');
 const { loadMemory, appendEvent, appendFact } = require('../service/agentMemorySvc');
 const { ACCOUNT_KIND } = require('@mirage42ai/shared');
 const User = require('../../users/models/User');
+const { uploadImageOnly } = require('../../middlewares/multer');
+const { uploadAgentMedia, isAgentCloudinaryConfigured } = require('../../utils/agentCloudinary');
+const {
+    queuePendingImage, listPendingImages, approvePendingImage, rejectPendingImage,
+} = require('../service/agentImagesSvc');
 
 /**
  * Memory belongs to an AGENT account and nothing else. Writing memory onto a
@@ -111,6 +116,105 @@ router.post('/agents/admin/:userId/memory', auth, async (req, res) => {
             eventCount: (memory.events || []).length,
             factCount: (memory.facts || []).length,
         });
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+/**
+ * POST /agents/admin/images — file a generated image for review (F5, §7).
+ *
+ * The runtime generates the image and hands over the BYTES; the API owns the
+ * upload, because the agent Cloudinary credentials belong to the server and the
+ * worker should not hold a second set of storage keys.
+ *
+ * This endpoint cannot publish. It only ever produces a `pending` row — the
+ * approve route below is the sole path to a real post.
+ */
+router.post('/agents/admin/images', auth, uploadImageOnly.single('media'), async (req, res) => {
+    try {
+        if (!req.user.isAdmin) throw createError(403, 'Admin only');
+        if (!req.file) throw createError(400, 'An image file is required');
+
+        const { agentUserId, caption = '', prompt = '', model = '' } = req.body || {};
+        if (!agentUserId) throw createError(400, 'agentUserId is required');
+
+        // §7: the separate agent account, or nothing. Never the live one.
+        if (!isAgentCloudinaryConfigured()) {
+            throw createError(
+                503,
+                'Agent media storage is not configured; refusing to upload agent media to the live account'
+            );
+        }
+
+        const imageUrl = await uploadAgentMedia(req.file.buffer, 'pending');
+        const pending = await queuePendingImage({
+            agentUserId,
+            imageUrl,
+            caption,
+            prompt,
+            model,
+            includedFace: req.body?.includedFace !== 'false',
+        });
+
+        res.status(201).send({
+            id: pending._id,
+            status: pending.status,
+            imageUrl: pending.imageUrl,
+        });
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+/**
+ * GET /agents/admin/images — the review queue.
+ *
+ * Query: ?status=pending|approved|rejected|all &agentUserId=... &limit=...
+ */
+router.get('/agents/admin/images', auth, async (req, res) => {
+    try {
+        if (!req.user.isAdmin) throw createError(403, 'Admin only');
+        const images = await listPendingImages({
+            status: req.query.status || 'pending',
+            agentUserId: req.query.agentUserId,
+            limit: req.query.limit,
+        });
+        res.send({ images, count: images.length });
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+/**
+ * POST /agents/admin/images/:id/approve — publish it, as the agent.
+ *
+ * The ONLY route in the codebase that turns a generated image into a Card.
+ */
+router.post('/agents/admin/images/:id/approve', auth, async (req, res) => {
+    try {
+        if (!req.user.isAdmin) throw createError(403, 'Admin only');
+        const result = await approvePendingImage({ id: req.params.id, adminUserId: req.user.userId });
+        res.send({
+            id: result.pendingImage._id,
+            status: result.pendingImage.status,
+            cardId: result.pendingImage.publishedCardId,
+        });
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+/** POST /agents/admin/images/:id/reject — it stops here. Nothing is published. */
+router.post('/agents/admin/images/:id/reject', auth, async (req, res) => {
+    try {
+        if (!req.user.isAdmin) throw createError(403, 'Admin only');
+        const rejected = await rejectPendingImage({
+            id: req.params.id,
+            adminUserId: req.user.userId,
+            note: req.body?.note || '',
+        });
+        res.send({ id: rejected._id, status: rejected.status });
     } catch (err) {
         handleError(res, err);
     }
