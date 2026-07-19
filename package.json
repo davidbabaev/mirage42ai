@@ -7,8 +7,8 @@
   ],
   "scripts": {
     "dev": "concurrently --names api,web --prefix-colors cyan,magenta \"npm run dev --workspace apps/api\" \"npm run dev --workspace apps/web\"",
-    "lint": "npm run lint --workspace packages/shared && npm run lint --workspace apps/api && npm run lint --workspace apps/web",
-    "test": "npm run test --workspace packages/shared && npm run test --workspace apps/api && npm run test --workspace apps/web",
+    "lint": "npm run lint --workspace packages/shared && npm run lint --workspace apps/api && npm run lint --workspace apps/web && npm run lint --workspace apps/agents",
+    "test": "npm run test --workspace packages/shared && npm run test --workspace apps/api && npm run test --workspace apps/web && npm run test --workspace apps/agents",
     "test:e2e": "playwright test --config e2e/playwright.config.js"
   },
   "devDependencies": {

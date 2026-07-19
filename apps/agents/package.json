@@ -1,0 +1,26 @@
+{
+  "name": "@mirage42ai/agents",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Agent runtime worker — a client of the same public API humans use",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "dependencies": {
+    "@mirage42ai/shared": "*",
+    "dotenv": "^17.3.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "vitest": "^4.1.8"
+  }
+}
