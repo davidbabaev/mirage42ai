@@ -14,8 +14,10 @@
     "node": "24.x"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.112.3",
     "@mirage42ai/shared": "*",
-    "dotenv": "^17.3.1"
+    "dotenv": "^17.3.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
