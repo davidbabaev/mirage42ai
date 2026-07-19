@@ -208,3 +208,128 @@ describe('THE REGRESSION — a burst produces exactly one decision and one reply
         expect(summary).toContain('drink');
     });
 });
+
+// The OTHER half of the reported bug, and the one the debounce does NOT fix:
+// messages minutes apart. David sent three over ~61s; the replies landed
+// minutes apart and each opened "hey, what's up?" as if the conversation had
+// just started. Cause: all three runs fetched the thread BEFORE any reply had
+// been sent, so each read a thread containing nothing from Maya.
+//
+// The per-conversation lock is what fixes it: the follow-up batch re-fetches
+// the thread AFTER the previous reply landed, so she can see she already
+// answered. These tests pin that the second reply is composed with the first
+// one visible — at any spacing, 5 seconds or 5 minutes.
+describe('an ongoing conversation — the second reply sees the first', () => {
+    beforeEach(() => { vi.useFakeTimers(); });
+    afterEach(() => { vi.useRealTimers(); });
+
+    const FIRST_REPLY = 'hey! all good here, just busy with work';
+
+    const wireStateful = () => {
+        const budget = new BudgetLedger({ clock: () => AWAKE });
+        const audit = new AuditTrail({ sink: { log: () => {} }, clock: () => 'T' });
+
+        // The thread GROWS as she replies — this is the real API's behaviour,
+        // and the whole point: a re-fetch must show her own prior messages.
+        const thread = [];
+        const chatSocket = {
+            sendMessage: vi.fn(async ({ text }) => {
+                thread.push({ _id: `maya-${thread.length}`, userId: 'agent-1', text });
+                return { _id: 'sent' };
+            }),
+        };
+
+        const api = {
+            fetchThread: vi.fn(async () => ({
+                messages: [...thread], counterpartName: 'David Cohen',
+            })),
+            loadMemory: vi.fn(async () => ({ events: [], facts: [] })),
+            writeMemory: vi.fn(async () => ({ ok: true })),
+            markRead: vi.fn(async () => ({})),
+        };
+
+        let call = 0;
+        const decideImpl = vi.fn(async () => {
+            call += 1;
+            return {
+                raw: {
+                    reply: call === 1 ? FIRST_REPLY : 'ha, yeah — deadline week. you?',
+                    reason: 'r',
+                },
+                usage: { input_tokens: 10, output_tokens: 5 },
+            };
+        });
+
+        const queue = createDmQueue({
+            quietWindowMs: 4000,
+            handler: (batch) => replyToDm({
+                messages: batch, agent: AGENT,
+                session: { id: 'agent' }, runtimeSession: { id: 'runtime' },
+                chatSocket, llmClient: {}, budget, audit, now: AWAKE,
+                random: () => 0.5, sleep: async () => {},
+                api, decideImpl,
+            }),
+        });
+
+        const inbound = (id, text) => {
+            thread.push({ _id: id, userId: 'david-1', text });
+            queue.enqueue({ _id: id, conversationId: 'conv-1', userId: 'david-1', text });
+        };
+
+        return { queue, audit, chatSocket, api, decideImpl, inbound };
+    };
+
+    it('a message 5 MINUTES later is answered with the earlier reply in the prompt', async () => {
+        const { inbound, decideImpl } = wireStateful();
+
+        inbound('m1', 'you around?');
+        await vi.advanceTimersByTimeAsync(4100);          // first reply goes out
+
+        await vi.advanceTimersByTimeAsync(5 * 60_000);    // five quiet minutes
+        inbound('m2', 'what have you been up to?');
+        await vi.advanceTimersByTimeAsync(4100);
+
+        expect(decideImpl).toHaveBeenCalledTimes(2);
+
+        // The prompt for the SECOND reply must contain what she already said.
+        const secondPrompt = JSON.stringify(decideImpl.mock.calls[1][0]);
+        expect(secondPrompt).toContain(FIRST_REPLY);
+        expect(secondPrompt).toContain('you around?');
+        expect(secondPrompt).toContain('what have you been up to?');
+    });
+
+    it('her own prior reply is attributed to HER, not to the other person', async () => {
+        // If her messages were rendered as David's, the model would read its own
+        // greeting as his and answer it — which is what repeating looks like.
+        const { inbound, decideImpl } = wireStateful();
+
+        inbound('m1', 'you around?');
+        await vi.advanceTimersByTimeAsync(4100);
+        await vi.advanceTimersByTimeAsync(5 * 60_000);
+        inbound('m2', 'still there?');
+        await vi.advanceTimersByTimeAsync(4100);
+
+        const secondPrompt = JSON.stringify(decideImpl.mock.calls[1][0]);
+        expect(secondPrompt).toContain(`You: ${FIRST_REPLY}`);
+        expect(secondPrompt).toContain('David Cohen: still there?');
+    });
+
+    it('the prompt forbids re-greeting and repeating an answer', async () => {
+        const { compileReplyPrompt } = requireFromHere('../src/dm/replyPrompt.js');
+        const prompt = compileReplyPrompt({
+            persona: AGENT.persona, memory: {}, counterpartName: 'David Cohen',
+        });
+
+        expect(prompt).toMatch(/CONTINUING the conversation/i);
+        expect(prompt).toMatch(/do not repeat an answer/i);
+    });
+
+    it('marks the conversation read, so the startup sweep will not answer it again', async () => {
+        const { inbound, api } = wireStateful();
+
+        inbound('m1', 'you around?');
+        await vi.advanceTimersByTimeAsync(4100);
+
+        expect(api.markRead).toHaveBeenCalledWith({ id: 'agent' }, 'conv-1');
+    });
+});
