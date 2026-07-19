@@ -3,6 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const {handleError, createError} = require('../../utils/handleErrors')
+const {pickEditableUserFields} = require('../helpers/editableUserFields')
 
 const {
     createNewUser,
@@ -325,9 +326,13 @@ router.put('/users/:id', auth, uploadImageOnly.fields([
                     coverImageUrl = defaultCover
                 }
 
-                let updatedUser = await updateUser(req.params.id, 
+                // Allowlist the body: being the account owner authorises editing
+                // your PROFILE, not every field on the document (isAdmin,
+                // isBanned, kind, password, refreshTokens, ...). See
+                // helpers/editableUserFields.js.
+                let updatedUser = await updateUser(req.params.id,
                     {
-                        ...req.body,
+                        ...pickEditableUserFields(req.body),
                         profilePicture: profilePictureUrl,
                         coverImage: coverImageUrl
                     }
