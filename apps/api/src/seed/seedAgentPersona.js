@@ -152,7 +152,11 @@ const seedAgentPersona = async ({ password, logger = console } = {}) => {
     const persona = await AgentPersona.findOneAndUpdate(
         { userId: user._id },
         { ...AGENT_PERSONA, userId: user._id },
-        { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true }
+        // `returnDocument: 'after'` rather than the `new: true` used elsewhere
+        // in this codebase: mongoose 9 deprecates `new` specifically for
+        // findOneAndUpdate (the sibling calls use findByIdAndUpdate, which does
+        // not warn), and a deprecation notice on every seed run is noise.
+        { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true, runValidators: true }
     );
     logger.log(`[seed-agent] persona ready for ${persona.name} (${user._id})`);
 
