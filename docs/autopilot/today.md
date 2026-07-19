@@ -16,7 +16,42 @@ Clear and rewrite it each day. Git keeps the history.
 
 (empty — everything queued for this run is finished and awaiting review)
 
-## Done this run — branch `autopilot/2026-07-19-2` (MERGED to main as da29632)
+## Done this run — branch `autopilot/2026-07-19-3` (awaiting review)
+
+**Phase F increment F3 — heartbeat + decision loop.** In backlog.md under
+"## Awaiting review". Ten commits, one concern each — the highlights:
+
+1. **`5b5dbdc`** — text-only posts. `POST /cards` rejected any request without
+   a file, so nobody could write a plain thought. A gap for HUMANS, found
+   because F3 needs it.
+2. **`25c10f5`** — `GET /agents/admin`. The worker discovers its roster over
+   HTTP and never touches MongoDB.
+3. **`a42e8fa`** — the self-healing session (the TASK B failure class).
+4. **`e3b1ad7`** — one cheap Haiku call, structured output + zod.
+5. **`633ede0`** — heartbeat with real timezones and jitter.
+6. **`f566f29`** — the decision loop wired end to end.
+7. **`e729c1f`** — split the admin runtime credential from the agent's login.
+
+Gates: **0 lint errors · shared 4 · api 436 · web 193 · agents 141**, a 28/28
+end-to-end run, and browser verification at 390 and 1280.
+
+### Proven, not assumed
+The real worker code drove a real API over HTTP against in-memory mongo:
+authenticated, read the roster over the admin endpoint, **survived a real token
+expiry** (3s TTL — the old token genuinely 401'd, the session refreshed and
+replayed), posted a text-only card, liked and commented on a human's post,
+refused to re-like (which would have UNLIKED it), and stayed invisible as an
+agent in the human feed. The agent's own token got a 403 from the roster
+endpoint, confirming it is not an admin.
+
+### ⚠️ The one thing NOT verified
+**The LLM call itself has never been made.** No ANTHROPIC_API_KEY was available
+here, so every test and the end-to-end run stub the decision. Everything AROUND
+the call is proven; the call is not. Your dev run is the first time a real
+Haiku response gets parsed — if the model returns a shape the schema rejects,
+you will see `do_nothing` with a `valid:false` audit line rather than a crash.
+
+## Done previously — branch `autopilot/2026-07-19-2` (MERGED to main as da29632)
 
 **Phase F increment F2 — one agent persona + agent authentication.** In
 backlog.md under "## Awaiting review". Four commits, one concern each:
@@ -125,7 +160,8 @@ that can be honestly claimed. Build it once on a machine with docker before trus
 ## Phase F — Agents (the product vision)
 - ~~Data model (`kind`) + `apps/agents` skeleton + kill-switch.~~ **F1 DONE, merged to main as 2da263b.** F1 covered `kind`, the skeleton and the kill-switch only.
 - ~~`AgentPersona` + one seeded persona + agent authentication.~~ **F2 DONE, merged to main as da29632.** Still to come from §5: the `AgentMemory` collection.
-- One text-only agent: heartbeat → decision loop → posts/comments/likes via public API. **NEXT.** Start with token refresh (see backlog) — the worker holds a 15-minute token today and will 401 as soon as it is long-running.
+- ~~One text-only agent: heartbeat → decision loop → posts/comments/likes via public API.~~ **F3 done, awaiting review** (branch `autopilot/2026-07-19-3`). Token refresh landed with it.
+- In-character DMs with memory + human-feeling delays. **NEXT.** Needs the `AgentMemory` collection (§5) — the loop currently reconstructs "recent activity" from an in-process audit trail, so nothing survives a restart.
 - In-character DMs with memory + human-feeling delays.
 - Consistent-face image pipeline → reference sets for 3 personas → admin approval queue.
 - 3-agent pilot on staging.

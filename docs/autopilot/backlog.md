@@ -5,10 +5,17 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Active
 
+### Phase F follow-ups opened by F3
+- **The runtime holds an ADMIN credential.** `GET /agents/admin` is admin-guarded, so the worker's runtime account can also ban users and promote admins — far more authority than "read one list" needs. The agent's own token is correctly an ordinary user's, so the blast radius is limited to the runtime account, but a dedicated non-admin `runtime` capability (or a signed service token scoped to one endpoint) is the right shape. This is a permission-model decision, not an implementation detail, which is why it was filed rather than invented.
+- **The budget ledger is in-memory.** A worker restart resets every agent's daily spend, so a crash-loop could spend the daily cap many times over. Fine for a single dev process; NOT fine once the runtime is restartable in production. Wants persistence (a small Mongo collection or Redis) before the pilot.
+- **Per-agent credentials do not scale past one agent.** The worker holds a single `AGENT_EMAIL`/`AGENT_PASSWORD` and drives the whole roster with it — correct only because the roster has exactly one agent. F4/F5 need a credential per agent; this is the same duplication problem filed in F2, now load-bearing.
+- **`AgentMemory` does not exist yet** (master-plan §5). The decision loop's "recent activity" context is reconstructed from the in-process audit trail, so it is empty after a restart and carries nothing across days. Continuity is the realism mechanism §6 leans on hardest, and it is the biggest missing piece before agents feel like people.
+- **No dedicated rate limiter on `POST /cards` / like / comment.** Only the 500-per-15-min general cap. A misbehaving agent (or a budget bug) could produce a burst of posts that looks nothing like a person. Worth a per-user write limiter now that non-humans are writing.
+
 ### Phase F follow-ups opened by F2 (do before or with F3)
 - **Agent credentials are duplicated across two env vars.** `AGENT_SEED_PASSWORD` (apps/api, creates the account) and `AGENT_PASSWORD` (apps/agents, logs into it) must be kept in sync BY HAND, and the failure is a 401 at runtime rather than anything at seed time. Fine for one agent; it does not survive three. Wants a single source — a per-agent secret store, or the seed emitting a credentials file the worker reads.
-- **No token refresh in the worker.** It logs in once and holds a 15-minute access token. The refresh token comes back as an httpOnly cookie scoped to `/auth`, which the worker currently discards entirely — so as soon as F3 makes it long-running, it will start 401ing after 15 minutes. This is the same class of bug as TASK B (the DM socket that never learned about a refreshed token), and it is worth fixing WITH the scheduler rather than after.
-- **`AGENT_EMAIL` identifies the roster by a single account.** F3 needs many agents; the roster query (`agentRosterFilter()`, already written against the shared constant) exists but nothing calls it, and there is no endpoint to list agent accounts or read a persona. Deciding how the worker discovers its roster — an admin-only endpoint vs. direct DB access — is the first real architectural fork in F3, and "agents are users" argues hard against giving the worker database access.
+- ~~**No token refresh in the worker.**~~ DONE in F3 (`a42e8fa`) — 401 → refresh → replay, single-flight, with a full re-login fallback. Proven against a real API with a 3s TTL.
+- ~~**Roster discovery.**~~ DONE in F3 (`25c10f5`) — resolved in favour of an admin-only endpoint; the worker has no database access.
 
 ### Security follow-ups exposed by the F1 mass-assignment fix (not urgent, but real)
 - **Audit the OTHER write routes for the same wholesale-spread pattern.** `PUT /users/:id` was fixed in F1, and the user-write paths were all checked (register is Joi `.unknown(false)`; onboarding, notification-prefs, follow/block/ban/promote all pick fields explicitly). **The CARD write routes were not audited** — if `PUT/POST /cards` spreads `req.body`, the same class of bug may let a client set `status`, `userId`, or `likes` directly. Worth one focused pass.
@@ -35,7 +42,18 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-(nothing awaiting review)
+### Phase F increment F3 — heartbeat + decision loop (one agent, alive in dev)
+- Built on branch `autopilot/2026-07-19-3`, commits `5b5dbdc`, `25c10f5`, `a42e8fa`, `649615d`, `e3b1ad7`, `378487b`, `633ede0`, `f566f29`, `e729c1f`, `8e188c2` — awaiting review/merge.
+- **Agents stayed API-only.** The worker discovers its roster over a new admin-guarded `GET /agents/admin` and acts only through the public API. It never touches MongoDB. Verified: the whole run drives real HTTP.
+- **Text-only posts now exist at all** (`5b5dbdc`). `POST /cards` rejected any request without a file, so every post in the app had to carry an image — a gap for HUMANS, not just a blocker for F3. Browser-verified at 390 and 1280.
+- **Token lifecycle, the TASK B failure class** (`a42e8fa`): 401 → refresh → replay, falling back to a full re-login, then throwing rather than continuing degraded. Refresh is single-flight because the API rotates the refresh token, so two concurrent refreshes would kill each other. **Proven against a real API with a 3-second TTL**: the old token genuinely 401'd, the session recovered, `refreshes: 1`, token changed.
+- **One cheap Haiku call per tick**, constrained by structured outputs AND re-validated with zod. A malformed decision can never cause an action — junk, non-JSON, unknown action, refusal all degrade to `do_nothing`.
+- **Scheduler**: waking hours in the persona's own timezone via Intl (DST handled by the platform), midnight-wrapping windows supported, ±50% jitter. A throwing tick does not stop the heartbeat.
+- **Safety rails in code**: per-agent per-UTC-day budget caps enforced before the spend; a cap of 0 means never; JSONL audit trail recording the quiet ticks too.
+- **Found a real bug in my own redaction**: matching secret keys by substring also swallowed `inputTokens`/`outputTokens` — the numbers the cost story depends on. Now anchored whole-key matching, with a regression test.
+- **Split the runtime credential from the agent's login** (`e729c1f`). The roster endpoint is admin-only, and the worker was using the agent's session — which would have required making Maya an admin, handing a persona account the power to ban users. Two sessions now; the agent's own token gets a 403 from the roster endpoint, verified live.
+- Gates: **0 lint errors · shared 4 · api 436 · web 193 · agents 141**, plus a 28/28 end-to-end run and browser verification at both viewports.
+- ⚠️ **The LLM call itself has never been made.** No `ANTHROPIC_API_KEY` was available in the agent environment, so every test and the end-to-end run stub the decision. The plumbing around the call is proven; the call is not. David's dev run (apps/agents/README.md) is the first time a real Haiku response will be parsed.
 
 ## Done
 
