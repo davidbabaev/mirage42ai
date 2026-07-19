@@ -9,43 +9,54 @@ a second copy. The database is already seeded — **never** run a seed script.
 
 Run all commands from the repo root with the Bash tool.
 
-## Step 1 — mongod (port 27017, dbpath `~/mirage42-localdb`)
+## Step 1 — mongod (systemd service `mongod`, port 27017)
 
-Check first:
+mongod runs as a **systemd service**, not an ad-hoc foreground process. It is
+configured by `/etc/mongod-mirage42.conf` via a drop-in override at
+`/etc/systemd/system/mongod.service.d/mirage42.conf`, which makes it run as user
+`david` with:
+
+- dbPath `/home/david/mirage42-localdb` — the seeded data
+- log `/home/david/mirage42-logs/mongod.log` — readable without sudo
+
+Never start mongod by hand with `mongod --dbpath ... --fork`. A hand-started
+instance defaults to `/var/lib/mongodb`, which is **empty**, and the app then
+comes up against an empty database that looks healthy but has no users.
+
+Check the data, not just the port — an answering mongod on the wrong dbpath is
+the exact failure this step exists to catch:
 
 ```bash
-mongosh --quiet --eval 'db.runCommand({ping:1}).ok' "mongodb://localhost:27017/mirage42" 2>/dev/null
+mongosh --quiet --eval 'db.getSiblingDB("mirage42").users.countDocuments({})' 2>/dev/null
 ```
 
-- Prints `1` → mongod is already up. Say so and go to Step 2.
-- Otherwise, check whether *something else* holds the port:
+- Prints `9` (or more) → mongod is up on the seeded data. Go to Step 2.
+- Prints `0` → mongod is running on the **wrong dbpath**. Do NOT seed. Show me
+  `systemctl show mongod -p ExecStart --no-pager` and stop.
+- Errors / no output → the service is down. Check it:
 
 ```bash
-(command -v lsof >/dev/null && lsof -nP -iTCP:27017 -sTCP:LISTEN) || ss -lptn 'sport = :27017'
+systemctl is-active mongod
 ```
 
-  - Port is **free** → start it:
+  If it is not active, starting it needs **sudo**, which I cannot run. Ask me to
+  run this and wait for me to confirm:
 
-    ```bash
-    mkdir -p ~/mirage42-localdb ~/.mirage42-logs
-    mongod --dbpath ~/mirage42-localdb --port 27017 \
-      --logpath ~/.mirage42-logs/mongod.log --logRotate reopen --fork
-    ```
+```bash
+sudo systemctl start mongod
+```
 
-    If `--fork` is unsupported, start it with `run_in_background` instead.
-  - Port is **occupied but not answering the ping** → do NOT kill it. Report the
-    owning process (name + PID) and stop. Ask me how to proceed.
-
-Then wait for readiness — poll the ping up to ~30s, then fail loudly:
+Then poll for readiness up to ~30s:
 
 ```bash
 for i in $(seq 1 30); do
-  mongosh --quiet --eval 'db.runCommand({ping:1}).ok' "mongodb://localhost:27017/mirage42" 2>/dev/null | grep -q 1 && echo MONGO_READY && break
+  mongosh --quiet --eval 'db.getSiblingDB("mirage42").users.countDocuments({})' 2>/dev/null | grep -qE '^[1-9]' && echo MONGO_READY && break
   sleep 1
 done
 ```
 
-If it never prints `MONGO_READY`, show the tail of `~/.mirage42-logs/mongod.log` and stop.
+If it never prints `MONGO_READY`, show the tail of
+`/home/david/mirage42-logs/mongod.log` and stop.
 
 ## Step 2 — API on port 8181
 
@@ -90,32 +101,48 @@ The worker exits immediately unless `AGENTS_ENABLED` is truthy. Check
 `apps/agents/.env` (or the root `.env`) for `AGENTS_ENABLED`; if it is unset or
 false, tell me — set it in the env file rather than hardcoding it in the command.
 
-If a worker is already running, don't start a second one:
+If a worker is already running, don't start a second one. The worker's argv is
+`node src/index.js` (npm sets the workspace via cwd, so the path does **not**
+appear in the process line — matching on `apps/agents` finds nothing even when
+the worker is up):
 
 ```bash
-pgrep -af 'apps/agents/src/index.js'
+ps -eo pid,args --no-headers | grep '[i]ndex.js'
 ```
 
 Report the existing PID and stop there.
 
-Otherwise start it in the background so I can watch it:
+Otherwise start it detached. Plain `&` or `nohup` is not enough — the worker is
+killed when the launching shell exits, and the only symptom is a log that ends
+cleanly at "listening for DMs" with no error. Use `setsid`:
 
 ```bash
-npm run dev --workspace apps/agents
+mkdir -p ~/.mirage42-logs
+setsid nohup npm run dev --workspace apps/agents \
+  > ~/.mirage42-logs/agents.log 2>&1 < /dev/null &
 ```
 
-Use `run_in_background: true`, then surface its first output to me so I can see
-it connect. Leave it running.
+Then **verify it survived from a separate command invocation**, not the one that
+launched it:
+
+```bash
+sleep 5; ps -eo pid,args --no-headers | grep '[i]ndex.js' || echo WORKER_DIED
+```
+
+Surface the first output of `~/.mirage42-logs/agents.log` so I can see it
+connect. Expect `agents: online`, an authenticated agent, and
+`agents: heartbeat started`.
 
 ## Finally
 
 Print a short status summary — one line per component:
 
 ```
-mongod   : started (pid NNNN) | already running
+mongod   : active (systemd, dbpath ~/mirage42-localdb, N users)
 api      : listening on :8181 (started | adopted)
-agents   : running (bash id X) — watch with BashOutput
+agents   : running (pid NNNN) — tail ~/.mirage42-logs/agents.log
 ```
 
-Include the background shell IDs for the API and worker so I can tail them, and
-remind me how to stop them.
+Report the **user count** for mongod, not just "up" — that is what distinguishes
+the seeded database from an empty one. Include PIDs and log paths so I can tail
+them, and remind me how to stop each component.
