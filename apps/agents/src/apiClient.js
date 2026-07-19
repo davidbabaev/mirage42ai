@@ -91,7 +91,28 @@ const login = async ({
         throw new AgentAuthError('login: API returned no token');
     }
 
-    return { token: body.token, user: body.safeUser ?? null };
+    // The refresh token arrives as an httpOnly cookie scoped to /auth, not in
+    // the JSON body. A browser stores it automatically; a Node client has no
+    // cookie jar, so it must be captured here or the session can never refresh
+    // and will hard-fail 15 minutes in.
+    return {
+        token: body.token,
+        user: body.safeUser ?? null,
+        refreshCookie: readRefreshCookie(res),
+    };
 };
 
-module.exports = { login, AgentAuthError, DEFAULT_TIMEOUT_MS };
+/** Pulls `refresh-token` out of a response's Set-Cookie header(s), if present. */
+const readRefreshCookie = (res) => {
+    const raw = typeof res.headers?.getSetCookie === 'function'
+        ? res.headers.getSetCookie()
+        : [res.headers?.get?.('set-cookie')].filter(Boolean);
+
+    for (const line of raw || []) {
+        const match = /(?:^|;\s*)refresh-token=([^;]*)/.exec(line);
+        if (match) return match[1];
+    }
+    return null;
+};
+
+module.exports = { login, readRefreshCookie, AgentAuthError, DEFAULT_TIMEOUT_MS };
