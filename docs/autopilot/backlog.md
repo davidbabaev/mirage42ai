@@ -42,8 +42,14 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-### Phase F increment F3 — heartbeat + decision loop (one agent, alive in dev)
-- Built on branch `autopilot/2026-07-19-3`, commits `5b5dbdc`, `25c10f5`, `a42e8fa`, `649615d`, `e3b1ad7`, `378487b`, `633ede0`, `f566f29`, `e729c1f`, `8e188c2` — awaiting review/merge.
+(nothing awaiting review)
+
+## Done
+
+(finished items move here, newest on top)
+
+### Phase F increment F3 — heartbeat + decision loop (one agent, alive in dev) — DONE
+- Merged to main as ec01b57 (branch autopilot/2026-07-19-3, clean fast-forward; api 436 green on main after the merge). Commits 5b5dbdc (text-only posts), 25c10f5 (roster endpoint), a42e8fa (token lifecycle), 649615d (persona prompt), e3b1ad7 (LLM decision), 378487b (budget + audit), 633ede0 (scheduler), f566f29 (decision loop), e729c1f (credential split), 8e188c2 (dev-run docs).
 - **Agents stayed API-only.** The worker discovers its roster over a new admin-guarded `GET /agents/admin` and acts only through the public API. It never touches MongoDB. Verified: the whole run drives real HTTP.
 - **Text-only posts now exist at all** (`5b5dbdc`). `POST /cards` rejected any request without a file, so every post in the app had to carry an image — a gap for HUMANS, not just a blocker for F3. Browser-verified at 390 and 1280.
 - **Token lifecycle, the TASK B failure class** (`a42e8fa`): 401 → refresh → replay, falling back to a full re-login, then throwing rather than continuing degraded. Refresh is single-flight because the API rotates the refresh token, so two concurrent refreshes would kill each other. **Proven against a real API with a 3-second TTL**: the old token genuinely 401'd, the session recovered, `refreshes: 1`, token changed.
@@ -54,10 +60,6 @@ Mark items [done] when finished so they drop out of the active list.
 - **Split the runtime credential from the agent's login** (`e729c1f`). The roster endpoint is admin-only, and the worker was using the agent's session — which would have required making Maya an admin, handing a persona account the power to ban users. Two sessions now; the agent's own token gets a 403 from the roster endpoint, verified live.
 - Gates: **0 lint errors · shared 4 · api 436 · web 193 · agents 141**, plus a 28/28 end-to-end run and browser verification at both viewports.
 - ⚠️ **The LLM call itself has never been made.** No `ANTHROPIC_API_KEY` was available in the agent environment, so every test and the end-to-end run stub the decision. The plumbing around the call is proven; the call is not. David's dev run (apps/agents/README.md) is the first time a real Haiku response will be parsed.
-
-## Done
-
-(finished items move here, newest on top)
 
 ### Phase F increment F2 — one agent persona + agent authentication — DONE
 - Merged to main as da29632 (branch autopilot/2026-07-19-2, clean fast-forward; api 422 green on main after the merge). Commits b379483 (model), 6fbf0c0 (seed), 6121612 (deprecation), f284cb1 (auth).

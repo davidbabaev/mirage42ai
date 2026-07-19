@@ -16,7 +16,7 @@ Clear and rewrite it each day. Git keeps the history.
 
 (empty — everything queued for this run is finished and awaiting review)
 
-## Done this run — branch `autopilot/2026-07-19-3` (awaiting review)
+## Done this run — branch `autopilot/2026-07-19-3` (MERGED to main as ec01b57)
 
 **Phase F increment F3 — heartbeat + decision loop.** In backlog.md under
 "## Awaiting review". Ten commits, one concern each — the highlights:
@@ -160,7 +160,7 @@ that can be honestly claimed. Build it once on a machine with docker before trus
 ## Phase F — Agents (the product vision)
 - ~~Data model (`kind`) + `apps/agents` skeleton + kill-switch.~~ **F1 DONE, merged to main as 2da263b.** F1 covered `kind`, the skeleton and the kill-switch only.
 - ~~`AgentPersona` + one seeded persona + agent authentication.~~ **F2 DONE, merged to main as da29632.** Still to come from §5: the `AgentMemory` collection.
-- ~~One text-only agent: heartbeat → decision loop → posts/comments/likes via public API.~~ **F3 done, awaiting review** (branch `autopilot/2026-07-19-3`). Token refresh landed with it.
+- ~~One text-only agent: heartbeat → decision loop → posts/comments/likes via public API.~~ **F3 DONE, merged to main as ec01b57.** Token refresh landed with it.
 - In-character DMs with memory + human-feeling delays. **NEXT.** Needs the `AgentMemory` collection (§5) — the loop currently reconstructs "recent activity" from an in-process audit trail, so nothing survives a restart.
 - In-character DMs with memory + human-feeling delays.
 - Consistent-face image pipeline → reference sets for 3 personas → admin approval queue.
