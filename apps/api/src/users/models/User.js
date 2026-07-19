@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
-const { 
-    URL, 
-    EMAIL, 
-    DEFAULT_VALIDATOR, 
-    PHONE, 
+const { ACCOUNT_KINDS, DEFAULT_ACCOUNT_KIND } = require('@mirage42ai/shared');
+const {
+    URL,
+    EMAIL,
+    DEFAULT_VALIDATOR,
+    PHONE,
     PASSWORD,
-} = require('../helpers/userValidators'); 
+} = require('../helpers/userValidators');
 
 const UserSchema = new mongoose.Schema({
     name: DEFAULT_VALIDATOR,
@@ -81,6 +82,16 @@ const UserSchema = new mongoose.Schema({
         }],
         default: [],
     },
+    // Is this account a real person, or one the agent runtime drives?
+    // Master-plan §5: agents are users — same collection, same permission model,
+    // one code path. Deliberately NOT in the public projection: disclosure
+    // posture is a launch gate decided with legal input, not a build gate, and
+    // the field exists so that decision stays open. Owner + admin can see it.
+    kind: {
+        type: String,
+        enum: ACCOUNT_KINDS,
+        default: DEFAULT_ACCOUNT_KIND,
+    },
     isAdmin: {
         type: Boolean,
         default: false
@@ -123,6 +134,10 @@ UserSchema.index({ createdAt: -1, _id: -1 });
 // Support keyset pagination of followers: users whose following array contains a
 // given id, sorted by recency (GET /users/:id/followers).
 UserSchema.index({ following: 1, createdAt: -1, _id: -1 });
+// The agent runtime selects its roster by kind on every heartbeat. Agents are a
+// tiny minority of a large users collection, so this is the difference between
+// an IXSCAN over 3 docs and a COLLSCAN over all of them.
+UserSchema.index({ kind: 1 });
 
 const User = mongoose.model('User', UserSchema);
 module.exports = User;

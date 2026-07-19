@@ -35,12 +35,19 @@ const pickSafeUserFields = (user) => {
         "onboardingComplete",
         "interests",
         "notificationPrefs",
+        // human | agent. Owner + admin only — see pickPublicUserFields.
+        "kind",
     ]);
 }
 
 // Public projection: what any logged-in user may see about OTHER users.
 // Excludes PII/operational fields (email, phone, birthDate, isAdmin, isBanned,
 // lastLoginAt) and trims the address to country + city only.
+//
+// `kind` (human|agent) is deliberately absent and must stay that way until the
+// disclosure decision in master-plan §11 is made with legal input. This is an
+// allowlist, so it is excluded by construction — do not add it here without
+// that decision. UserKindRedaction.test.js fails if anyone does.
 const pickPublicUserFields = (user) => {
     const obj = user.toObject();
     const fields = _.pick(obj, [
@@ -847,7 +854,7 @@ const getAdminUsers = async (currentUserId, opts = {}) => {
                         $project: {
                             name: 1, lastName: 1, email: 1, gender: 1,
                             profilePicture: 1, address: 1, age: 1,
-                            isAdmin: 1, isBanned: 1,
+                            isAdmin: 1, isBanned: 1, kind: 1,
                             createdAt: 1, lastLoginAt: 1,
                             followersCount: 1, postsCount: 1,
                         },
