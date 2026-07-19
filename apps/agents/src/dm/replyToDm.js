@@ -53,7 +53,8 @@ const replyDelayMs = ({ replyLength = 0, random = Math.random, persona } = {}) =
  * @returns {Promise<{replied: boolean, skipped?: string, text?: string}>}
  */
 const replyToDm = async ({
-    message,          // the inbound Message doc from `receive-message`
+    message,          // a single inbound Message (kept for one-off callers)
+    messages,         // OR the coalesced batch from dmQueue — one burst, one reply
     agent,            // { user, persona } from the roster
     session,          // AgentSession — the agent's OWN token: thread reads, sends
     runtimeSession,   // AgentSession — the ADMIN token: memory reads/writes only
@@ -70,7 +71,11 @@ const replyToDm = async ({
     const { user, persona } = agent;
     const agentId = String(user._id);
     const agentName = [user.name, user.lastName].filter(Boolean).join(' ');
-    const counterpartId = String(message.userId);
+
+    // One burst is one turn of conversation. The batch may also contain the
+    // socket's echo of our OWN sends, which are not something to answer.
+    const batch = (messages && messages.length ? messages : [message]).filter(Boolean);
+    const inbound = batch.filter((m) => String(m.userId) !== agentId);
 
     const skip = (why, detail) => {
         audit.skipped({ agentId, agentName, why, detail });
@@ -79,7 +84,13 @@ const replyToDm = async ({
 
     // Never answer yourself. The socket echoes sent messages to BOTH parties,
     // so without this the agent would reply to its own reply, forever.
-    if (counterpartId === agentId) return { replied: false, skipped: 'own-message' };
+    if (!inbound.length) return { replied: false, skipped: 'own-message' };
+
+    // The newest message decides who we are talking to; the THREAD (fetched
+    // below) is what the model actually reads, so every message in the batch
+    // is accounted for whether or not it appears here.
+    const newest = inbound[inbound.length - 1];
+    const counterpartId = String(newest.userId);
 
     if (!persona) return skip('no-persona');
     if (persona.enabled === false) return skip('persona-disabled');
@@ -102,7 +113,7 @@ const replyToDm = async ({
     let counterpartName = 'they';
     try {
         const gathered = await api.fetchThread(session, {
-            conversationId: message.conversationId,
+            conversationId: newest.conversationId,
             counterpartId,
         });
         thread = gathered.messages || [];
@@ -134,6 +145,10 @@ const replyToDm = async ({
         type: 'dm_decision',
         agentId, agentName,
         withUserId: counterpartId,
+        // How many inbound messages this ONE reply answers. >1 means the queue
+        // coalesced a burst; a run of these all reading 1 during a burst is the
+        // regression this field exists to make visible.
+        batched: inbound.length,
         replying: Boolean(parsed.reply.reply),
         reason: parsed.reply.reason || undefined,
         valid: parsed.ok,
@@ -152,7 +167,14 @@ const replyToDm = async ({
             await api.writeMemory(runtimeSession, agentId, {
                 events: [{
                     type: 'dm_received', withUserId: counterpartId,
-                    summary: `${counterpartName}: ${String(message.text || '').slice(0, 200)}`,
+                    // The whole burst, not just the last line — "you're gorgeous"
+                    // followed by "want a drink?" is one advance, and a memory
+                    // holding only the second half loses what was actually said.
+                    summary: `${counterpartName}: ${inbound
+                        .map((m) => String(m.text || '').trim())
+                        .filter(Boolean)
+                        .join(' / ')
+                        .slice(0, 200)}`,
                 }],
                 facts: [{ userId: counterpartId, fact: parsed.reply.fact }],
             });
@@ -189,6 +211,16 @@ const replyToDm = async ({
 
     budget.record(agentId, 'actions');
     audit.action({ agentId, agentName, action: 'dm_reply', target: counterpartId, ok: true });
+
+    // Marking read is what makes the startup sweep IDEMPOTENT: `unreadCount` is
+    // derived from `lastReadAt`, so without this every restart would find the
+    // same conversations unread and answer them all over again. It is also just
+    // true — she read them. Uses her OWN session; it is her read pointer.
+    try {
+        await api.markRead?.(session, newest.conversationId);
+    } catch (err) {
+        audit.record({ type: 'mark_read_failed', agentId, detail: err.message });
+    }
 
     try {
         await api.writeMemory(runtimeSession, agentId, {

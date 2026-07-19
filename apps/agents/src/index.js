@@ -32,6 +32,8 @@ const { AuditTrail } = require('./audit');
 const { runTick } = require('./loop');
 const { AgentChatSocket } = require('./chatSocket');
 const { replyToDm } = require('./dm/replyToDm');
+const { createDmQueue, quietWindowFor } = require('./dm/dmQueue');
+const { sweepUnread } = require('./dm/unreadSweep');
 const { replyToMessage } = require('./llm/reply');
 const dmApi = require('./api/dm');
 
@@ -154,21 +156,48 @@ const main = async (env = process.env, logger = console, deps = {}) => {
     const self = roster.find((a) => String(a.user._id) === String(session.user?._id))
         || roster[0];
 
-    chatSocket.onMessage((message) => {
-        // Deliberately not awaited: a reply sits through a 30s-15min delay, and
-        // blocking the socket handler on it would stall every later message.
-        replyToDm({
-            message, agent: self, session, runtimeSession,
+    // Inbound DMs are COALESCED before they reach the reply path. A burst of
+    // messages is one turn of conversation, and answering each one separately
+    // is the loudest possible bot tell — it is not how anyone reads a chat.
+    const dmQueue = deps.dmQueue || createDmQueue({
+        quietWindowMs: quietWindowFor(self.persona),
+        logger,
+        handler: (batch) => replyToDm({
+            messages: batch, agent: self, session, runtimeSession,
             chatSocket, llmClient, budget, audit,
             api: dmApi,
             decideImpl: replyToMessage,
-        }).catch((err) => {
-            logger.error?.(`agents: DM reply failed — ${err.message}`);
-        });
+        }),
     });
 
+    // Deliberately not awaited: a reply sits through a 30s-15min delay, and
+    // blocking the socket handler on it would stall every later message. The
+    // queue owns the serialisation now.
+    chatSocket.onMessage((message) => dmQueue.enqueue(message));
+
     logger.log(`agents: listening for DMs as ${displayName(self.user)}`);
-    return { scheduler, session, audit, budget, roster, chatSocket };
+
+    // Catch up on anything that landed while the worker was down. Live delivery
+    // is socket-only, so without this a restart drops every pending message.
+    // Not awaited: the worker should be answering live traffic immediately, and
+    // the sweep feeds the same queue.
+    sweepUnread({
+        session,
+        agentUserId: String(self.user._id),
+        onConversation: (trigger) => dmQueue.enqueue(trigger),
+        logger,
+    }).then(({ conversations, messages }) => {
+        if (conversations) {
+            logger.log(
+                `agents: unread sweep — ${messages} message(s) across ` +
+                `${conversations} conversation(s) queued for one catch-up reply each`
+            );
+        }
+    }).catch((err) => {
+        logger.error?.(`agents: unread sweep failed — ${err.message}`);
+    });
+
+    return { scheduler, session, audit, budget, roster, chatSocket, dmQueue };
 };
 
 if (require.main === module) {

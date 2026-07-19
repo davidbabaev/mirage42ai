@@ -7,10 +7,10 @@ Mark items [done] when finished so they drop out of the active list.
 
 ### Phase F follow-ups opened by F4
 - **The worker drives ONE agent's DMs.** It opens a single socket as the account it logged in as, and `main()` picks that agent out of the roster. Multiple agents need one socket per agent, which needs one credential per agent — the same credential-duplication problem filed in F2, now genuinely blocking the 3-agent pilot (§4).
-- **No unread sweep on startup.** DMs are handled only via the live `receive-message` event, so anything sent while the worker was down is never answered. `GET /chats` returns `totalUnread` and per-conversation `unreadCount` — a catch-up pass on boot (and periodically) would close it. Today a restart silently drops every pending conversation.
-- **Conversations are never marked read.** `api/dm.js` has `markRead` but nothing calls it, so Maya's unread badge grows forever from her side. Harmless today (nobody looks at her client) but wrong, and it will confuse the pilot's metrics.
+- ~~**No unread sweep on startup.**~~ DONE on `fix/dm-burst-batching` (awaiting review) — `dm/unreadSweep.js` walks `GET /chats` on boot, queues ONE catch-up trigger per conversation with `unreadCount > 0`, and is bounded at 10 pages so it cannot walk an unbounded list.
+- ~~**Conversations are never marked read.**~~ DONE on `fix/dm-burst-batching` (awaiting review) — `replyToDm` now calls `markRead` after a successful send. This was NOT cosmetic: `unreadCount` derives from `lastReadAt`, so without it the new startup sweep would re-reply to every conversation on every restart.
 - **Memory is never distilled or pruned by meaning.** Facts accumulate to a hard cap of 200 and then drop the oldest — including, eventually, "I'm married and I said no". §5 calls these "distilled" facts; there is no distillation step, only truncation. A periodic consolidation pass (one cheap call: "merge these into fewer, better facts") is the natural fix.
-- **No per-conversation reply rate limit.** Budget caps are per day, so someone could send 20 messages in a minute and get 20 replies (each delayed, but all queued in parallel). A real person would answer once. Worth a per-conversation debounce before the pilot.
+- ~~**No per-conversation reply rate limit.**~~ DONE on `fix/dm-burst-batching` (awaiting review) — `dm/dmQueue.js` coalesces a burst behind a quiet window AND serialises per conversation, so 20 messages in a minute produce one reply, not 20. Confirmed live before the fix: three DMs drew three separate replies, one answering a message two messages stale.
 
 ### Phase F follow-ups opened by F3
 - **The runtime holds an ADMIN credential.** `GET /agents/admin` is admin-guarded, so the worker's runtime account can also ban users and promote admins — far more authority than "read one list" needs. The agent's own token is correctly an ordinary user's, so the blast radius is limited to the runtime account, but a dedicated non-admin `runtime` capability (or a signed service token scoped to one endpoint) is the right shape. This is a permission-model decision, not an implementation detail, which is why it was filed rather than invented.
@@ -49,7 +49,16 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-(nothing awaiting review)
+### One burst of DMs = ONE reply, + the startup unread sweep — branch `fix/dm-burst-batching`
+- Closes three F4 follow-ups at once: the per-conversation reply debounce, the startup unread sweep, and "conversations are never marked read" (which the sweep depends on for idempotency).
+- **The reported bug, seen live:** David sent several DMs in a burst and Maya answered them SEPARATELY — the decline, then "hey all good what's up" answering a message two messages stale. A person reads the whole unread thread and answers once.
+- **Not a prompt problem.** `replyToDm` already fetched the whole thread, so the model always saw every message; the defect was that `replyToDm` RAN three times concurrently. The fix is a queue in front of it, not a prompt change.
+- `dm/dmQueue.js` does two things, because the burst is only half the problem: a **quiet window** (each arrival re-arms a short timer, persona-tunable via `dmQuietWindowMs`, default 4s) and a **per-conversation lock**. The lock matters because a reply sits through a 30s-15min delay — a message landing mid-delay would otherwise start a second concurrent reply and reproduce the bug invisibly, as two overlapping runs. Conversations are independent, so a slow reply to one never blocks another.
+- `dm/unreadSweep.js` runs on boot, queues one catch-up trigger per unread conversation, is bounded at 10 pages, and logs loudly rather than silently truncating if it stops early. A failed sweep never blocks startup.
+- **The baseline run is the half that matters:** a temporary test wired the OLD path (one `replyToDm` per message) and produced exactly 3 decisions and 3 sends — the reported bug reproduced. The new wiring produces 1. A check that passes both before and after would have proved nothing.
+- Gates: **0 lint errors · agents 239** (was 222), full suite green.
+- ⚠️ **Verified in tests only, NOT yet against a live burst.** The previous DM fix was proved end-to-end before merge; this one has not been, because a real burst needs David sending messages. Do that before merging.
+- ⚠️ Still open and unrelated: the heartbeat consumes the whole daily LLM budget (40 calls in ~46 min), after which DMs are skipped at the budget check before any of this runs.
 
 ## Done
 
