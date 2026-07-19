@@ -1,6 +1,14 @@
 node_modules
+
+# Secrets. `.env` and `.env.local` alone did NOT cover the shapes people
+# actually create — a backup taken before switching a connection string
+# (.env.atlas.backup, .env.bak, .env.prod) was fully committable, which is
+# exactly the file most likely to hold live production credentials.
+# Ignore every .env variant, then re-admit the one template that IS tracked.
 .env
-.env.local
+.env.*
+!.env.example
+
 dist
 build
 *.log
