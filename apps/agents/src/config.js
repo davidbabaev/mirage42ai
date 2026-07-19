@@ -52,4 +52,30 @@ const readAgentCredentials = (env = {}) => {
     };
 };
 
-module.exports = { isAgentsEnabled, readAgentCredentials, TRUTHY, DEFAULT_API_URL };
+/**
+ * LLM configuration. The API key is REQUIRED once agents are enabled — but a
+ * missing key is a clean exit, not a crash (F3 scope): a worker that cannot
+ * think should say so and stop, the same way a missing credential does.
+ */
+const readLlmConfig = (env = {}) => {
+    const apiKey = typeof env.ANTHROPIC_API_KEY === 'string' ? env.ANTHROPIC_API_KEY.trim() : '';
+    return {
+        apiKey,
+        hasKey: apiKey !== '',
+        model: (env.AGENT_LLM_MODEL || '').trim() || undefined,
+    };
+};
+
+/** Heartbeat pacing. Overridable so a dev run does not wait 15 minutes to see anything. */
+const readHeartbeatConfig = (env = {}) => {
+    const raw = Number(env.AGENT_HEARTBEAT_MS);
+    const baseMs = Number.isFinite(raw) && raw > 0 ? raw : undefined;
+    const jitterRaw = Number(env.AGENT_HEARTBEAT_JITTER);
+    const jitter = Number.isFinite(jitterRaw) && jitterRaw >= 0 && jitterRaw <= 1 ? jitterRaw : undefined;
+    return { baseMs, jitter };
+};
+
+module.exports = {
+    isAgentsEnabled, readAgentCredentials, readLlmConfig, readHeartbeatConfig,
+    TRUTHY, DEFAULT_API_URL,
+};

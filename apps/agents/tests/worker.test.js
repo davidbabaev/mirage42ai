@@ -24,6 +24,7 @@ const ENABLED_ENV = {
     AGENT_API_URL: 'http://api.test:8181',
     AGENT_EMAIL: 'maya.benari@agents.mirage42.ai',
     AGENT_PASSWORD: 'AgentSeed1!',
+    ANTHROPIC_API_KEY: 'sk-ant-test-not-a-real-key',
 };
 
 // Captures logger output instead of writing to the real console.
@@ -111,60 +112,121 @@ describe('worker main() — disabled means INERT', () => {
     });
 });
 
+// F3: main() now boots a heartbeat. It returns a NUMBER when it exits and an
+// OBJECT (the running scheduler and friends) when it stays alive, so the tests
+// distinguish "declined to start" from "started".
+const ROSTER_AGENT = {
+    user: { _id: 'a1', name: 'maya', lastName: 'ben-ari', isBanned: false },
+    persona: {
+        name: 'Maya', age: 31, timezone: 'Asia/Jerusalem',
+        activeHours: { start: 0, end: 23 }, enabled: true,
+        dailyBudget: { llmCalls: 40, actions: 20 },
+    },
+};
+
+const mkSession = (roster = [ROSTER_AGENT]) => ({
+    user: { name: 'maya', lastName: 'ben-ari' },
+    start: vi.fn(async () => {}),
+    request: vi.fn(async (p) => (p === '/agents/admin' ? { agents: roster } : {})),
+});
+
+const mkScheduler = () => ({ start: vi.fn(), stop: vi.fn() });
+
 describe('worker main() — enabled', () => {
-    it('authenticates and logs "agent <name> authenticated"', async () => {
+    it('authenticates, loads the roster, and starts the heartbeat', async () => {
         const { out, logger } = capture();
-        const doLogin = okLogin();
+        const session = mkSession();
+        const scheduler = mkScheduler();
 
-        const code = await main(ENABLED_ENV, logger, { login: doLogin });
-
-        expect(code).toBe(0);
-        expect(out).toEqual(['agents: online', 'agent maya ben-ari authenticated']);
-    });
-
-    it('passes the configured credentials through to the login call', async () => {
-        const { logger } = capture();
-        const doLogin = okLogin();
-
-        await main(ENABLED_ENV, logger, { login: doLogin });
-
-        expect(doLogin).toHaveBeenCalledWith({
-            baseUrl: 'http://api.test:8181',
-            email: 'maya.benari@agents.mirage42.ai',
-            password: 'AgentSeed1!',
+        const result = await main(ENABLED_ENV, logger, {
+            session, scheduler, llmClient: {},
         });
+
+        expect(session.start).toHaveBeenCalled();
+        expect(scheduler.start).toHaveBeenCalledTimes(1);
+        expect(out).toContain('agent maya ben-ari authenticated');
+        expect(out.join('\n')).toMatch(/roster has 1 agent/);
+        expect(out).toContain('agents: heartbeat started');
+        expect(result.scheduler).toBe(scheduler);
     });
 
-    it('NEVER logs the token or the password', async () => {
+    it('NEVER logs the token, the password, or the API key', async () => {
         const { out, errs, logger } = capture();
-        await main(ENABLED_ENV, logger, { login: okLogin() });
+        await main(ENABLED_ENV, logger, {
+            session: mkSession(), scheduler: mkScheduler(), llmClient: {},
+        });
 
         const everything = [...out, ...errs].join('\n');
-        expect(everything).not.toContain('a-real-looking-jwt');
         expect(everything).not.toContain('AgentSeed1!');
+        expect(everything).not.toContain(ENABLED_ENV.ANTHROPIC_API_KEY);
     });
 
     it('exits 1 with a clear message when credentials are missing', async () => {
         const { errs, logger } = capture();
-        const doLogin = okLogin();
+        const scheduler = mkScheduler();
 
-        const code = await main({ AGENTS_ENABLED: 'true' }, logger, { login: doLogin });
+        const code = await main({ AGENTS_ENABLED: 'true' }, logger, { scheduler });
 
         expect(code).toBe(1);
         expect(errs.join()).toMatch(/AGENT_EMAIL/);
-        expect(doLogin).not.toHaveBeenCalled();
+        expect(scheduler.start).not.toHaveBeenCalled();
+    });
+
+    it('exits CLEANLY when ANTHROPIC_API_KEY is missing — no crash', async () => {
+        const { errs, logger } = capture();
+        const session = mkSession();
+        const noKey = { ...ENABLED_ENV };
+        delete noKey.ANTHROPIC_API_KEY;
+
+        const code = await main(noKey, logger, { session, scheduler: mkScheduler() });
+
+        expect(code).toBe(1);
+        expect(errs.join()).toMatch(/ANTHROPIC_API_KEY/);
+        // It must not even authenticate — nothing to think with.
+        expect(session.start).not.toHaveBeenCalled();
     });
 
     it('exits 1 when authentication is rejected, without throwing', async () => {
         const { errs, logger } = capture();
-        const doLogin = vi.fn(async () => {
-            throw new Error('login: rejected with 401 — Invalid email or password');
-        });
+        const session = mkSession();
+        session.start = vi.fn(async () => { throw new Error('login: rejected with 401'); });
 
-        const code = await main(ENABLED_ENV, logger, { login: doLogin });
+        const code = await main(ENABLED_ENV, logger, { session, scheduler: mkScheduler(), llmClient: {} });
 
         expect(code).toBe(1);
         expect(errs.join()).toMatch(/authentication failed.*401/);
+    });
+
+    it('exits 1 on an EMPTY roster rather than heartbeating over nothing', async () => {
+        const { errs, logger } = capture();
+        const scheduler = mkScheduler();
+
+        const code = await main(ENABLED_ENV, logger, {
+            session: mkSession([]), scheduler, llmClient: {},
+        });
+
+        expect(code).toBe(1);
+        expect(errs.join()).toMatch(/roster is empty/);
+        expect(scheduler.start).not.toHaveBeenCalled();
+    });
+
+    it('exits 1 when the roster endpoint fails', async () => {
+        const { errs, logger } = capture();
+        const session = mkSession();
+        session.request = vi.fn(async () => { throw new Error('403 Admin only'); });
+
+        const code = await main(ENABLED_ENV, logger, { session, scheduler: mkScheduler(), llmClient: {} });
+
+        expect(code).toBe(1);
+        expect(errs.join()).toMatch(/could not fetch the roster.*403/);
+    });
+
+    it('fetches the roster over the API — never from a database', async () => {
+        const session = mkSession();
+        await main(ENABLED_ENV, capture().logger, {
+            session, scheduler: mkScheduler(), llmClient: {},
+        });
+        expect(session.request).toHaveBeenCalledWith('/agents/admin');
     });
 });
 

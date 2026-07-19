@@ -1,18 +1,19 @@
 /**
  * Agent runtime worker — entry point.
  *
- * Phase F increment F2: the worker now AUTHENTICATES as its persona's user
- * account and stops there. It logs in over POST /users/login — the same route,
- * the same rate limiter and the same token a human's browser gets — and then
- * does nothing. No scheduler, no feed read, no LLM call, no posting. Those are
- * F3 onwards.
+ * Phase F increment F3: the worker is ALIVE. It authenticates, discovers its
+ * roster through the admin API, and heartbeats each agent inside its persona's
+ * waking hours. Each tick gathers context from the public API, makes ONE cheap
+ * LLM call for a structured decision, and executes it — usually by doing
+ * nothing, which is the point (master-plan §6).
  *
- * The shape it is being built into (master-plan §6): this worker is a CLIENT of
- * the same public API humans use, holding a normal user's token. It has no
- * database access and no privileged endpoint. The moment an agent needs a
- * special route, agents have stopped being users.
+ * It is a CLIENT of the same public API humans use (§3). It holds a normal
+ * user's token and calls the same routes. It has NO database access, and that
+ * is the invariant to protect: the moment an agent needs a special route,
+ * agents have stopped being users.
  *
  * Usage:  AGENTS_ENABLED=true npm start --workspace apps/agents
+ * Full dev-run recipe: apps/agents/README.md
  */
 const path = require('path');
 // quiet: dotenv v17 otherwise prints a banner to STDOUT, which would be the
@@ -20,8 +21,14 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true });
 
 const { ACCOUNT_KIND } = require('@mirage42ai/shared');
-const { isAgentsEnabled, readAgentCredentials } = require('./config');
-const { login } = require('./apiClient');
+const {
+    isAgentsEnabled, readAgentCredentials, readLlmConfig, readHeartbeatConfig,
+} = require('./config');
+const { AgentSession } = require('./session');
+const { Scheduler } = require('./scheduler');
+const { BudgetLedger } = require('./budget');
+const { AuditTrail } = require('./audit');
+const { runTick } = require('./loop');
 
 /**
  * The filter identifying which accounts this worker drives. Defined against the
@@ -32,28 +39,23 @@ const { login } = require('./apiClient');
 const agentRosterFilter = () => ({ kind: ACCOUNT_KIND.AGENT });
 
 /**
- * How the agent refers to itself in logs. Uses the account's real display name
- * so operators can tell agents apart at a glance.
- *
- * NOTE: the User schema lowercases `name`/`lastName`, so this comes back
- * lowercase ("maya ben-ari"). That is the stored truth, not a formatting bug.
+ * How the agent refers to itself in logs. The User schema lowercases
+ * name/lastName, so this comes back lowercase — that is the stored truth.
  */
 const displayName = (user) =>
     [user?.name, user?.lastName].filter(Boolean).join(' ').trim() || 'unknown';
 
-/**
- * Takes its dependencies as arguments so tests can drive it with a fake env,
- * a fake fetch and a captured logger rather than a live server.
- *
- * Returns a process exit code: 0 on success or a clean disabled exit, 1 when
- * the agent was meant to run and could not.
- */
-const main = async (env = process.env, logger = console, deps = {}) => {
-    const doLogin = deps.login || login;
+/** Fetches the roster over the admin API. Never reads the database. */
+const fetchRoster = async (session) => {
+    const body = await session.request('/agents/admin');
+    return body?.agents || [];
+};
 
+const main = async (env = process.env, logger = console, deps = {}) => {
     // The kill-switch is checked FIRST and short-circuits everything. When
-    // agents are disabled this function must not read credentials and must not
-    // touch the network at all — "disabled" means inert, not quiet.
+    // agents are disabled this function must not read credentials, must not
+    // touch the network, and must not construct an LLM client — "disabled"
+    // means inert, not quiet.
     if (!isAgentsEnabled(env)) {
         logger.log('agents: disabled');
         return 0;
@@ -69,23 +71,77 @@ const main = async (env = process.env, logger = console, deps = {}) => {
         return 1;
     }
 
+    const llm = readLlmConfig(env);
+    if (!llm.hasKey) {
+        // A clean exit, not a crash: a worker that cannot think should say so
+        // and stop.
+        logger.error('agents: ANTHROPIC_API_KEY is not set — nothing to think with. Exiting.');
+        return 1;
+    }
+
+    const session = deps.session || new AgentSession({ ...credentials, logger });
+    const audit = deps.audit || new AuditTrail();
+    const budget = deps.budget || new BudgetLedger();
+
     try {
-        const { user } = await doLogin(credentials);
-        // Deliberately logs the NAME and never the token — the token is a
-        // bearer credential for a real account and logs are not a secret store.
-        logger.log(`agent ${displayName(user)} authenticated`);
-        // F3 lands here: start the heartbeat scheduler and run the decision loop.
-        return 0;
+        await session.start();
     } catch (err) {
         logger.error(`agents: authentication failed — ${err.message}`);
         return 1;
     }
+    logger.log(`agent ${displayName(session.user)} authenticated`);
+
+    let roster;
+    try {
+        roster = await fetchRoster(session);
+    } catch (err) {
+        logger.error(`agents: could not fetch the roster — ${err.message}`);
+        return 1;
+    }
+
+    if (!roster.length) {
+        logger.error('agents: roster is empty — seed an agent account first. Exiting.');
+        return 1;
+    }
+    logger.log(
+        `agents: roster has ${roster.length} agent(s): ` +
+        roster.map((a) => displayName(a.user)).join(', ')
+    );
+
+    // The LLM client is constructed only now — after the kill-switch, the
+    // credentials, and the roster have all checked out.
+    const llmClient = deps.llmClient || (() => {
+        const sdk = require('@anthropic-ai/sdk');
+        const Anthropic = sdk.Anthropic || sdk.default || sdk;
+        return new Anthropic({ apiKey: llm.apiKey });
+    })();
+
+    const heartbeat = readHeartbeatConfig(env);
+    const scheduler = deps.scheduler || new Scheduler({ ...heartbeat, logger });
+
+    scheduler.start(async (now) => {
+        budget.prune();
+        for (const agent of roster) {
+            await runTick({ session, llmClient, agent, budget, audit, now });
+        }
+    });
+
+    logger.log('agents: heartbeat started');
+    return { scheduler, session, audit, budget, roster };
 };
 
 if (require.main === module) {
-    main().then((code) => {
-        process.exitCode = code;
+    main().then((result) => {
+        // A number means "we are done"; an object means the heartbeat is
+        // running and the process should stay alive until it is signalled.
+        if (typeof result === 'number') {
+            process.exitCode = result;
+            return;
+        }
+        const stop = () => { result.scheduler.stop(); process.exit(0); };
+        process.on('SIGINT', stop);
+        process.on('SIGTERM', stop);
     });
 }
 
-module.exports = { main, agentRosterFilter, displayName };
+module.exports = { main, agentRosterFilter, displayName, fetchRoster };

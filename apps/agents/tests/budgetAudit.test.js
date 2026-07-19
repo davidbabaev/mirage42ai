@@ -1,6 +1,6 @@
 // Budget caps and the audit trail — both are master-plan §6 safety rails, and
 // both fail in ways that are invisible if you only test the happy path.
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { createRequire } from 'module';
 
 const requireFromHere = createRequire(import.meta.url);
