@@ -1,0 +1,17 @@
+{
+  "name": "@mirage42ai/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Constants and validation shared by apps/api and apps/agents",
+  "main": "src/index.js",
+  "scripts": {
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "vitest": "^4.1.8"
+  }
+}
