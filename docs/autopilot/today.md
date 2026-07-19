@@ -16,10 +16,10 @@ Clear and rewrite it each day. Git keeps the history.
 
 (empty — everything queued for this run is finished and awaiting review)
 
-## Done this run — branch `autopilot/2026-07-19`
+## Done this run — branch `autopilot/2026-07-19` (MERGED to main as 2da263b)
 
 **Phase F increment F1 — agent data model + runtime skeleton.** In backlog.md
-under "## Awaiting review". Four commits, one concern each:
+under "## Done". Four commits, one concern each:
 
 1. **`68c899f`** — `packages/shared` gets its first real export, `ACCOUNT_KIND`.
    Imported by BOTH the API model and the agents worker, so the two cannot drift.
@@ -92,7 +92,7 @@ that can be honestly claimed. Build it once on a machine with docker before trus
    /dashboard, and the missing `.gitattributes`).
 
 ## Phase F — Agents (the product vision)
-- ~~Data model (`kind`) + `apps/agents` skeleton + kill-switch.~~ **F1 done, awaiting review** (branch `autopilot/2026-07-19`). Still to come in this bullet: the `AgentPersona` and `AgentMemory` collections — F1 covered `kind`, the skeleton and the kill-switch only.
+- ~~Data model (`kind`) + `apps/agents` skeleton + kill-switch.~~ **F1 DONE, merged to main as 2da263b.** Still to come in this bullet: the `AgentPersona` and `AgentMemory` collections — F1 covered `kind`, the skeleton and the kill-switch only.
 - One text-only agent: heartbeat → decision loop → posts/comments/likes via public API.
 - In-character DMs with memory + human-feeling delays.
 - Consistent-face image pipeline → reference sets for 3 personas → admin approval queue.

@@ -30,18 +30,21 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-### Phase F increment F1 — agent data model + runtime skeleton
-- Built on branch `autopilot/2026-07-19`, commits `68c899f`, `c8b6148`, `6469a2d`, `651a455` — awaiting review/merge.
+(nothing awaiting review)
+
+## Done
+
+(finished items move here, newest on top)
+
+### Phase F increment F1 — agent data model + runtime skeleton — DONE
+- Merged to main as 2da263b (branch autopilot/2026-07-19, clean fast-forward; api 392 green on main after the merge). Commits 68c899f (shared), c8b6148 (kind), 6469a2d (security), 651a455 (agents).
 - `User.kind: 'human' | 'agent'` (default human), enum sourced from the new shared package. Owner + admin see it; **no other user does** — the projection layer is an allowlist so it is excluded by construction, and the public helper now says so in writing. Also in the admin aggregate (moderation needs to tell agents apart) and indexed (`{kind:1}`) because the runtime selects its roster by kind on every heartbeat.
 - Migration `004-user-kind-default-human.js` backfills existing users. Mongoose defaults only apply to documents it CREATES, so without it `find({kind:'human'})` silently misses every pre-existing user — a wrong-roster bug, not a crash.
 - `packages/shared` stopped being a `.gitkeep`: `ACCOUNT_KIND` is imported by BOTH the API model and the agents worker, which is the whole point — a drift between them would show up as an empty roster and silence.
 - `apps/agents` scaffolded: reads `AGENTS_ENABLED` (default **false**; only `1/true/yes/on` enable), logs `agents: online` / `agents: disabled`, exits 0. Nothing else — no scheduler, no LLM, no image pipeline.
 - **Found and fixed a critical pre-existing vulnerability on the way** (`6469a2d`): `PUT /users/:id` spread `...req.body` straight into `findByIdAndUpdate`. The auth guard checked WHO you are, never WHICH fields you may touch — so any logged-in user could `PUT {isAdmin:true}` on their own id and become an admin. Same hole allowed self-unbanning, a PLAINTEXT password (updateUser never hashes), and overwriting `googleId` (OAuth takeover). Fixed with an explicit 12-field allowlist. Proven against the unfixed route: 5 of 6 tests fail.
 - Gates: **0 lint errors · shared 4 · api 392 · web 193 · agents 9**.
-
-## Done
-
-(finished items move here, newest on top)
+- ⚠️ NOTE FOR THE NEXT RUN: `npm install` must be run from INSIDE WSL. Over the `\\wsl.localhost` UNC path npm mangles the workspace symlink target and dies with `EISDIR`. This only started mattering now that a workspace has real dependencies.
 
 ### `.gitattributes` — CRLF vs LF settled for good — DONE
 - Merged to main as 79a76f7 (branch autopilot/2026-07-14-2; api 377 green on main after the merge).
