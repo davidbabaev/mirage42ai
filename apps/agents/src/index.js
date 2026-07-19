@@ -147,9 +147,30 @@ if (require.main === module) {
             process.exitCode = result;
             return;
         }
-        const stop = () => { result.scheduler.stop(); process.exit(0); };
-        process.on('SIGINT', stop);
-        process.on('SIGTERM', stop);
+        // Graceful shutdown: stop scheduling, then let the event loop DRAIN.
+        // A bare process.exit(0) would kill a tick mid-flight — the agent could
+        // be halfway through POST /cards, and killing that is how you get a
+        // decision in the audit trail with no matching action.
+        //
+        // Once the timer is cleared nothing else references the loop, so the
+        // process exits on its own as soon as any in-flight request settles.
+        let stopping = false;
+        const stop = (signal) => {
+            if (stopping) return; // a second Ctrl-C should not re-enter
+            stopping = true;
+            console.log(`agents: ${signal} received — finishing the current tick, then stopping`);
+            result.scheduler.stop();
+
+            // Safety net for a genuinely stuck request. THIS unref is correct:
+            // the fallback must not itself keep the process alive.
+            const failsafe = setTimeout(() => {
+                console.error('agents: shutdown timed out — forcing exit');
+                process.exit(1);
+            }, 10_000);
+            if (typeof failsafe.unref === 'function') failsafe.unref();
+        };
+        process.on('SIGINT', () => stop('SIGINT'));
+        process.on('SIGTERM', () => stop('SIGTERM'));
     });
 }
 

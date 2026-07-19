@@ -42,7 +42,16 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-(nothing awaiting review)
+### F3 follow-up — the worker exited instead of heartbeating
+- Built on branch `autopilot/2026-07-19-4` — awaiting review/merge.
+- **Symptom:** worker authenticated, logged `agents: heartbeat started`, then exited immediately. No error; startup lines in the log and zero decision entries. Found by David on the first live dev run.
+- **Cause:** `Scheduler.start()` called `timer.unref()`. Between ticks that timer is the ONLY thing referencing the event loop (a worker has no server socket), so the loop drained the instant `start()` returned and **no tick ever fired**. The comment shipped with it — "Do not hold the process open between ticks purely for the timer" — was the reasoning inverted: right for a short-lived CLI, fatal for a daemon.
+- Proven by isolation before any edit: normal timer → 3 ticks; `unref()` → 0 ticks; SIGINT handler alone → 3 ticks; `unref()` + SIGINT → 0 ticks. **A signal handler does not rescue an unref'd timer**, so the entry point's handlers were never holding it up either.
+- **Why the suite missed it:** every scheduler test injected `setTimeoutImpl`, so `unref()` ran on a fake object and did nothing. The existing real-process tests only covered the disabled/misconfigured paths, which exit before the scheduler starts. The defect lived exactly in that gap.
+- `tests/schedulerLiveness.test.js` closes it from both sides: asserts `unref()` is never called and the real handle reports `hasRef() === true`, **and spawns a real process** proving repeated ticks without exit plus clean SIGINT shutdown. All 6 fail against the reverted line (the process ones die in ~30ms).
+- Also fixed: SIGINT called `process.exit(0)` immediately, which would kill a tick mid-flight and leave a decision in the audit trail with no matching action. Shutdown now drains, with an unref'd 10s failsafe — that unref IS correct, which is what made the original mistake easy to make.
+- Verified on the real worker against a real API: alive at 1.5s and 6.5s, ticks firing, exit 0 on SIGINT. Anthropic pointed at a dead local port, never contacted.
+- Gates: **0 lint errors · shared 4 · api 436 · web 193 · agents 147**.
 
 ## Done
 

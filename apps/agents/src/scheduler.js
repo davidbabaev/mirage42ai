@@ -111,8 +111,15 @@ class Scheduler {
                 }
                 schedule();
             }, delay);
-            // Do not hold the process open between ticks purely for the timer.
-            if (typeof this.timer?.unref === 'function') this.timer.unref();
+            // DO NOT unref() this timer.
+            //
+            // Between ticks, the pending timer is the ONLY thing referencing
+            // the event loop — there is no server socket and no open handle to
+            // hold the process up. unref()ing it tells Node "this timer must
+            // not keep the process alive", so the loop drains the moment
+            // start() returns and the worker exits before a single tick fires:
+            // startup lines in the log, then silence. A signal handler does not
+            // rescue it either. This was shipped once; see tests/scheduler.
         };
 
         schedule();

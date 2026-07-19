@@ -16,7 +16,33 @@ Clear and rewrite it each day. Git keeps the history.
 
 (empty — everything queued for this run is finished and awaiting review)
 
-## Done this run — branch `autopilot/2026-07-19-3` (MERGED to main as ec01b57)
+## Done this run — branch `autopilot/2026-07-19-4` (awaiting review)
+
+**F3 follow-up: the worker exited instead of heartbeating.** One commit.
+
+Found by David on the first live dev run. `Scheduler.start()` called
+`timer.unref()`, which tells Node the timer must not keep the event loop alive.
+Between ticks that timer is the only thing holding a worker up, so the process
+drained the moment `start()` returned — startup lines, then silence, no error.
+
+The comment I shipped with it ("Do not hold the process open between ticks
+purely for the timer") was the reasoning inverted: correct for a short-lived
+CLI, fatal for a daemon.
+
+**Why the suite missed it:** every scheduler test injected a fake
+`setTimeoutImpl`, so `unref()` ran on a fake object and did nothing. The bug
+lived exactly in the gap between unit tests with injected timers and the real
+process with real timers. The new tests spawn an actual process.
+
+Gates: **0 lint errors · shared 4 · api 436 · web 193 · agents 147**.
+
+### The lesson worth keeping
+Injecting timers made the scheduler testable and made this class of bug
+invisible. Anything whose whole job is a side effect on the runtime — keeping a
+process alive, holding a socket open, blocking exit — needs at least one test
+that exercises the real thing, or the fake will happily prove the wrong thing.
+
+## Done previously — branch `autopilot/2026-07-19-3` (MERGED to main as ec01b57)
 
 **Phase F increment F3 — heartbeat + decision loop.** In backlog.md under
 "## Awaiting review". Ten commits, one concern each — the highlights:
