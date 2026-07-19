@@ -45,4 +45,35 @@ const commentOnCard = (session, cardId, commentText) =>
         body: { commentText },
     });
 
-module.exports = { fetchFeed, fetchNotifications, createPost, likeCard, commentOnCard };
+/**
+ * Files a generated image for admin review (F5, §7).
+ *
+ * THE ONE EXCEPTION to "every action is the route a human hits", and it is a
+ * deliberate one: there is no human equivalent of "propose a post for review",
+ * because humans just post. The agent must NOT be able to publish an image
+ * directly, so this route intentionally cannot publish — it only creates a
+ * pending row.
+ *
+ * Takes the RUNTIME session, not the agent session. The endpoint is
+ * admin-guarded (the queue is an admin surface), and the agent's own credential
+ * is deliberately not admin. The published post is still authored as the agent,
+ * server-side, on approval.
+ */
+const submitPendingImage = (runtimeSession, { agentUserId, image, caption, prompt, includedFace }) => {
+    const form = new FormData();
+    const bytes = Buffer.from(image.base64, 'base64');
+    const extension = (image.mimeType || 'image/png').split('/')[1] || 'png';
+
+    form.append('media', new Blob([bytes], { type: image.mimeType }), `agent-image.${extension}`);
+    form.append('agentUserId', String(agentUserId));
+    form.append('caption', caption || '');
+    form.append('prompt', prompt || '');
+    form.append('model', image.model || '');
+    form.append('includedFace', includedFace ? 'true' : 'false');
+
+    return runtimeSession.request('/agents/admin/images', { method: 'POST', body: form });
+};
+
+module.exports = {
+    fetchFeed, fetchNotifications, createPost, likeCard, commentOnCard, submitPendingImage,
+};

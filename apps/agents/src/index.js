@@ -23,7 +23,7 @@ require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true })
 const { ACCOUNT_KIND } = require('@mirage42ai/shared');
 const {
     isAgentsEnabled, readAgentCredentials, readRuntimeCredentials,
-    readLlmConfig, readHeartbeatConfig,
+    readLlmConfig, readImageConfig, readHeartbeatConfig,
 } = require('./config');
 const { AgentSession } = require('./session');
 const { Scheduler } = require('./scheduler');
@@ -131,13 +131,25 @@ const main = async (env = process.env, logger = console, deps = {}) => {
         return new Anthropic({ apiKey: llm.apiKey });
     })();
 
+    // F5 (§7): images are optional. A missing key is a logged SKIP, not an exit
+    // — the agent keeps its full text-only life, which is the default anyway.
+    const imageConfig = deps.imageConfig || readImageConfig(env);
+    logger.log(
+        imageConfig.hasKey
+            ? `agents: image posts enabled (${imageConfig.model}), pending admin approval`
+            : 'agents: no GEMINI_API_KEY — image posts disabled, running text-only'
+    );
+
     const heartbeat = readHeartbeatConfig(env);
     const scheduler = deps.scheduler || new Scheduler({ ...heartbeat, logger });
 
     scheduler.start(async (now) => {
         budget.prune();
         for (const agent of roster) {
-            await runTick({ session, llmClient, agent, budget, audit, now });
+            await runTick({
+                session, llmClient, agent, budget, audit, now,
+                runtimeSession, imageConfig,
+            });
         }
     });
 

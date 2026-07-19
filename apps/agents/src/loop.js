@@ -32,6 +32,8 @@ const localTimeString = (timezone, now) => {
     }
 };
 
+const { generateAndQueueImage } = require('./images/imagePost');
+
 /** Cards this agent has already liked — so a "like" never becomes an unlike. */
 const markAlreadyLiked = (cards, agentId) =>
     (cards || []).map((card) => ({
@@ -43,10 +45,43 @@ const markAlreadyLiked = (cards, agentId) =>
  * Executes a validated decision. Returns { action, target, ok, detail }.
  * Never throws — an action failure is recorded and the tick ends calmly.
  */
-const executeDecision = async ({ session, decision, api = actions }) => {
+const executeDecision = async ({
+    session, decision, api = actions,
+    imagePost = null,   // { agent, budget, imageConfig, runtimeSession } when images are wired
+}) => {
     try {
         switch (decision.action) {
             case 'post': {
+                // F5 (§7): a post that asked for a photo does NOT publish here.
+                // The image goes to the admin queue carrying this same text, and
+                // publishes as ONE post on approval. Publishing the text now and
+                // the image later would put the same thought on the feed twice.
+                if (imagePost && decision.imageScene) {
+                    const result = await generateAndQueueImage({
+                        ...imagePost, session: imagePost.runtimeSession, decision, api,
+                    });
+
+                    if (result.queued) {
+                        return {
+                            action: 'post_image_queued',
+                            target: result.pendingId,
+                            ok: true,
+                            detail: 'awaiting admin approval',
+                        };
+                    }
+
+                    // Every image failure falls through to a plain text post:
+                    // §7 makes images garnish, and a missing key or an exhausted
+                    // image budget must not cost the agent its voice.
+                    const card = await api.createPost(session, decision.text);
+                    return {
+                        action: 'post',
+                        target: card?._id,
+                        ok: true,
+                        detail: `text-only (${result.skipped}${result.detail ? `: ${result.detail}` : ''})`,
+                    };
+                }
+
                 const card = await api.createPost(session, decision.text);
                 return { action: 'post', target: card?._id, ok: true };
             }
@@ -79,6 +114,8 @@ const runTick = async ({
     now = Date.now(),
     api = actions,
     decideImpl = decide,
+    runtimeSession = null,   // admin-scoped; only used to file images for review
+    imageConfig = null,      // { apiKey, hasKey, model } — absent means text-only
 }) => {
     const { user, persona } = agent;
     const agentId = String(user._id);
@@ -163,7 +200,13 @@ const runTick = async ({
         return skip('action-budget-exhausted', `${actionBudget.spent}/${actionBudget.cap} actions used today`);
     }
 
-    const outcome = await executeDecision({ session, decision, api });
+    // Images need both a provider key and an admin session to file the result.
+    // Without either, this stays null and the post path is text-only.
+    const imagePost = imageConfig?.hasKey && runtimeSession
+        ? { agent, budget, imageConfig, runtimeSession }
+        : null;
+
+    const outcome = await executeDecision({ session, decision, api, imagePost });
     if (outcome.ok) budget.record(agentId, 'actions');
     audit.action({ agentId, agentName, ...outcome });
 
