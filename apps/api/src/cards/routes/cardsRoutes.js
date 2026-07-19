@@ -117,15 +117,22 @@ router.post('/cards', auth, upload.single('media'), async (req, res) => {
             return res.status(400).send(error.details[0].message);
         }
         
-        if(!req.file){
-            return res.status(400).send('File not found')
-        }
-        const mediaUrl = await uploadToCloudinary(req.file.buffer, "cards")
+        // Media is OPTIONAL. A post with only text is a normal thing for a
+        // person to write — this route used to reject it outright, which meant
+        // every post in the app had to carry an image. `content` is still
+        // required by the Joi schema, so a post can never be empty.
+        // An empty mediaUrl is the explicit text-only signal (see normalizeCard).
+        const hasMedia = Boolean(req.file);
+        const mediaUrl = hasMedia
+            ? await uploadToCloudinary(req.file.buffer, "cards")
+            : '';
         let newCard = await createNewCard(
             {
-                ...req.body, 
-                mediaUrl:mediaUrl, 
-                mediaType: req.file.mimetype.startsWith("image/") ? "image" : "video"
+                ...req.body,
+                mediaUrl: mediaUrl,
+                ...(hasMedia
+                    ? { mediaType: req.file.mimetype.startsWith("image/") ? "image" : "video" }
+                    : {}),
             }
             , req.user.userId
         );

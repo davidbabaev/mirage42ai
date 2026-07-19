@@ -271,8 +271,11 @@ export default function CardItem({
 
             </Box>
 
-            {/* Media display */}
+            {/* Media display — omitted entirely for a text-only post. Rendering
+                MediaDisplay with an empty mediaUrl leaves a broken-image box,
+                which is worse than no media at all. */}
 
+            {card.mediaUrl ? (
             <Box ref={cardRef} onClick={handleCardClick} sx={{cursor: 'pointer', overflow: 'hidden', position: 'relative'}}>
                 <MediaDisplay
                     mediaUrl={card.mediaUrl}
@@ -296,6 +299,7 @@ export default function CardItem({
                     <Box sx={{position: 'absolute', inset: 0, zIndex: 1}} />
                 )}
             </Box>
+            ) : null}
 
             <Box sx={{
                 display: 'flex',
