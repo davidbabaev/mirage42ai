@@ -96,6 +96,31 @@ const readLlmConfig = (env = {}) => {
     };
 };
 
+/**
+ * Image-generation configuration (F5, §7).
+ *
+ * Deliberately UNLIKE the LLM key: a missing image key is not a clean exit, it
+ * is a clean SKIP. Text is the agent's core function and image posts are the
+ * garnish — §7 says "not every post needs the agent's face" — so an agent
+ * without an image key should keep living a full text-only life rather than
+ * refuse to start.
+ *
+ * Accepts GOOGLE_API_KEY as an alias because that is what the Google SDKs read
+ * by default, and having the key under the "wrong" name silently disable images
+ * would be a miserable thing to debug.
+ */
+const DEFAULT_IMAGE_MODEL = 'gemini-2.5-flash-image';
+
+const readImageConfig = (env = {}) => {
+    const pick = (v) => (typeof v === 'string' ? v.trim() : '');
+    const apiKey = pick(env.GEMINI_API_KEY) || pick(env.GOOGLE_API_KEY);
+    return {
+        apiKey,
+        hasKey: apiKey !== '',
+        model: pick(env.AGENT_IMAGE_MODEL) || DEFAULT_IMAGE_MODEL,
+    };
+};
+
 /** Heartbeat pacing. Overridable so a dev run does not wait 15 minutes to see anything. */
 const readHeartbeatConfig = (env = {}) => {
     const raw = Number(env.AGENT_HEARTBEAT_MS);
@@ -107,6 +132,6 @@ const readHeartbeatConfig = (env = {}) => {
 
 module.exports = {
     isAgentsEnabled, readAgentCredentials, readRuntimeCredentials,
-    readLlmConfig, readHeartbeatConfig,
-    TRUTHY, DEFAULT_API_URL,
+    readLlmConfig, readImageConfig, readHeartbeatConfig,
+    TRUTHY, DEFAULT_API_URL, DEFAULT_IMAGE_MODEL,
 };
