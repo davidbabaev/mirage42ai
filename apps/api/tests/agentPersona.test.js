@@ -164,7 +164,7 @@ describe('AgentPersona — visualIdentity (F5, §7)', () => {
                 referenceUrls: ['https://res.cloudinary.com/a/1.jpg', 'https://res.cloudinary.com/a/2.jpg'],
                 primaryUrl: 'https://res.cloudinary.com/a/1.jpg',
                 generatedAt: new Date('2026-07-19T00:00:00Z'),
-                model: 'gemini-2.5-flash-image',
+                model: 'gemini-3.1-flash-image',
             },
         }));
 
@@ -173,7 +173,7 @@ describe('AgentPersona — visualIdentity (F5, §7)', () => {
         expect(saved.visualIdentity.appearance).toMatch(/dark curly hair/);
         expect(saved.visualIdentity.referenceUrls).toHaveLength(2);
         expect(saved.visualIdentity.primaryUrl).toBe('https://res.cloudinary.com/a/1.jpg');
-        expect(saved.visualIdentity.model).toBe('gemini-2.5-flash-image');
+        expect(saved.visualIdentity.model).toBe('gemini-3.1-flash-image');
     });
 
     it('accepts a full 5-portrait set (the §7 upper bound of 3–5 angles)', async () => {

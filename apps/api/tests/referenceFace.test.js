@@ -20,13 +20,13 @@ const {
     generateReferenceSet, hasExistingFace, ANGLES, DEFAULT_APPEARANCE,
 } = requireFromHere('../src/seed/generateReferenceFace');
 
-const IMAGE_CONFIG = { apiKey: 'test-key', hasKey: true, model: 'gemini-2.5-flash-image' };
+const IMAGE_CONFIG = { apiKey: 'test-key', hasKey: true, model: 'gemini-3.1-flash-image' };
 const QUIET = { log: () => {} };
 
 const okGenerate = () => vi.fn(async () => ({
     base64: Buffer.from('IMAGE').toString('base64'),
     mimeType: 'image/png',
-    model: 'gemini-2.5-flash-image',
+    model: 'gemini-3.1-flash-image',
 }));
 
 const okUpload = () => {
@@ -55,7 +55,7 @@ describe('the reference set — §7 asks for 3–5 angles of ONE face', () => {
         expect(identity.appearance).toBe(DEFAULT_APPEARANCE);
         expect(identity.referenceUrls).toHaveLength(ANGLES.length);
         expect(identity.primaryUrl).toBe(identity.referenceUrls[0]);
-        expect(identity.model).toBe('gemini-2.5-flash-image');
+        expect(identity.model).toBe('gemini-3.1-flash-image');
         expect(identity.generatedAt).toBeInstanceOf(Date);
     });
 
@@ -119,6 +119,31 @@ describe('partial failure — do not throw away angles already paid for', () => 
     it('throws only when every angle fails — nothing worth storing', async () => {
         const generateImpl = vi.fn(async () => { throw new Error('503'); });
         await expect(run({ generateImpl })).rejects.toThrow(/every angle failed/);
+    });
+
+    // REGRESSION — the first live run failed exactly this way and said only
+    // "every angle failed — nothing to store", sending the operator back to
+    // scroll the logs for a reason that had already been thrown away.
+    it('reports the SHARED reason when every angle died the same way', async () => {
+        const real = 'image API returned 400: models/x is not found for API version v1beta [INVALID_ARGUMENT]';
+        const generateImpl = vi.fn(async () => { throw new Error(real); });
+
+        const err = await run({ generateImpl }).catch((e) => e);
+        expect(err.message).toContain('every angle failed with the same error');
+        expect(err.message).toContain('is not found for API version v1beta');
+        // and points at the tool that answers the question
+        expect(err.message).toMatch(/diagnoseImageApi/);
+    });
+
+    it('lists the distinct reasons when angles failed differently', async () => {
+        let n = 0;
+        const generateImpl = vi.fn(async () => {
+            throw new Error(++n % 2 ? 'image API returned 400: bad model' : 'image API returned 429: rate limited');
+        });
+
+        const err = await run({ generateImpl }).catch((e) => e);
+        expect(err.message).toContain('bad model');
+        expect(err.message).toContain('rate limited');
     });
 
     it('does not upload anything for a failed angle', async () => {

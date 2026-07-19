@@ -9,6 +9,58 @@ and `docs/autopilot/backlog.md`.
 
 ---
 
+## 2026-07-20 — F5 follow-up: every image call 400d on the first live run
+
+**What happened.** The first real reference-face run failed on all four angles
+with `image API returned 400`, and that string was the entire diagnosis
+available — Google's explanation was in the response body, and the error path
+discarded it.
+
+**Two bugs, one symptom.**
+
+1. **The error handler threw away the body.** This is the worse of the two: it
+   turned a one-line fix into a research task. `generateImage` now always reads
+   the body, parses Google's `{ error: { message, status } }` envelope, falls
+   back to raw text for gateway/HTML errors, truncates at 500 chars, and keeps
+   it on `err.body` for the audit trail. Reading it can never itself throw.
+2. **The URL was wrong — the body shape was not.** The request used
+   `/v1beta/models/gemini-2.5-flash-image`. Google's *generateContent* image
+   docs (a different page from the default image-generation docs, which now
+   cover the Interactions API) show `/v1` and `gemini-3.1-flash-image` in every
+   example; `gemini-2.5-flash-image` appears in the model list but in no
+   generateContent example. `contents/parts` + `inline_data` was correct
+   throughout, and `generationConfig.responseModalities` is documented as
+   optional, so it was not added.
+
+**Decisions taken.**
+
+- **Default model → `gemini-3.1-flash-image`, default API version → `v1`.**
+  Both now variables (`DEFAULT_API_VERSION`, `AGENT_IMAGE_MODEL`) rather than
+  baked into a URL string, because both turned out to be exactly the kind of
+  thing that changes. 3.1 is also the model documenting explicit
+  character-consistency support, which is §7's actual requirement — so this
+  moves toward the spec rather than away from it.
+- **Kept `generateContent`, did not switch to the Interactions API.** The 400
+  was a wrong URL, not a wrong API. Switching would be a rewrite justified by a
+  guess; the adapter is isolated for exactly that call when it is evidenced.
+- **Added a diagnostic script rather than guessing again.**
+  `apps/agents/src/images/diagnoseImageApi.js` lists the models the key can
+  actually see per API version (free), then probes the version × model matrix
+  and prints the real body for each. It skips paid probes for models step 1
+  already ruled out.
+- **The "every angle failed" message now carries the shared reason** and points
+  at the diagnostic, instead of sending the operator back to the logs.
+
+**Honesty.** I could not reproduce the 400 myself — the key was passed inline to
+the script and is not in any `.env` I can read, so **the fix is inferred from
+the docs, not confirmed against a live call.** The evidence is strong (the
+current examples use `/v1` + 3.1 exclusively) but unproven. If the corrected
+run still fails, the diagnostic now prints Google's actual words, which is the
+thing that was missing the first time. 10 regression tests cover the error
+surfacing and the URL; none of them call the live API.
+
+---
+
 ## 2026-07-20 — Phase F increment F5: consistent-face image pipeline (§7)
 
 **Context.** Agents could post text only. §7 asks for the same synthetic person

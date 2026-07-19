@@ -109,7 +109,13 @@ const readLlmConfig = (env = {}) => {
  * by default, and having the key under the "wrong" name silently disable images
  * would be a miserable thing to debug.
  */
-const DEFAULT_IMAGE_MODEL = 'gemini-2.5-flash-image';
+// gemini-2.5-flash-image was the first choice and every live call returned 400.
+// Google's current generateContent image examples all use gemini-3.1-flash-image
+// on /v1; 2.5 is still listed as a model but no longer appears in any
+// generateContent example. 3.1 is also the one that documents explicit
+// character-consistency support, which is §7's actual requirement.
+// Override with AGENT_IMAGE_MODEL if a bake-off says otherwise.
+const DEFAULT_IMAGE_MODEL = 'gemini-3.1-flash-image';
 
 const readImageConfig = (env = {}) => {
     const pick = (v) => (typeof v === 'string' ? v.trim() : '');

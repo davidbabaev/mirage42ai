@@ -88,6 +88,7 @@ const generateReferenceSet = async ({
     logger = { log },
 } = {}) => {
     const urls = [];
+    const failures = [];
 
     for (const [index, angle] of angles.entries()) {
         const prompt = buildReferencePrompt({ appearance, angle });
@@ -102,6 +103,7 @@ const generateReferenceSet = async ({
             });
         } catch (err) {
             logger.log(`  ! angle ${index + 1} failed (${err.message}) — continuing`);
+            failures.push(err.message);
             continue;
         }
 
@@ -110,7 +112,20 @@ const generateReferenceSet = async ({
         logger.log(`  -> ${url}`);
     }
 
-    if (!urls.length) throw new Error('every angle failed — nothing to store');
+    if (!urls.length) {
+        // The old message was "every angle failed — nothing to store", which
+        // told the operator nothing about WHY and sent them back to the logs.
+        // If every angle died the same way — which is what a wrong model or a
+        // bad key looks like — say so once, in Google's words.
+        const unique = [...new Set(failures)];
+        const because = unique.length === 1
+            ? `every angle failed with the same error: ${unique[0]}`
+            : `every angle failed:\n  - ${unique.join('\n  - ')}`;
+        throw new Error(
+            `${because}\n\nRun the diagnostic to see what this key can actually reach:\n` +
+            `  cd apps/agents && GEMINI_API_KEY='...' node src/images/diagnoseImageApi.js`
+        );
+    }
 
     return {
         appearance,

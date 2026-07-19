@@ -34,7 +34,7 @@ const VISUAL_IDENTITY = {
     appearance: 'early-30s woman, dark curly hair, freckles, warm olive skin',
     referenceUrls: ['https://res.cloudinary.com/agents/reference/1.jpg'],
     primaryUrl: 'https://res.cloudinary.com/agents/reference/1.jpg',
-    model: 'gemini-2.5-flash-image',
+    model: 'gemini-3.1-flash-image',
 };
 
 const mkAgent = (personaOver = {}) => ({
@@ -47,7 +47,7 @@ const mkAgent = (personaOver = {}) => ({
     },
 });
 
-const IMAGE_CONFIG = { apiKey: 'test-key', hasKey: true, model: 'gemini-2.5-flash-image' };
+const IMAGE_CONFIG = { apiKey: 'test-key', hasKey: true, model: 'gemini-3.1-flash-image' };
 
 const DECISION = {
     action: 'post',
@@ -83,7 +83,7 @@ const mkHarness = ({ persona, decision = DECISION, imageConfig = IMAGE_CONFIG, g
             imageConfig,
             fetchImpl: refFetch(),
             generateImpl: generateImpl || vi.fn(async () => ({
-                base64: 'GENERATED', mimeType: 'image/png', model: 'gemini-2.5-flash-image',
+                base64: 'GENERATED', mimeType: 'image/png', model: 'gemini-3.1-flash-image',
             })),
         },
     };
@@ -243,7 +243,7 @@ describe('executeDecision — how the loop routes an image post', () => {
         imageConfig: IMAGE_CONFIG,
         runtimeSession: { request: vi.fn() },
         generateImpl: vi.fn(async () => ({
-            base64: 'GENERATED', mimeType: 'image/png', model: 'gemini-2.5-flash-image',
+            base64: 'GENERATED', mimeType: 'image/png', model: 'gemini-3.1-flash-image',
         })),
         fetchImpl: vi.fn(async () => { throw new Error('no network in tests'); }),
         ...over,
