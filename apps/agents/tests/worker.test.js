@@ -1,27 +1,41 @@
-// F1: the worker does exactly two things — read the kill-switch and say which
-// way it went. The kill-switch is the part worth testing hard, because the
-// failure mode is not a crash: it is a runtime that quietly starts acting as
-// people when nobody meant it to.
-import { describe, it, expect } from 'vitest';
+// F2: the worker reads the kill-switch and, when allowed, authenticates as its
+// persona's account over the same public auth route a human uses.
+//
+// The kill-switch is the part worth testing hardest, because the failure mode
+// is not a crash: it is a runtime that quietly acts as a person when nobody
+// meant it to. "Disabled" therefore has to mean INERT — no credentials read,
+// no network touched — not merely "logs a different line".
+import { describe, it, expect, vi } from 'vitest';
 import { createRequire } from 'module';
 import { execFileSync } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const requireFromHere = createRequire(import.meta.url);
-const { isAgentsEnabled } = requireFromHere('../src/config.js');
-const { main, agentRosterFilter } = requireFromHere('../src/index.js');
+const { isAgentsEnabled, readAgentCredentials } = requireFromHere('../src/config.js');
+const { main, agentRosterFilter, displayName } = requireFromHere('../src/index.js');
 const { ACCOUNT_KIND } = requireFromHere('@mirage42ai/shared');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ENTRY = path.join(__dirname, '../src/index.js');
 
-// Captures logger.log calls instead of writing to the real console.
-const captureRun = (env) => {
-    const lines = [];
-    const code = main(env, { log: (msg) => lines.push(msg) });
-    return { lines, code };
+const ENABLED_ENV = {
+    AGENTS_ENABLED: 'true',
+    AGENT_API_URL: 'http://api.test:8181',
+    AGENT_EMAIL: 'maya.benari@agents.mirage42.ai',
+    AGENT_PASSWORD: 'AgentSeed1!',
 };
+
+// Captures logger output instead of writing to the real console.
+const capture = () => {
+    const out = [], errs = [];
+    return { out, errs, logger: { log: (m) => out.push(m), error: (m) => errs.push(m) } };
+};
+
+const okLogin = () => vi.fn(async () => ({
+    token: 'a-real-looking-jwt.value.here',
+    user: { _id: 'u1', name: 'maya', lastName: 'ben-ari' },
+}));
 
 describe('isAgentsEnabled — the kill-switch', () => {
     it('is OFF when AGENTS_ENABLED is absent', () => {
@@ -46,31 +60,133 @@ describe('isAgentsEnabled — the kill-switch', () => {
     });
 });
 
-describe('worker main()', () => {
-    it('logs "agents: disabled" and exits 0 when the switch is off', () => {
-        const { lines, code } = captureRun({});
-        expect(lines).toEqual(['agents: disabled']);
-        expect(code).toBe(0);
+describe('readAgentCredentials', () => {
+    it('throws naming every missing variable', () => {
+        expect(() => readAgentCredentials({})).toThrow(/AGENT_EMAIL.*AGENT_PASSWORD/);
+        expect(() => readAgentCredentials({ AGENT_EMAIL: 'a@b.c' })).toThrow(/AGENT_PASSWORD/);
     });
 
-    it('logs "agents: online" and exits 0 when the switch is on', () => {
-        const { lines, code } = captureRun({ AGENTS_ENABLED: 'true' });
-        expect(lines).toEqual(['agents: online']);
-        expect(code).toBe(0);
+    it('treats blank and whitespace-only as missing', () => {
+        expect(() => readAgentCredentials({ AGENT_EMAIL: '  ', AGENT_PASSWORD: 'x' }))
+            .toThrow(/AGENT_EMAIL/);
     });
 
+    it('defaults the base URL but never the credentials', () => {
+        const c = readAgentCredentials({ AGENT_EMAIL: 'a@b.c', AGENT_PASSWORD: 'pw' });
+        expect(c.baseUrl).toBe('http://localhost:8181');
+        expect(c.email).toBe('a@b.c');
+    });
+
+    it('does NOT trim the password (whitespace can be part of it)', () => {
+        const c = readAgentCredentials({ AGENT_EMAIL: 'a@b.c', AGENT_PASSWORD: ' pw ' });
+        expect(c.password).toBe(' pw ');
+    });
+});
+
+describe('worker main() — disabled means INERT', () => {
+    it('logs "agents: disabled", exits 0, and never calls login', async () => {
+        const { out, logger } = capture();
+        const doLogin = okLogin();
+
+        const code = await main({}, logger, { login: doLogin });
+
+        expect(out).toEqual(['agents: disabled']);
+        expect(code).toBe(0);
+        expect(doLogin).not.toHaveBeenCalled();
+    });
+
+    it('does not even READ credentials when disabled', async () => {
+        const { out, errs, logger } = capture();
+        const doLogin = okLogin();
+
+        // Credentials are absent AND the switch is off. If the worker read
+        // config before checking the switch, this would error instead of
+        // exiting cleanly.
+        const code = await main({ AGENTS_ENABLED: 'false' }, logger, { login: doLogin });
+
+        expect(code).toBe(0);
+        expect(errs).toEqual([]);
+        expect(out).toEqual(['agents: disabled']);
+        expect(doLogin).not.toHaveBeenCalled();
+    });
+});
+
+describe('worker main() — enabled', () => {
+    it('authenticates and logs "agent <name> authenticated"', async () => {
+        const { out, logger } = capture();
+        const doLogin = okLogin();
+
+        const code = await main(ENABLED_ENV, logger, { login: doLogin });
+
+        expect(code).toBe(0);
+        expect(out).toEqual(['agents: online', 'agent maya ben-ari authenticated']);
+    });
+
+    it('passes the configured credentials through to the login call', async () => {
+        const { logger } = capture();
+        const doLogin = okLogin();
+
+        await main(ENABLED_ENV, logger, { login: doLogin });
+
+        expect(doLogin).toHaveBeenCalledWith({
+            baseUrl: 'http://api.test:8181',
+            email: 'maya.benari@agents.mirage42.ai',
+            password: 'AgentSeed1!',
+        });
+    });
+
+    it('NEVER logs the token or the password', async () => {
+        const { out, errs, logger } = capture();
+        await main(ENABLED_ENV, logger, { login: okLogin() });
+
+        const everything = [...out, ...errs].join('\n');
+        expect(everything).not.toContain('a-real-looking-jwt');
+        expect(everything).not.toContain('AgentSeed1!');
+    });
+
+    it('exits 1 with a clear message when credentials are missing', async () => {
+        const { errs, logger } = capture();
+        const doLogin = okLogin();
+
+        const code = await main({ AGENTS_ENABLED: 'true' }, logger, { login: doLogin });
+
+        expect(code).toBe(1);
+        expect(errs.join()).toMatch(/AGENT_EMAIL/);
+        expect(doLogin).not.toHaveBeenCalled();
+    });
+
+    it('exits 1 when authentication is rejected, without throwing', async () => {
+        const { errs, logger } = capture();
+        const doLogin = vi.fn(async () => {
+            throw new Error('login: rejected with 401 — Invalid email or password');
+        });
+
+        const code = await main(ENABLED_ENV, logger, { login: doLogin });
+
+        expect(code).toBe(1);
+        expect(errs.join()).toMatch(/authentication failed.*401/);
+    });
+});
+
+describe('helpers', () => {
     it('selects its roster using the SHARED account-kind constant', () => {
         expect(agentRosterFilter()).toEqual({ kind: ACCOUNT_KIND.AGENT });
         expect(agentRosterFilter().kind).toBe('agent');
     });
+
+    it('degrades to "unknown" rather than "undefined undefined"', () => {
+        expect(displayName(null)).toBe('unknown');
+        expect(displayName({})).toBe('unknown');
+        expect(displayName({ name: 'maya' })).toBe('maya');
+    });
 });
 
-// main() is a pure function; these prove the actual process behaves the same —
-// that it wires main() to stdout and terminates instead of hanging.
+// The unit tests above drive main() directly; these prove the actual process
+// wires it to stdout and terminates instead of hanging.
 describe('worker as a real process', () => {
     const run = (env) =>
         execFileSync(process.execPath, [ENTRY], {
-            env: { ...process.env, AGENTS_ENABLED: '', ...env },
+            env: { ...process.env, AGENTS_ENABLED: '', AGENT_EMAIL: '', AGENT_PASSWORD: '', ...env },
             encoding: 'utf8',
             timeout: 20_000,
         }).trim();
@@ -79,7 +195,19 @@ describe('worker as a real process', () => {
         expect(run({})).toBe('agents: disabled');
     });
 
-    it('prints "agents: online" when AGENTS_ENABLED=true', () => {
-        expect(run({ AGENTS_ENABLED: 'true' })).toBe('agents: online');
+    it('enabled but unconfigured: exits non-zero and says which var is missing', () => {
+        let status = 0, stderr = '';
+        try {
+            execFileSync(process.execPath, [ENTRY], {
+                env: { ...process.env, AGENTS_ENABLED: 'true', AGENT_EMAIL: '', AGENT_PASSWORD: '' },
+                encoding: 'utf8',
+                timeout: 20_000,
+            });
+        } catch (err) {
+            status = err.status;
+            stderr = String(err.stderr || '');
+        }
+        expect(status).toBe(1);
+        expect(stderr).toMatch(/AGENT_EMAIL/);
     });
 });
