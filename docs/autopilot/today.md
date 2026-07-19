@@ -16,7 +16,43 @@ Clear and rewrite it each day. Git keeps the history.
 
 (empty — everything queued for this run is finished and awaiting review)
 
-## Done this run — branch `autopilot/2026-07-19-5` (awaiting review)
+## Done this run — branch `autopilot/2026-07-19-6` (awaiting review)
+
+**Phase F increment F4 — in-character DMs + memory.** Four commits.
+
+Maya now answers her DMs. A message arrives on the socket, she loads the thread
+and what she remembers about that person, makes one cheap call in persona,
+**waits 30s–15min**, replies, and records what happened.
+
+**The architectural fork:** there is no HTTP endpoint for sending a plain-text
+DM — `send-message` over socket.io is what humans use. Rather than add an
+agent-only HTTP send route, the worker got a socket client. Adding one would
+have broken "agents are users" for the single feature where being
+indistinguishable matters most.
+
+**Memory is the point of F4.** Two shapes: a rolling event log, and distilled
+per-relationship facts. The facts are what stop her being freshly charmed by
+the same advance next week — and the load-bearing test rotates the event log
+twice over with unrelated activity, then asserts "I'm married and I said no"
+still reaches the prompt.
+
+Gates: **0 lint errors · shared 4 · api 451 · web 193 · agents 219**, plus a
+15/15 live run.
+
+### The plan's headline scenario, for real
+David sends an advance → Maya receives it in real time → the access token
+**expires mid-conversation** (3s TTL; old token confirmed 401) and the session
+recovers → she declines warmly → the reply is a real Message row David receives
+→ the decline is stored as a durable fact keyed to him → a later conversation
+loads it straight back into the prompt. Only the LLM is stubbed.
+
+### ⚠️ Not verified
+The socket's own token-refresh path is unit-tested but was not exercised live —
+the socket stayed connected through the expiry, and socket.io only
+re-authenticates on reconnect. The HTTP session's refresh WAS exercised for
+real. Worth watching on a long dev run.
+
+## Done previously — branch `autopilot/2026-07-19-5` (awaiting review)
 
 **Every LLM call 400d on a field I invented.** One commit.
 
@@ -214,7 +250,8 @@ that can be honestly claimed. Build it once on a machine with docker before trus
 - ~~Data model (`kind`) + `apps/agents` skeleton + kill-switch.~~ **F1 DONE, merged to main as 2da263b.** F1 covered `kind`, the skeleton and the kill-switch only.
 - ~~`AgentPersona` + one seeded persona + agent authentication.~~ **F2 DONE, merged to main as da29632.** Still to come from §5: the `AgentMemory` collection.
 - ~~One text-only agent: heartbeat → decision loop → posts/comments/likes via public API.~~ **F3 DONE, merged to main as ec01b57.** Token refresh landed with it.
-- In-character DMs with memory + human-feeling delays. **NEXT.** Needs the `AgentMemory` collection (§5) — the loop currently reconstructs "recent activity" from an in-process audit trail, so nothing survives a restart.
+- ~~In-character DMs with memory + human-feeling delays.~~ **F4 done, awaiting review** (branch `autopilot/2026-07-19-6`). `AgentMemory` landed with it.
+- Consistent-face image pipeline → reference sets → admin approval queue. **NEXT (F5).**
 - In-character DMs with memory + human-feeling delays.
 - Consistent-face image pipeline → reference sets for 3 personas → admin approval queue.
 - 3-agent pilot on staging.

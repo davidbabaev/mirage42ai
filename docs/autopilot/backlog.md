@@ -5,6 +5,13 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Active
 
+### Phase F follow-ups opened by F4
+- **The worker drives ONE agent's DMs.** It opens a single socket as the account it logged in as, and `main()` picks that agent out of the roster. Multiple agents need one socket per agent, which needs one credential per agent — the same credential-duplication problem filed in F2, now genuinely blocking the 3-agent pilot (§4).
+- **No unread sweep on startup.** DMs are handled only via the live `receive-message` event, so anything sent while the worker was down is never answered. `GET /chats` returns `totalUnread` and per-conversation `unreadCount` — a catch-up pass on boot (and periodically) would close it. Today a restart silently drops every pending conversation.
+- **Conversations are never marked read.** `api/dm.js` has `markRead` but nothing calls it, so Maya's unread badge grows forever from her side. Harmless today (nobody looks at her client) but wrong, and it will confuse the pilot's metrics.
+- **Memory is never distilled or pruned by meaning.** Facts accumulate to a hard cap of 200 and then drop the oldest — including, eventually, "I'm married and I said no". §5 calls these "distilled" facts; there is no distillation step, only truncation. A periodic consolidation pass (one cheap call: "merge these into fewer, better facts") is the natural fix.
+- **No per-conversation reply rate limit.** Budget caps are per day, so someone could send 20 messages in a minute and get 20 replies (each delayed, but all queued in parallel). A real person would answer once. Worth a per-conversation debounce before the pilot.
+
 ### Phase F follow-ups opened by F3
 - **The runtime holds an ADMIN credential.** `GET /agents/admin` is admin-guarded, so the worker's runtime account can also ban users and promote admins — far more authority than "read one list" needs. The agent's own token is correctly an ordinary user's, so the blast radius is limited to the runtime account, but a dedicated non-admin `runtime` capability (or a signed service token scoped to one endpoint) is the right shape. This is a permission-model decision, not an implementation detail, which is why it was filed rather than invented.
 - **The budget ledger is in-memory.** A worker restart resets every agent's daily spend, so a crash-loop could spend the daily cap many times over. Fine for a single dev process; NOT fine once the runtime is restartable in production. Wants persistence (a small Mongo collection or Redis) before the pilot.
@@ -41,6 +48,17 @@ Mark items [done] when finished so they drop out of the active list.
 - Type: phase-d follow-up. Not urgent while the dataset is small; REQUIRED before the admin panel runs against a large production dataset.
 
 ## Awaiting review
+
+### Phase F increment F4 — in-character DMs + memory
+- Built on branch `autopilot/2026-07-19-6`, commits `697b507`, `6d1b65e`, `37a5e78` (+ wiring/docs) — awaiting review/merge. **Stacked on the two unmerged F3 fixes** (`03add1b` unref, `9356ae6` output_config) — F4 depends on both.
+- **`AgentMemory`** (§5): rolling event log + distilled per-relationship facts, both bounded in code via `$push`/`$slice` (atomic append-and-trim; read-modify-write would race two ticks). The load-bearing test records a decline, rotates the event log twice over with unrelated activity, and asserts the fact still reaches the prompt — `memoryForPrompt` filters facts by person BEFORE capping for exactly that reason.
+- Memory reaches the runtime over `GET/POST /agents/admin/:userId/memory` — no DB access (§3). The write endpoint is **append-only**: a runtime that could rewrite its own history could erase the one fact the feature exists to preserve. Writes against a HUMAN account are refused.
+- **THE ARCHITECTURAL FORK:** there is no HTTP endpoint for sending a plain-text DM — `send-message` over socket.io is the path humans use. Rather than add an agent-only HTTP send route (which would break "agents are users" for the feature where indistinguishability matters most), **the worker got a socket.io client**. It also makes §6's "near-time reply path" possible at all; polling `/chats` on a 15-min heartbeat would make every reply ≥15 min late.
+- **Both TASK B halves re-implemented** in the agent socket, because this is the component that failed then: callback auth (re-reads the current token every reconnect) with a guard that **re-arms on connect** — without that a long-running agent heals once then goes silent forever — and ack+timeout on send, because socket.io silently buffers an emit on a disconnected client and the agent would otherwise write "I replied" having said nothing.
+- **The human-feeling delay** (§6, 30s–15min): a notice component plus a typing component proportional to reply length, jittered, persona-scalable. An instant reply is the loudest bot tell; an identically-instant one is louder.
+- **Verified end-to-end, 15/15**, against a real API and real socket: David sends an advance → Maya receives it in real time → the access token **expires mid-conversation** (3s TTL, old token confirmed 401) and the session recovers → she declines → the reply is a real Message row David receives → the decline is stored as a durable fact keyed to him → a later conversation loads it back into the prompt. Only the LLM is stubbed.
+- Gates: **0 lint errors · shared 4 · api 451 · web 193 · agents 219**.
+- ⚠️ The socket's own token-refresh path is unit-tested but was NOT exercised live — the socket stayed connected through the expiry, and socket.io only re-authenticates on reconnect. The HTTP session's refresh was exercised for real.
 
 ### F3 follow-up — every LLM call 400d on an invented request field
 - Built on branch `autopilot/2026-07-19-5` — awaiting review/merge.

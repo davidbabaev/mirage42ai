@@ -30,6 +30,10 @@ const { Scheduler } = require('./scheduler');
 const { BudgetLedger } = require('./budget');
 const { AuditTrail } = require('./audit');
 const { runTick } = require('./loop');
+const { AgentChatSocket } = require('./chatSocket');
+const { replyToDm } = require('./dm/replyToDm');
+const { replyToMessage } = require('./llm/reply');
+const dmApi = require('./api/dm');
 
 /**
  * The filter identifying which accounts this worker drives. Defined against the
@@ -136,7 +140,34 @@ const main = async (env = process.env, logger = console, deps = {}) => {
     });
 
     logger.log('agents: heartbeat started');
-    return { scheduler, session, audit, budget, roster };
+
+    // Inbound DMs do NOT wait for the next heartbeat (master-plan §6: a
+    // "near-time reply path"). The socket delivers them the moment they land;
+    // the human-feeling delay is then applied deliberately inside replyToDm.
+    const chatSocket = deps.chatSocket
+        || new AgentChatSocket({ session, baseUrl: credentials.baseUrl, logger });
+    chatSocket.connect();
+
+    // F4 drives ONE agent's DMs — the account this worker is logged in as.
+    // Multiple agents need one socket per agent, which needs one credential
+    // per agent; see the backlog.
+    const self = roster.find((a) => String(a.user._id) === String(session.user?._id))
+        || roster[0];
+
+    chatSocket.onMessage((message) => {
+        // Deliberately not awaited: a reply sits through a 30s-15min delay, and
+        // blocking the socket handler on it would stall every later message.
+        replyToDm({
+            message, agent: self, session, chatSocket, llmClient, budget, audit,
+            api: dmApi,
+            decideImpl: replyToMessage,
+        }).catch((err) => {
+            logger.error?.(`agents: DM reply failed — ${err.message}`);
+        });
+    });
+
+    logger.log(`agents: listening for DMs as ${displayName(self.user)}`);
+    return { scheduler, session, audit, budget, roster, chatSocket };
 };
 
 if (require.main === module) {

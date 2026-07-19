@@ -134,6 +134,14 @@ const mkSession = (roster = [ROSTER_AGENT]) => ({
 
 const mkScheduler = () => ({ start: vi.fn(), stop: vi.fn() });
 
+// Injected so the suite never opens a real socket to a non-existent host.
+const mkChatSocket = () => ({
+    connect: vi.fn(),
+    onMessage: vi.fn(),
+    disconnect: vi.fn(),
+    sendMessage: vi.fn(),
+});
+
 describe('worker main() — enabled', () => {
     it('authenticates, loads the roster, and starts the heartbeat', async () => {
         const { out, logger } = capture();
@@ -141,7 +149,7 @@ describe('worker main() — enabled', () => {
         const scheduler = mkScheduler();
 
         const result = await main(ENABLED_ENV, logger, {
-            session, runtimeSession: session, scheduler, llmClient: {},
+            session, runtimeSession: session, scheduler, llmClient: {}, chatSocket: mkChatSocket(),
         });
 
         expect(session.start).toHaveBeenCalled();
@@ -155,7 +163,8 @@ describe('worker main() — enabled', () => {
     it('NEVER logs the token, the password, or the API key', async () => {
         const { out, errs, logger } = capture();
         await main(ENABLED_ENV, logger, {
-            session: mkSession(), scheduler: mkScheduler(), llmClient: {},
+            session: mkSession(), runtimeSession: mkSession(),
+            scheduler: mkScheduler(), llmClient: {}, chatSocket: mkChatSocket(),
         });
 
         const everything = [...out, ...errs].join('\n');
@@ -193,7 +202,7 @@ describe('worker main() — enabled', () => {
         const session = mkSession();
         session.start = vi.fn(async () => { throw new Error('login: rejected with 401'); });
 
-        const code = await main(ENABLED_ENV, logger, { session, scheduler: mkScheduler(), llmClient: {} });
+        const code = await main(ENABLED_ENV, logger, { session, scheduler: mkScheduler(), llmClient: {}, chatSocket: mkChatSocket() });
 
         expect(code).toBe(1);
         expect(errs.join()).toMatch(/authentication failed.*401/);
@@ -205,7 +214,7 @@ describe('worker main() — enabled', () => {
 
         const empty = mkSession([]);
         const code = await main(ENABLED_ENV, logger, {
-            session: empty, runtimeSession: empty, scheduler, llmClient: {},
+            session: empty, runtimeSession: empty, scheduler, llmClient: {}, chatSocket: mkChatSocket(),
         });
 
         expect(code).toBe(1);
@@ -219,7 +228,7 @@ describe('worker main() — enabled', () => {
         runtimeSession.request = vi.fn(async () => { throw new Error('403 Admin only'); });
 
         const code = await main(ENABLED_ENV, logger, {
-            session: mkSession(), runtimeSession, scheduler: mkScheduler(), llmClient: {},
+            session: mkSession(), runtimeSession, scheduler: mkScheduler(), llmClient: {}, chatSocket: mkChatSocket(),
         });
 
         expect(code).toBe(1);
@@ -229,7 +238,7 @@ describe('worker main() — enabled', () => {
     it('fetches the roster over the API — never from a database', async () => {
         const runtimeSession = mkSession();
         await main(ENABLED_ENV, capture().logger, {
-            session: mkSession(), runtimeSession, scheduler: mkScheduler(), llmClient: {},
+            session: mkSession(), runtimeSession, scheduler: mkScheduler(), llmClient: {}, chatSocket: mkChatSocket(),
         });
         expect(runtimeSession.request).toHaveBeenCalledWith('/agents/admin');
     });
@@ -242,11 +251,28 @@ describe('worker main() — enabled', () => {
         const runtimeSession = mkSession();
 
         await main(ENABLED_ENV, capture().logger, {
-            session, runtimeSession, scheduler: mkScheduler(), llmClient: {},
+            session, runtimeSession, scheduler: mkScheduler(), llmClient: {}, chatSocket: mkChatSocket(),
         });
 
         expect(runtimeSession.request).toHaveBeenCalledWith('/agents/admin');
         expect(session.request).not.toHaveBeenCalledWith('/agents/admin');
+    });
+
+    it('connects the chat socket and subscribes to inbound DMs', async () => {
+        // F4: DMs must not wait for the next heartbeat (§6 "near-time reply
+        // path"), so the socket subscription is part of startup, not a tick.
+        const { out, logger } = capture();
+        const chatSocket = mkChatSocket();
+        const session = mkSession();
+
+        await main(ENABLED_ENV, logger, {
+            session, runtimeSession: session, scheduler: mkScheduler(),
+            llmClient: {}, chatSocket,
+        });
+
+        expect(chatSocket.connect).toHaveBeenCalledTimes(1);
+        expect(chatSocket.onMessage).toHaveBeenCalledTimes(1);
+        expect(out.join('\n')).toMatch(/listening for DMs/);
     });
 
     it('requires the runtime credential and says what it is for', async () => {

@@ -21,8 +21,25 @@ Most ticks choose **do_nothing**. That is not a bug — master-plan §6 is expli
 that real people scroll past almost everything, and an agent that acts on every
 heartbeat reads as a bot within an hour.
 
-Not here yet: images (F5), DMs with memory (F4), multiple agents on a real
-queue.
+**Inbound DMs do not wait for a heartbeat.** They arrive on the socket in real
+time and get their own path:
+
+```
+DM arrives  -> gather the thread + what she remembers about this person
+            -> ONE cheap LLM call in persona
+            -> WAIT 30s-15min (a human-feeling delay, scaled by reply length)
+            -> reply over the same socket a browser uses
+            -> write what happened to memory
+```
+
+She may also decide **not** to reply. That is deliberate — a real person does
+not always get the last word.
+
+**Memory** is two things: a rolling event log (recent activity, capped) and
+distilled per-relationship facts ("David asked me out; I said I'm married"). The
+facts are what stop her being freshly charmed by the same advance next week.
+
+Not here yet: images (F5), multiple agents on a real queue.
 
 ---
 
@@ -139,6 +156,9 @@ Credentials never appear in it — secret-looking keys and values are redacted.
 | `{"type":"skipped","why":"outside-active-hours"}` | Working as designed. Maya sleeps 23:00–07:00 Asia/Jerusalem. Change `activeHours` on her persona to test outside that window. |
 | `{"type":"skipped","why":"llm-budget-exhausted"}` | Her daily cap (40 calls) is spent. It resets at UTC midnight; restarting the worker also clears the in-memory ledger. |
 | Ticks happen but nothing is posted | Expected. `do_nothing` is the common case by design. |
+| You DM her and nothing happens for minutes | Expected. The reply delay is 30s–15min by design (§6). Watch for `{"type":"dm_delay","delayMs":...}` in the log — it tells you exactly how long she's waiting. |
+| `{"type":"dm_decision","replying":false}` | She read it and chose not to answer. Also by design. |
+| DMs never arrive at all | The socket isn't connected. Check for `agents: listening for DMs` at startup, and that `AGENT_API_URL` points at the API's **socket** origin (same host/port as HTTP). |
 
 ---
 
