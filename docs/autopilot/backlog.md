@@ -55,6 +55,15 @@ Mark items [done] when finished so they drop out of the active list.
 
 (finished items move here, newest on top)
 
+### `/start-agents` — point the local stack at the systemd mongod — DONE
+- Merged to main as ea8605f (branch chore/start-agents-command, clean fast-forward; api 451 green on main after the merge). Commits f82f483 (the command), ea8605f (systemd + two fixes).
+- Tooling only — no application code. Never tracked as a backlog item; recorded here so the merge is not unlogged.
+- **mongod now runs as a systemd service** under user `david`, configured by `/etc/mongod-mirage42.conf` with dbPath `~/mirage42-localdb` and its log at `~/mirage42-logs/mongod.log`. Chosen over chowning the seed data so the data stays `david`-owned and `/home/david` permissions are untouched.
+- **The failure that forced it:** starting mongod by hand fell back to the packaged default `/var/lib/mongodb`, which is EMPTY. The API then came up connected, answering, and completely healthy-looking against a database with zero users. Step 1 now checks the seeded USER COUNT rather than a bare ping — an answering mongod on the wrong dbpath is the exact thing a ping cannot distinguish.
+- **Two bugs in the original command, both found by hitting them:** (1) the worker liveness check `pgrep -af 'apps/agents/src/index.js'` NEVER matched — npm sets the workspace via cwd, so argv is just `node src/index.js`; the command would have started a second worker on every run. (2) `nohup ... &` was not enough to keep the worker alive: it died when the launching shell exited, leaving a log that ends cleanly at "listening for DMs" with no error at all. Now `setsid`, plus a survival check from a SEPARATE invocation — the launching invocation cannot detect this failure.
+- Verified end-to-end on the real stack: mongod active with 9 users, API restarted and `POST /users/login` returning 200 + token for the agent runtime account (a user that exists only in the seeded data, so this proves the DB, not just the process), worker online with heartbeat and DM listener.
+- ⚠️ The sudo steps (`systemctl start`, writing the config and the drop-in override) were run BY DAVID, not by the agent. The agent has no sudo in this environment; the command file defers to him for that step by design.
+
 ### Phase F increment F4 — in-character DMs + memory — DONE
 - Merged to main as 7455648 (branch autopilot/2026-07-19-6, clean fast-forward; api 451 green on main after the merge). Commits 697b507 (AgentMemory), 6d1b65e (chat socket), 37a5e78 (DM reply path), 7455648 (wiring + docs).
 - **`AgentMemory`** (§5): rolling event log + distilled per-relationship facts, both bounded in code via `$push`/`$slice` (atomic append-and-trim; read-modify-write would race two ticks). The load-bearing test records a decline, rotates the event log twice over with unrelated activity, and asserts the fact still reaches the prompt — `memoryForPrompt` filters facts by person BEFORE capping for exactly that reason.
