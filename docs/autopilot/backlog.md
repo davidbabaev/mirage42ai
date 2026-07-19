@@ -49,8 +49,14 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-### Phase F increment F4 — in-character DMs + memory
-- Built on branch `autopilot/2026-07-19-6`, commits `697b507`, `6d1b65e`, `37a5e78` (+ wiring/docs) — awaiting review/merge. **Stacked on the two unmerged F3 fixes** (`03add1b` unref, `9356ae6` output_config) — F4 depends on both.
+(nothing awaiting review)
+
+## Done
+
+(finished items move here, newest on top)
+
+### Phase F increment F4 — in-character DMs + memory — DONE
+- Merged to main as 7455648 (branch autopilot/2026-07-19-6, clean fast-forward; api 451 green on main after the merge). Commits 697b507 (AgentMemory), 6d1b65e (chat socket), 37a5e78 (DM reply path), 7455648 (wiring + docs).
 - **`AgentMemory`** (§5): rolling event log + distilled per-relationship facts, both bounded in code via `$push`/`$slice` (atomic append-and-trim; read-modify-write would race two ticks). The load-bearing test records a decline, rotates the event log twice over with unrelated activity, and asserts the fact still reaches the prompt — `memoryForPrompt` filters facts by person BEFORE capping for exactly that reason.
 - Memory reaches the runtime over `GET/POST /agents/admin/:userId/memory` — no DB access (§3). The write endpoint is **append-only**: a runtime that could rewrite its own history could erase the one fact the feature exists to preserve. Writes against a HUMAN account are refused.
 - **THE ARCHITECTURAL FORK:** there is no HTTP endpoint for sending a plain-text DM — `send-message` over socket.io is the path humans use. Rather than add an agent-only HTTP send route (which would break "agents are users" for the feature where indistinguishability matters most), **the worker got a socket.io client**. It also makes §6's "near-time reply path" possible at all; polling `/chats` on a 15-min heartbeat would make every reply ≥15 min late.
@@ -60,8 +66,8 @@ Mark items [done] when finished so they drop out of the active list.
 - Gates: **0 lint errors · shared 4 · api 451 · web 193 · agents 219**.
 - ⚠️ The socket's own token-refresh path is unit-tested but was NOT exercised live — the socket stayed connected through the expiry, and socket.io only re-authenticates on reconnect. The HTTP session's refresh was exercised for real.
 
-### F3 follow-up — every LLM call 400d on an invented request field
-- Built on branch `autopilot/2026-07-19-5` — awaiting review/merge.
+### F3 follow-up — every LLM call 400d on an invented request field — DONE
+- Merged to main as 9356ae6 (branch autopilot/2026-07-19-5, carried in with the F4 merge). Also carried: b37f875, a security fix — `.gitignore` covered only `.env` and `.env.local`, so `apps/api/.env.atlas.backup` (a live Atlas connection string) was fully committable. Now `.env.*` with `!.env.example`.
 - **Symptom:** every tick logged `llm-call-failed` with `400 invalid_request_error — output_config.format.name: Extra inputs are not permitted`. Maya never acted. Found by David on the first run that reached a real Anthropic call.
 - **Cause:** `decide()` sent `name: 'agent_decision'` inside `output_config.format`. That field does not exist. Verified against the installed SDK's type definition (`@anthropic-ai/sdk` 0.112.3, `messages.d.ts:622`): `JSONOutputFormat` has **exactly** `schema` and `type`. The SDK's own `zodOutputFormat()` emits only `{type, schema}` on the wire.
 - **Before:** `format: { type, name: 'agent_decision', schema }` · **After:** `format: { type, schema }`. That is the whole fix.
@@ -71,8 +77,8 @@ Mark items [done] when finished so they drop out of the active list.
 - ⚠️ **Not verified against a live call** — no API key in this environment, and spending David's is his call. Shape verified against the SDK type definition and the strict fake; the real API's acceptance is confirmed by his re-run.
 - Gates: **0 lint errors · shared 4 · api 436 · web 193 · agents 160**.
 
-### F3 follow-up — the worker exited instead of heartbeating
-- Built on branch `autopilot/2026-07-19-4` — awaiting review/merge.
+### F3 follow-up — the worker exited instead of heartbeating — DONE
+- Merged to main as 03add1b (branch autopilot/2026-07-19-4, carried in with the F4 merge).
 - **Symptom:** worker authenticated, logged `agents: heartbeat started`, then exited immediately. No error; startup lines in the log and zero decision entries. Found by David on the first live dev run.
 - **Cause:** `Scheduler.start()` called `timer.unref()`. Between ticks that timer is the ONLY thing referencing the event loop (a worker has no server socket), so the loop drained the instant `start()` returned and **no tick ever fired**. The comment shipped with it — "Do not hold the process open between ticks purely for the timer" — was the reasoning inverted: right for a short-lived CLI, fatal for a daemon.
 - Proven by isolation before any edit: normal timer → 3 ticks; `unref()` → 0 ticks; SIGINT handler alone → 3 ticks; `unref()` + SIGINT → 0 ticks. **A signal handler does not rescue an unref'd timer**, so the entry point's handlers were never holding it up either.
@@ -81,10 +87,6 @@ Mark items [done] when finished so they drop out of the active list.
 - Also fixed: SIGINT called `process.exit(0)` immediately, which would kill a tick mid-flight and leave a decision in the audit trail with no matching action. Shutdown now drains, with an unref'd 10s failsafe — that unref IS correct, which is what made the original mistake easy to make.
 - Verified on the real worker against a real API: alive at 1.5s and 6.5s, ticks firing, exit 0 on SIGINT. Anthropic pointed at a dead local port, never contacted.
 - Gates: **0 lint errors · shared 4 · api 436 · web 193 · agents 147**.
-
-## Done
-
-(finished items move here, newest on top)
 
 ### Phase F increment F3 — heartbeat + decision loop (one agent, alive in dev) — DONE
 - Merged to main as ec01b57 (branch autopilot/2026-07-19-3, clean fast-forward; api 436 green on main after the merge). Commits 5b5dbdc (text-only posts), 25c10f5 (roster endpoint), a42e8fa (token lifecycle), 649615d (persona prompt), e3b1ad7 (LLM decision), 378487b (budget + audit), 633ede0 (scheduler), f566f29 (decision loop), e729c1f (credential split), 8e188c2 (dev-run docs).

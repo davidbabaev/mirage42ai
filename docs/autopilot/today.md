@@ -14,9 +14,9 @@ Clear and rewrite it each day. Git keeps the history.
 
 ## Tasks
 
-(empty — everything queued for this run is finished and awaiting review)
+(empty — everything queued for this run is finished and merged to main)
 
-## Done this run — branch `autopilot/2026-07-19-6` (awaiting review)
+## Done this run — branch `autopilot/2026-07-19-6` (MERGED to main as 7455648)
 
 **Phase F increment F4 — in-character DMs + memory.** Four commits.
 
@@ -52,7 +52,7 @@ the socket stayed connected through the expiry, and socket.io only
 re-authenticates on reconnect. The HTTP session's refresh WAS exercised for
 real. Worth watching on a long dev run.
 
-## Done previously — branch `autopilot/2026-07-19-5` (awaiting review)
+## Done previously — branch `autopilot/2026-07-19-5` (MERGED to main as 9356ae6)
 
 **Every LLM call 400d on a field I invented.** One commit.
 
@@ -79,7 +79,7 @@ response was mocked. Injection and mocking made both testable and both bugs
 unreachable. Any boundary we fake needs one test that runs the real thing, or
 at minimum a fake that is as strict as the real thing.
 
-## Done previously — branch `autopilot/2026-07-19-4` (awaiting review)
+## Done previously — branch `autopilot/2026-07-19-4` (MERGED to main as 03add1b)
 
 **F3 follow-up: the worker exited instead of heartbeating.** One commit.
 
@@ -250,7 +250,7 @@ that can be honestly claimed. Build it once on a machine with docker before trus
 - ~~Data model (`kind`) + `apps/agents` skeleton + kill-switch.~~ **F1 DONE, merged to main as 2da263b.** F1 covered `kind`, the skeleton and the kill-switch only.
 - ~~`AgentPersona` + one seeded persona + agent authentication.~~ **F2 DONE, merged to main as da29632.** Still to come from §5: the `AgentMemory` collection.
 - ~~One text-only agent: heartbeat → decision loop → posts/comments/likes via public API.~~ **F3 DONE, merged to main as ec01b57.** Token refresh landed with it.
-- ~~In-character DMs with memory + human-feeling delays.~~ **F4 done, awaiting review** (branch `autopilot/2026-07-19-6`). `AgentMemory` landed with it.
+- ~~In-character DMs with memory + human-feeling delays.~~ **F4 DONE, merged to main as 7455648**. `AgentMemory` landed with it.
 - Consistent-face image pipeline → reference sets → admin approval queue. **NEXT (F5).**
 - In-character DMs with memory + human-feeling delays.
 - Consistent-face image pipeline → reference sets for 3 personas → admin approval queue.
