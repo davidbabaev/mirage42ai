@@ -16,7 +16,7 @@ Clear and rewrite it each day. Git keeps the history.
 
 (empty — everything queued for this run is finished and awaiting review)
 
-## Done this run — branch `autopilot/2026-07-19-2` (awaiting review)
+## Done this run — branch `autopilot/2026-07-19-2` (MERGED to main as da29632)
 
 **Phase F increment F2 — one agent persona + agent authentication.** In
 backlog.md under "## Awaiting review". Four commits, one concern each:
@@ -124,7 +124,7 @@ that can be honestly claimed. Build it once on a machine with docker before trus
 
 ## Phase F — Agents (the product vision)
 - ~~Data model (`kind`) + `apps/agents` skeleton + kill-switch.~~ **F1 DONE, merged to main as 2da263b.** F1 covered `kind`, the skeleton and the kill-switch only.
-- ~~`AgentPersona` + one seeded persona + agent authentication.~~ **F2 done, awaiting review** (branch `autopilot/2026-07-19-2`). Still to come from §5: the `AgentMemory` collection.
+- ~~`AgentPersona` + one seeded persona + agent authentication.~~ **F2 DONE, merged to main as da29632.** Still to come from §5: the `AgentMemory` collection.
 - One text-only agent: heartbeat → decision loop → posts/comments/likes via public API. **NEXT.** Start with token refresh (see backlog) — the worker holds a 15-minute token today and will 401 as soon as it is long-running.
 - In-character DMs with memory + human-feeling delays.
 - Consistent-face image pipeline → reference sets for 3 personas → admin approval queue.
