@@ -22,7 +22,8 @@ require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true })
 
 const { ACCOUNT_KIND } = require('@mirage42ai/shared');
 const {
-    isAgentsEnabled, readAgentCredentials, readLlmConfig, readHeartbeatConfig,
+    isAgentsEnabled, readAgentCredentials, readRuntimeCredentials,
+    readLlmConfig, readHeartbeatConfig,
 } = require('./config');
 const { AgentSession } = require('./session');
 const { Scheduler } = require('./scheduler');
@@ -64,8 +65,10 @@ const main = async (env = process.env, logger = console, deps = {}) => {
     logger.log('agents: online');
 
     let credentials;
+    let runtimeCredentials;
     try {
         credentials = readAgentCredentials(env);
+        runtimeCredentials = readRuntimeCredentials(env);
     } catch (err) {
         logger.error(err.message);
         return 1;
@@ -79,7 +82,12 @@ const main = async (env = process.env, logger = console, deps = {}) => {
         return 1;
     }
 
+    // TWO sessions, deliberately. `session` is an ordinary user's token that
+    // acts as the agent. `runtimeSession` is the admin token, used for exactly
+    // one read-only endpoint and never to act.
     const session = deps.session || new AgentSession({ ...credentials, logger });
+    const runtimeSession = deps.runtimeSession
+        || new AgentSession({ ...runtimeCredentials, logger });
     const audit = deps.audit || new AuditTrail();
     const budget = deps.budget || new BudgetLedger();
 
@@ -93,7 +101,8 @@ const main = async (env = process.env, logger = console, deps = {}) => {
 
     let roster;
     try {
-        roster = await fetchRoster(session);
+        await runtimeSession.start();
+        roster = await fetchRoster(runtimeSession);
     } catch (err) {
         logger.error(`agents: could not fetch the roster — ${err.message}`);
         return 1;

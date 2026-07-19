@@ -24,6 +24,8 @@ const ENABLED_ENV = {
     AGENT_API_URL: 'http://api.test:8181',
     AGENT_EMAIL: 'maya.benari@agents.mirage42.ai',
     AGENT_PASSWORD: 'AgentSeed1!',
+    AGENT_RUNTIME_EMAIL: 'runtime@agents.mirage42.ai',
+    AGENT_RUNTIME_PASSWORD: 'RuntimeAdmin1!',
     ANTHROPIC_API_KEY: 'sk-ant-test-not-a-real-key',
 };
 
@@ -139,7 +141,7 @@ describe('worker main() — enabled', () => {
         const scheduler = mkScheduler();
 
         const result = await main(ENABLED_ENV, logger, {
-            session, scheduler, llmClient: {},
+            session, runtimeSession: session, scheduler, llmClient: {},
         });
 
         expect(session.start).toHaveBeenCalled();
@@ -201,8 +203,9 @@ describe('worker main() — enabled', () => {
         const { errs, logger } = capture();
         const scheduler = mkScheduler();
 
+        const empty = mkSession([]);
         const code = await main(ENABLED_ENV, logger, {
-            session: mkSession([]), scheduler, llmClient: {},
+            session: empty, runtimeSession: empty, scheduler, llmClient: {},
         });
 
         expect(code).toBe(1);
@@ -212,21 +215,51 @@ describe('worker main() — enabled', () => {
 
     it('exits 1 when the roster endpoint fails', async () => {
         const { errs, logger } = capture();
-        const session = mkSession();
-        session.request = vi.fn(async () => { throw new Error('403 Admin only'); });
+        const runtimeSession = mkSession();
+        runtimeSession.request = vi.fn(async () => { throw new Error('403 Admin only'); });
 
-        const code = await main(ENABLED_ENV, logger, { session, scheduler: mkScheduler(), llmClient: {} });
+        const code = await main(ENABLED_ENV, logger, {
+            session: mkSession(), runtimeSession, scheduler: mkScheduler(), llmClient: {},
+        });
 
         expect(code).toBe(1);
         expect(errs.join()).toMatch(/could not fetch the roster.*403/);
     });
 
     it('fetches the roster over the API — never from a database', async () => {
-        const session = mkSession();
+        const runtimeSession = mkSession();
         await main(ENABLED_ENV, capture().logger, {
-            session, scheduler: mkScheduler(), llmClient: {},
+            session: mkSession(), runtimeSession, scheduler: mkScheduler(), llmClient: {},
         });
-        expect(session.request).toHaveBeenCalledWith('/agents/admin');
+        expect(runtimeSession.request).toHaveBeenCalledWith('/agents/admin');
+    });
+
+    it('uses the ADMIN session for the roster and the AGENT session to act', async () => {
+        // The agent's own token must stay an ordinary user's token. Making the
+        // persona an admin so it could read its own roster would hand a
+        // persona account the authority to ban users and promote admins.
+        const session = mkSession();
+        const runtimeSession = mkSession();
+
+        await main(ENABLED_ENV, capture().logger, {
+            session, runtimeSession, scheduler: mkScheduler(), llmClient: {},
+        });
+
+        expect(runtimeSession.request).toHaveBeenCalledWith('/agents/admin');
+        expect(session.request).not.toHaveBeenCalledWith('/agents/admin');
+    });
+
+    it('requires the runtime credential and says what it is for', async () => {
+        const { errs, logger } = capture();
+        const noRuntime = { ...ENABLED_ENV };
+        delete noRuntime.AGENT_RUNTIME_EMAIL;
+        delete noRuntime.AGENT_RUNTIME_PASSWORD;
+
+        const code = await main(noRuntime, logger, { scheduler: mkScheduler() });
+
+        expect(code).toBe(1);
+        expect(errs.join()).toMatch(/AGENT_RUNTIME_EMAIL/);
+        expect(errs.join()).toMatch(/do not reuse the agent account/);
     });
 });
 

@@ -53,6 +53,36 @@ const readAgentCredentials = (env = {}) => {
 };
 
 /**
+ * The RUNTIME credential — a separate, admin-scoped account used ONLY to read
+ * the roster from GET /agents/admin.
+ *
+ * Deliberately not the agent's own login. Making Maya an admin so she could
+ * read her own roster would hand a persona account the authority to ban users
+ * and promote admins, purely so it could answer "who am I?". The agent's token
+ * stays an ordinary user's token; the admin token is used for exactly one
+ * read-only endpoint and never to act.
+ */
+const readRuntimeCredentials = (env = {}) => {
+    const missing = ['AGENT_RUNTIME_EMAIL', 'AGENT_RUNTIME_PASSWORD'].filter(
+        (key) => typeof env[key] !== 'string' || env[key].trim() === ''
+    );
+
+    if (missing.length) {
+        throw new Error(
+            `agents: missing required runtime env var(s): ${missing.join(', ')}. ` +
+            'These are an ADMIN account used only to read GET /agents/admin — ' +
+            'do not reuse the agent account for this.'
+        );
+    }
+
+    return {
+        baseUrl: (env.AGENT_API_URL || '').trim() || DEFAULT_API_URL,
+        email: env.AGENT_RUNTIME_EMAIL.trim(),
+        password: env.AGENT_RUNTIME_PASSWORD,
+    };
+};
+
+/**
  * LLM configuration. The API key is REQUIRED once agents are enabled — but a
  * missing key is a clean exit, not a crash (F3 scope): a worker that cannot
  * think should say so and stop, the same way a missing credential does.
@@ -76,6 +106,7 @@ const readHeartbeatConfig = (env = {}) => {
 };
 
 module.exports = {
-    isAgentsEnabled, readAgentCredentials, readLlmConfig, readHeartbeatConfig,
+    isAgentsEnabled, readAgentCredentials, readRuntimeCredentials,
+    readLlmConfig, readHeartbeatConfig,
     TRUTHY, DEFAULT_API_URL,
 };
