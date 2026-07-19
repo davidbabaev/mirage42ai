@@ -16,7 +16,38 @@ Clear and rewrite it each day. Git keeps the history.
 
 (empty — everything queued for this run is finished and awaiting review)
 
-## Done this run — branch `autopilot/2026-07-19` (MERGED to main as 2da263b)
+## Done this run — branch `autopilot/2026-07-19-2` (awaiting review)
+
+**Phase F increment F2 — one agent persona + agent authentication.** In
+backlog.md under "## Awaiting review". Four commits, one concern each:
+
+1. **`b379483`** — the `AgentPersona` model. Three of its validations are
+   safety rails, not formatting: **age min 18**, active hours that may wrap
+   midnight, and budget caps that cannot go negative.
+2. **`6fbf0c0`** — agent #1 seeded: **Maya Ben-Ari**, married on purpose (the
+   plan's headline test case is her declining an advance). Her account is an
+   ordinary user; `kind:'agent'` is the only difference, and the suite proves
+   another human cannot tell.
+3. **`6121612`** — silence a mongoose 9 deprecation in the seed.
+4. **`f284cb1`** — the worker authenticates over `POST /users/login`, the same
+   route a human uses, and stops there.
+
+Gates: **0 lint errors · shared 4 · api 422 · web 193 · agents 34**.
+
+### Verified end-to-end, not just with mocks
+Every unit test injects a fake fetch, which proves wiring but not that the agent
+can actually log in. So the REAL worker process was run against the REAL API
+(in-memory mongo, never Atlas): `POST /users/login 200` → `agent maya ben-ari
+authenticated`. Disabled made **no HTTP request at all**. A wrong password gave
+a real 401, exit 1, and no password anywhere in the output.
+
+### The one to fix with F3, not after
+The worker logs in once and holds a **15-minute** access token, discarding the
+refresh cookie entirely. The moment F3 makes it long-running it will start
+401ing after fifteen minutes. This is the same shape as TASK B — the DM socket
+that never learned about a refreshed token — and that one was silent for weeks.
+
+## Done previously — branch `autopilot/2026-07-19` (MERGED to main as 2da263b)
 
 **Phase F increment F1 — agent data model + runtime skeleton.** In backlog.md
 under "## Done". Four commits, one concern each:
@@ -92,8 +123,9 @@ that can be honestly claimed. Build it once on a machine with docker before trus
    /dashboard, and the missing `.gitattributes`).
 
 ## Phase F — Agents (the product vision)
-- ~~Data model (`kind`) + `apps/agents` skeleton + kill-switch.~~ **F1 DONE, merged to main as 2da263b.** Still to come in this bullet: the `AgentPersona` and `AgentMemory` collections — F1 covered `kind`, the skeleton and the kill-switch only.
-- One text-only agent: heartbeat → decision loop → posts/comments/likes via public API.
+- ~~Data model (`kind`) + `apps/agents` skeleton + kill-switch.~~ **F1 DONE, merged to main as 2da263b.** F1 covered `kind`, the skeleton and the kill-switch only.
+- ~~`AgentPersona` + one seeded persona + agent authentication.~~ **F2 done, awaiting review** (branch `autopilot/2026-07-19-2`). Still to come from §5: the `AgentMemory` collection.
+- One text-only agent: heartbeat → decision loop → posts/comments/likes via public API. **NEXT.** Start with token refresh (see backlog) — the worker holds a 15-minute token today and will 401 as soon as it is long-running.
 - In-character DMs with memory + human-feeling delays.
 - Consistent-face image pipeline → reference sets for 3 personas → admin approval queue.
 - 3-agent pilot on staging.

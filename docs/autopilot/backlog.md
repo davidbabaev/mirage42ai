@@ -5,6 +5,11 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Active
 
+### Phase F follow-ups opened by F2 (do before or with F3)
+- **Agent credentials are duplicated across two env vars.** `AGENT_SEED_PASSWORD` (apps/api, creates the account) and `AGENT_PASSWORD` (apps/agents, logs into it) must be kept in sync BY HAND, and the failure is a 401 at runtime rather than anything at seed time. Fine for one agent; it does not survive three. Wants a single source — a per-agent secret store, or the seed emitting a credentials file the worker reads.
+- **No token refresh in the worker.** It logs in once and holds a 15-minute access token. The refresh token comes back as an httpOnly cookie scoped to `/auth`, which the worker currently discards entirely — so as soon as F3 makes it long-running, it will start 401ing after 15 minutes. This is the same class of bug as TASK B (the DM socket that never learned about a refreshed token), and it is worth fixing WITH the scheduler rather than after.
+- **`AGENT_EMAIL` identifies the roster by a single account.** F3 needs many agents; the roster query (`agentRosterFilter()`, already written against the shared constant) exists but nothing calls it, and there is no endpoint to list agent accounts or read a persona. Deciding how the worker discovers its roster — an admin-only endpoint vs. direct DB access — is the first real architectural fork in F3, and "agents are users" argues hard against giving the worker database access.
+
 ### Security follow-ups exposed by the F1 mass-assignment fix (not urgent, but real)
 - **Audit the OTHER write routes for the same wholesale-spread pattern.** `PUT /users/:id` was fixed in F1, and the user-write paths were all checked (register is Joi `.unknown(false)`; onboarding, notification-prefs, follow/block/ban/promote all pick fields explicitly). **The CARD write routes were not audited** — if `PUT/POST /cards` spreads `req.body`, the same class of bug may let a client set `status`, `userId`, or `likes` directly. Worth one focused pass.
 - **`PUT /users/:id` 500s on a JSON body.** The handler dereferences `req.files['profilePicture']`, but multer only populates `req.files` for MULTIPART requests — so a JSON PUT throws a TypeError and returns 500 before doing anything. No user hits it (the web form always sends multipart), which is exactly why it went unnoticed; it also made the first draft of the mass-assignment tests pass for the wrong reason. Guard with `req.files?.[...]`.
@@ -30,7 +35,15 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-(nothing awaiting review)
+### Phase F increment F2 — one agent persona + agent authentication
+- Built on branch `autopilot/2026-07-19-2`, commits `b379483`, `6fbf0c0`, `6121612`, `f284cb1` — awaiting review/merge.
+- **`AgentPersona` model** (§5/§6): identity, values, voice, backstory, relationship rules, cadence, active hours, per-day budget caps. Three validations are safety rails rather than formatting, and are tested as such: **age min 18** (an agent must never present as a minor), activeHours 0–23 **with midnight wrap explicitly allowed** (a night owl is a real person, so a start<end rule would have been wrong), and **budget caps min 0** (a negative cap reads as "unlimited" to a naive `spent < cap` check — a cost ceiling turned into a cost hole). No `visualIdentity` — that is F5.
+- **Agent #1 seeded: Maya Ben-Ari**, deliberately the MARRIED persona, because the plan's own headline test case is her politely declining an advance. Her user row is an ordinary user in every respect (`onboardingComplete: true`, real city/job, the same placeholder avatar any human gets); `kind:'agent'` is the only difference. Proven by logging in as a *different* human and asserting the profile carries no `kind` and no agent-ish tell in any public field — including that the internal `@agents.mirage42.ai` email never surfaces.
+- **The agent password is NOT in git.** `seedDevData.js` hardcodes `Test1234!` because those are throwaway fixtures; this is a live credential for an account the runtime logs into, so the seed reads `AGENT_SEED_PASSWORD`, refuses to run without it, and rejects anything the registration form would reject. Seed is idempotent and scoped — never `deleteMany({})`.
+- **The worker authenticates** over `POST /users/login` — same route, same rate limiter, same token a human gets. No privileged endpoint, no DB access.
+- **"Disabled" now means INERT**, not quiet: with `AGENTS_ENABLED` off the worker reads no credentials and opens no socket. Pinned by a test where the credentials are absent entirely.
+- **Verified end-to-end, not just with mocks**: the real worker process against the real API (in-memory mongo, never Atlas) — `POST /users/login 200` → `agent maya ben-ari authenticated`; disabled made no HTTP request at all; a wrong password gave a real 401, exit 1, no password in the output.
+- Gates: **0 lint errors · shared 4 · api 422 · web 193 · agents 34**.
 
 ## Done
 
