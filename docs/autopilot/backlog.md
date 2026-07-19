@@ -7,10 +7,10 @@ Mark items [done] when finished so they drop out of the active list.
 
 ### Phase F follow-ups opened by F4
 - **The worker drives ONE agent's DMs.** It opens a single socket as the account it logged in as, and `main()` picks that agent out of the roster. Multiple agents need one socket per agent, which needs one credential per agent — the same credential-duplication problem filed in F2, now genuinely blocking the 3-agent pilot (§4).
-- ~~**No unread sweep on startup.**~~ DONE on `fix/dm-burst-batching` (awaiting review) — `dm/unreadSweep.js` walks `GET /chats` on boot, queues ONE catch-up trigger per conversation with `unreadCount > 0`, and is bounded at 10 pages so it cannot walk an unbounded list.
-- ~~**Conversations are never marked read.**~~ DONE on `fix/dm-burst-batching` (awaiting review) — `replyToDm` now calls `markRead` after a successful send. This was NOT cosmetic: `unreadCount` derives from `lastReadAt`, so without it the new startup sweep would re-reply to every conversation on every restart.
+- ~~**No unread sweep on startup.**~~ DONE, merged to main as 1ef6ab0 — `dm/unreadSweep.js` walks `GET /chats` on boot, queues ONE catch-up trigger per conversation with `unreadCount > 0`, and is bounded at 10 pages so it cannot walk an unbounded list.
+- ~~**Conversations are never marked read.**~~ DONE, merged to main as 1ef6ab0 — `replyToDm` now calls `markRead` after a successful send. This was NOT cosmetic: `unreadCount` derives from `lastReadAt`, so without it the new startup sweep would re-reply to every conversation on every restart.
 - **Memory is never distilled or pruned by meaning.** Facts accumulate to a hard cap of 200 and then drop the oldest — including, eventually, "I'm married and I said no". §5 calls these "distilled" facts; there is no distillation step, only truncation. A periodic consolidation pass (one cheap call: "merge these into fewer, better facts") is the natural fix.
-- ~~**No per-conversation reply rate limit.**~~ DONE on `fix/dm-burst-batching` (awaiting review) — `dm/dmQueue.js` coalesces a burst behind a quiet window AND serialises per conversation, so 20 messages in a minute produce one reply, not 20. Confirmed live before the fix: three DMs drew three separate replies, one answering a message two messages stale.
+- ~~**No per-conversation reply rate limit.**~~ DONE, merged to main as 1ef6ab0 — `dm/dmQueue.js` coalesces a burst behind a quiet window AND serialises per conversation, so 20 messages in a minute produce one reply, not 20. Confirmed live before the fix: three DMs drew three separate replies, one answering a message two messages stale.
 
 ### Phase F follow-ups opened by F3
 - **The runtime holds an ADMIN credential.** `GET /agents/admin` is admin-guarded, so the worker's runtime account can also ban users and promote admins — far more authority than "read one list" needs. The agent's own token is correctly an ordinary user's, so the blast radius is limited to the runtime account, but a dedicated non-admin `runtime` capability (or a signed service token scoped to one endpoint) is the right shape. This is a permission-model decision, not an implementation detail, which is why it was filed rather than invented.
@@ -49,20 +49,34 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-### One burst of DMs = ONE reply, + the startup unread sweep — branch `fix/dm-burst-batching`
-- Closes three F4 follow-ups at once: the per-conversation reply debounce, the startup unread sweep, and "conversations are never marked read" (which the sweep depends on for idempotency).
-- **The reported bug, seen live:** David sent several DMs in a burst and Maya answered them SEPARATELY — the decline, then "hey all good what's up" answering a message two messages stale. A person reads the whole unread thread and answers once.
-- **Not a prompt problem.** `replyToDm` already fetched the whole thread, so the model always saw every message; the defect was that `replyToDm` RAN three times concurrently. The fix is a queue in front of it, not a prompt change.
-- `dm/dmQueue.js` does two things, because the burst is only half the problem: a **quiet window** (each arrival re-arms a short timer, persona-tunable via `dmQuietWindowMs`, default 4s) and a **per-conversation lock**. The lock matters because a reply sits through a 30s-15min delay — a message landing mid-delay would otherwise start a second concurrent reply and reproduce the bug invisibly, as two overlapping runs. Conversations are independent, so a slow reply to one never blocks another.
-- `dm/unreadSweep.js` runs on boot, queues one catch-up trigger per unread conversation, is bounded at 10 pages, and logs loudly rather than silently truncating if it stops early. A failed sweep never blocks startup.
-- **The baseline run is the half that matters:** a temporary test wired the OLD path (one `replyToDm` per message) and produced exactly 3 decisions and 3 sends — the reported bug reproduced. The new wiring produces 1. A check that passes both before and after would have proved nothing.
-- Gates: **0 lint errors · agents 239** (was 222), full suite green.
-- ⚠️ **Verified in tests only, NOT yet against a live burst.** The previous DM fix was proved end-to-end before merge; this one has not been, because a real burst needs David sending messages. Do that before merging.
-- ⚠️ Still open and unrelated: the heartbeat consumes the whole daily LLM budget (40 calls in ~46 min), after which DMs are skipped at the budget check before any of this runs.
+(nothing awaiting review)
 
 ## Done
 
 (finished items move here, newest on top)
+
+### One burst of DMs = ONE reply, + the startup unread sweep — DONE
+- Merged to main as 1ef6ab0 and 640273d (branch fix/dm-burst-batching, clean fast-forward; api 451 green on main after the merge, agents 243).
+- Closes three F4 follow-ups at once: the per-conversation reply debounce, the startup unread sweep, and "conversations are never marked read" (which the sweep depends on for idempotency).
+- **The reported bug, seen live:** David sent several DMs and Maya answered them SEPARATELY, each opening "hey, what's up?" as though the conversation had just started.
+- **The DB timeline is what identified the cause.** The three inbound messages arrived across 61 seconds (19:47:21, 19:47:28, 19:48:22) and all three reply runs fetched the thread BEFORE any reply had been sent (first send 19:50:35). Each read a thread containing nothing from Maya and greeted accordingly. The replies landing minutes apart was the 30s-15min delay, not minutes-apart input — worth remembering, because it made the symptom look like missing context when it was concurrency.
+- **Not a prompt problem.** `replyPrompt` already rendered the thread with her own messages labelled "You:" plus relationship facts. The context was never missing; three copies of her read the same context simultaneously.
+- `dm/dmQueue.js` does two things: a **quiet window** (each arrival re-arms a short timer, persona-tunable via `dmQuietWindowMs`, default 4s) and a **per-conversation lock**. The lock is the half that fixes the stale-greeting symptom — the follow-up batch re-fetches the thread AFTER the earlier reply landed. Conversations are independent, so a slow reply to one never blocks another.
+- `dm/unreadSweep.js` runs on boot, queues one catch-up trigger per unread conversation, is bounded at 10 pages, and logs loudly rather than letting a truncated scan look complete. A failed sweep never blocks startup.
+- **`markRead` is now called after a successful send, and it is load-bearing:** `unreadCount` derives from `lastReadAt`, so without it the new sweep would re-reply to every conversation on every restart.
+- **The baseline run is the half that matters:** a temporary test wired the OLD path (one `replyToDm` per message) and produced exactly 3 decisions and 3 sends — the reported bug reproduced. The new wiring produces 1.
+- ⚠️ **The "5 minutes apart" tests are regression GUARDS, not reproductions** — at that spacing there is no concurrency, so they pass against the unfixed code too. Do not read them as proof that case was ever broken.
+- Gates: **0 lint errors · shared 4 · api 451 · web 193 · agents 243**.
+- ⚠️ **Merged verified in TESTS ONLY, never against a live burst.** Unlike the 403 fix below, this was not proved end-to-end in the real app before merging — David chose to merge on the test evidence. The first live burst is still the real check.
+
+### DM replies 403'd — memory used the agent token, not the runtime one — DONE
+- Merged to main as 283add9 (branch fix/dm-memory-runtime-session, clean fast-forward; api 451 green on main after the merge).
+- Every inbound DM died at `GET /agents/admin/<id>/memory failed with 403 — Admin only`. The DM path had **never worked against a real API**.
+- `index.js` documents two sessions on purpose — the agent's ordinary user token and the admin runtime token — but only the agent's was passed into `replyToDm`, and all three memory calls hit the ADMIN-guarded runtime endpoint. An unconditional 403.
+- The reply aborted at the context-gather step, BEFORE the LLM call, so no tokens were spent. The only symptom was a `dm-context-failed` skip line and a human waiting for an answer that was never coming.
+- **Why the suite missed it:** `replyToDm.test.js` injects a mocked `api` and passed `session: {}`, so no test ever looked at WHICH session reached the memory calls. Same shape as the `output_config.format.name` bug — a mock that accepts anything cannot reject a malformed request.
+- Verified against the live API (agent token → 403, runtime token → 200) **and end-to-end in the real app**: David sent an advance, Maya declined in character ("hey, that's kind but i'm married — not my scene"), and the decline persisted as a durable fact keyed to him. The master-plan's headline case, working for real.
+- Gates: **0 lint errors · shared 4 · api 451 · web 193 · agents 222**.
 
 ### `/start-agents` — point the local stack at the systemd mongod — DONE
 - Merged to main as ea8605f (branch chore/start-agents-command, clean fast-forward; api 451 green on main after the merge). Commits f82f483 (the command), ea8605f (systemd + two fixes).
