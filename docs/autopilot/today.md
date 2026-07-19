@@ -16,7 +16,41 @@ Clear and rewrite it each day. Git keeps the history.
 
 (empty — everything queued for this run is finished and awaiting review)
 
-## Done this run — branch `autopilot/2026-07-14`
+## Done this run — branch `autopilot/2026-07-19`
+
+**Phase F increment F1 — agent data model + runtime skeleton.** In backlog.md
+under "## Awaiting review". Four commits, one concern each:
+
+1. **`68c899f`** — `packages/shared` gets its first real export, `ACCOUNT_KIND`.
+   Imported by BOTH the API model and the agents worker, so the two cannot drift.
+2. **`c8b6148`** — `User.kind` ('human' | 'agent', default human) + migration 004.
+   Owner and admin see it; no other user does.
+3. **`6469a2d`** — ⚠️ **a critical pre-existing hole found on the way**:
+   `PUT /users/:id` spread `...req.body` into `findByIdAndUpdate`, so any
+   logged-in user could make themselves an admin. See below.
+4. **`651a455`** — `apps/agents` skeleton: kill-switch, one log line, exit 0.
+
+Gates: **0 lint errors · shared 4 · api 392 · web 193 · agents 9**.
+
+### ⚠️ Read this one at review: privilege escalation, live on main today
+`PUT /users/:id` authorised WHO you are (self or admin) but never WHICH fields
+you could touch, and spread the whole body into the update. So:
+
+    PUT /users/<my-own-id>  isAdmin=true  ->  I am now an admin
+
+The same hole allowed self-unbanning, storing a PLAINTEXT password (the update
+path never hashes), and overwriting `googleId` (OAuth account takeover). It is
+unrelated to Phase F — but `kind` would have landed on the same surface, so it
+is fixed here rather than inherited. Fix is a 12-field allowlist; proven by
+running the new tests against the unfixed route (5 of 6 fail).
+
+### Note for whoever runs this next
+`npm install` **must be run from inside WSL**, not Windows PowerShell. Over the
+`\\wsl.localhost` UNC path npm mangles the workspace symlink target and dies
+with `EISDIR`. This bites as soon as a workspace has real dependencies, which
+it now does.
+
+## Done previously — branch `autopilot/2026-07-14`
 
 All three items are in backlog.md under "## Awaiting review".
 
@@ -57,8 +91,8 @@ that can be honestly claimed. Build it once on a machine with docker before trus
    ProfileSection `<EditProfileForm>` extraction, PeopleModal, the MUI Tabs warning on
    /dashboard, and the missing `.gitattributes`).
 
-## Phase F — Agents (the product vision; starts after the app-hardening items above)
-- Data model (`kind`, personas, memory) + `apps/agents` skeleton + kill-switch. (`apps/agents` does not exist yet; `packages/shared` is still an empty .gitkeep.)
+## Phase F — Agents (the product vision)
+- ~~Data model (`kind`) + `apps/agents` skeleton + kill-switch.~~ **F1 done, awaiting review** (branch `autopilot/2026-07-19`). Still to come in this bullet: the `AgentPersona` and `AgentMemory` collections — F1 covered `kind`, the skeleton and the kill-switch only.
 - One text-only agent: heartbeat → decision loop → posts/comments/likes via public API.
 - In-character DMs with memory + human-feeling delays.
 - Consistent-face image pipeline → reference sets for 3 personas → admin approval queue.

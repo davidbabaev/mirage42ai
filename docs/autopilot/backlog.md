@@ -5,6 +5,11 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Active
 
+### Security follow-ups exposed by the F1 mass-assignment fix (not urgent, but real)
+- **Audit the OTHER write routes for the same wholesale-spread pattern.** `PUT /users/:id` was fixed in F1, and the user-write paths were all checked (register is Joi `.unknown(false)`; onboarding, notification-prefs, follow/block/ban/promote all pick fields explicitly). **The CARD write routes were not audited** — if `PUT/POST /cards` spreads `req.body`, the same class of bug may let a client set `status`, `userId`, or `likes` directly. Worth one focused pass.
+- **`PUT /users/:id` 500s on a JSON body.** The handler dereferences `req.files['profilePicture']`, but multer only populates `req.files` for MULTIPART requests — so a JSON PUT throws a TypeError and returns 500 before doing anything. No user hits it (the web form always sends multipart), which is exactly why it went unnoticed; it also made the first draft of the mass-assignment tests pass for the wrong reason. Guard with `req.files?.[...]`.
+- **`email` is still client-editable via `PUT /users/:id`.** It is in the new allowlist because removing it would have changed existing behaviour inside a security fix, and email is the login identifier — changing it should arguably need its own verified flow rather than riding along with the profile form.
+
 ### Follow-ups deliberately deferred during Phase D #16 (small, not urgent)
 - **`ProfileSection.jsx` — extract an `<EditProfileForm key={editMode}>` child.** Two of the 15 lint disables live here: one effect re-seeds ~11 edit fields whenever Edit is clicked, and another calls the PARENT's `onEditMode()` (which cannot move to render — React throws "Cannot update a component while rendering a different component"). The clean fix is extracting the edit form into a keyed child so it remounts with fresh values. Real refactor, ~half a day; behavior is correct today.
 - **`PeopleModal.jsx` — key-based remount instead of the open-time snapshot effect.** It snapshots the `users` prop when opened so in-flight follow actions don't recompute the list under the user. A `key` would work but the timing is delicate; left as a justified disable.
@@ -25,7 +30,14 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-(nothing awaiting review)
+### Phase F increment F1 — agent data model + runtime skeleton
+- Built on branch `autopilot/2026-07-19`, commits `68c899f`, `c8b6148`, `6469a2d`, `651a455` — awaiting review/merge.
+- `User.kind: 'human' | 'agent'` (default human), enum sourced from the new shared package. Owner + admin see it; **no other user does** — the projection layer is an allowlist so it is excluded by construction, and the public helper now says so in writing. Also in the admin aggregate (moderation needs to tell agents apart) and indexed (`{kind:1}`) because the runtime selects its roster by kind on every heartbeat.
+- Migration `004-user-kind-default-human.js` backfills existing users. Mongoose defaults only apply to documents it CREATES, so without it `find({kind:'human'})` silently misses every pre-existing user — a wrong-roster bug, not a crash.
+- `packages/shared` stopped being a `.gitkeep`: `ACCOUNT_KIND` is imported by BOTH the API model and the agents worker, which is the whole point — a drift between them would show up as an empty roster and silence.
+- `apps/agents` scaffolded: reads `AGENTS_ENABLED` (default **false**; only `1/true/yes/on` enable), logs `agents: online` / `agents: disabled`, exits 0. Nothing else — no scheduler, no LLM, no image pipeline.
+- **Found and fixed a critical pre-existing vulnerability on the way** (`6469a2d`): `PUT /users/:id` spread `...req.body` straight into `findByIdAndUpdate`. The auth guard checked WHO you are, never WHICH fields you may touch — so any logged-in user could `PUT {isAdmin:true}` on their own id and become an admin. Same hole allowed self-unbanning, a PLAINTEXT password (updateUser never hashes), and overwriting `googleId` (OAuth takeover). Fixed with an explicit 12-field allowlist. Proven against the unfixed route: 5 of 6 tests fail.
+- Gates: **0 lint errors · shared 4 · api 392 · web 193 · agents 9**.
 
 ## Done
 
