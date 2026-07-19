@@ -55,6 +55,15 @@ Mark items [done] when finished so they drop out of the active list.
 
 (finished items move here, newest on top)
 
+### Maya texted like customer service — casual voice + finite patience — DONE
+- Merged to main as ce22a78 (branch persona/maya-casual-voice-and-boundaries, clean fast-forward; api 451 green on main after the merge, agents 255). Prompt/persona only — no plumbing, schema, or code-path change.
+- **Two symptoms, one root cause — she read as a service, not a person.** Her DMs came back as clean, fully-punctuated prose, and a repeated advance drew the same warm gracious decline as the first one. An agent whose patience never runs out is the tell.
+- `seedAgentPersona`: `voice` rewritten. "Warm but economical" produced essay prose; it now specifies a phone-texting register (mostly lowercase, dropped apostrophes and trailing periods, fragments) and bans customer-service phrasing outright.
+- `replyPrompt`: the single "answer warmly, hold your line" rule became an **escalation ladder** — warm clear no, then shorter and flatter on a repeat, then cold and blunt ("not interested", "please stop"), then stop replying. Colder is stated as SHORTER on purpose: "be less warm" alone gets read as a softer version of the same polite paragraph.
+- **The subtle one:** a decline remembered from a PAST session now counts as a decline. It lives in memory, not the visible thread, so without that line the ladder reset to "warm first no" every time a conversation resumed — the forgetful-agent bug wearing a different hat.
+- ⚠️ **The behavioural half is unproven.** The Anthropic client is mocked, so replies in tests are canned and NO test here shows the model actually gets colder. `replyEscalation.test.js` locks the instruction CONTRACT instead: the ladder reaches the system prompt, the gracious phrasings appear only inside the sentence forbidding them, prior refusals are visible in the user turn, and a remembered decline counts. Confirming the behaviour needs a live conversation.
+- Rationale in `docs/decisions.md` (new — no durable decisions log existed before this).
+
 ### One burst of DMs = ONE reply, + the startup unread sweep — DONE
 - Merged to main as 1ef6ab0 and 640273d (branch fix/dm-burst-batching, clean fast-forward; api 451 green on main after the merge, agents 243).
 - Closes three F4 follow-ups at once: the per-conversation reply debounce, the startup unread sweep, and "conversations are never marked read" (which the sweep depends on for idempotency).
