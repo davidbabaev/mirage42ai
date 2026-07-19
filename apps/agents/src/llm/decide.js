@@ -82,10 +82,17 @@ const decide = async ({
         model,
         max_tokens: maxTokens,
         system: systemPrompt,
+        // Structured outputs. The wire shape is EXACTLY { type, schema } —
+        // see JSONOutputFormat in @anthropic-ai/sdk messages.d.ts. It has no
+        // `name` field; sending one is rejected with
+        //   400 invalid_request_error: output_config.format.name:
+        //   Extra inputs are not permitted
+        // which is what shipped, because every test mocked the response and a
+        // mocked response cannot reject a malformed request. See
+        // tests/decideRequestContract.test.js.
         output_config: {
             format: {
                 type: 'json_schema',
-                name: 'agent_decision',
                 schema: DECISION_JSON_SCHEMA,
             },
         },

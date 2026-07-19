@@ -42,6 +42,17 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
+### F3 follow-up — every LLM call 400d on an invented request field
+- Built on branch `autopilot/2026-07-19-5` — awaiting review/merge.
+- **Symptom:** every tick logged `llm-call-failed` with `400 invalid_request_error — output_config.format.name: Extra inputs are not permitted`. Maya never acted. Found by David on the first run that reached a real Anthropic call.
+- **Cause:** `decide()` sent `name: 'agent_decision'` inside `output_config.format`. That field does not exist. Verified against the installed SDK's type definition (`@anthropic-ai/sdk` 0.112.3, `messages.d.ts:622`): `JSONOutputFormat` has **exactly** `schema` and `type`. The SDK's own `zodOutputFormat()` emits only `{type, schema}` on the wire.
+- **Before:** `format: { type, name: 'agent_decision', schema }` · **After:** `format: { type, schema }`. That is the whole fix.
+- The decision schema itself was already inside the supported subset (no length/numeric constraints, no `$ref`, `additionalProperties:false` throughout), so there is no second 400 behind this one — now asserted by a test that walks the whole schema tree.
+- **Why the suite missed it:** every test mocked the RESPONSE with a permissive fake that accepted any request. A mock that always says yes cannot reject a malformed request. Mocking the response proves what we do with an answer; it proves nothing about whether the question was legal — and the request shape was the one part of this integration never exercised.
+- `tests/decideRequestContract.test.js` makes the fake **strict**: it validates the outgoing body the way the real API does and throws the same 400 on an unknown field. The allowed key set is **derived from the SDK's `zodOutputFormat()`** rather than hardcoded, so it tracks the SDK rather than my belief. 9 of 13 fail against the reverted line, with the identical production error string.
+- ⚠️ **Not verified against a live call** — no API key in this environment, and spending David's is his call. Shape verified against the SDK type definition and the strict fake; the real API's acceptance is confirmed by his re-run.
+- Gates: **0 lint errors · shared 4 · api 436 · web 193 · agents 160**.
+
 ### F3 follow-up — the worker exited instead of heartbeating
 - Built on branch `autopilot/2026-07-19-4` — awaiting review/merge.
 - **Symptom:** worker authenticated, logged `agents: heartbeat started`, then exited immediately. No error; startup lines in the log and zero decision entries. Found by David on the first live dev run.

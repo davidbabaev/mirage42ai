@@ -16,7 +16,34 @@ Clear and rewrite it each day. Git keeps the history.
 
 (empty — everything queued for this run is finished and awaiting review)
 
-## Done this run — branch `autopilot/2026-07-19-4` (awaiting review)
+## Done this run — branch `autopilot/2026-07-19-5` (awaiting review)
+
+**Every LLM call 400d on a field I invented.** One commit.
+
+`decide()` sent `name: 'agent_decision'` inside `output_config.format`. That
+field does not exist — `JSONOutputFormat` in the installed SDK has exactly
+`schema` and `type`. Maya never acted; every tick logged `llm-call-failed`.
+
+    BEFORE  format: { type, name: 'agent_decision', schema }
+    AFTER   format: { type, schema }
+
+**Why the suite missed it:** every test mocked the RESPONSE with a permissive
+fake that accepted any request. A mock that always says yes cannot reject a
+malformed request. The new contract test makes the fake STRICT — it rejects
+unknown fields exactly as the API does, using a key set derived from the SDK's
+own `zodOutputFormat()` rather than hardcoded.
+
+Gates: **0 lint errors · shared 4 · api 436 · web 193 · agents 160**.
+
+### The pattern across both live-run bugs
+Two runs, two bugs, same root shape: **the seam between our code and a real
+runtime was the only thing never exercised.** First `unref()` — invisible
+because timers were injected. Now the request body — invisible because the
+response was mocked. Injection and mocking made both testable and both bugs
+unreachable. Any boundary we fake needs one test that runs the real thing, or
+at minimum a fake that is as strict as the real thing.
+
+## Done previously — branch `autopilot/2026-07-19-4` (awaiting review)
 
 **F3 follow-up: the worker exited instead of heartbeating.** One commit.
 
