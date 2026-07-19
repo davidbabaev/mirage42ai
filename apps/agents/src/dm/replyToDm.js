@@ -55,7 +55,8 @@ const replyDelayMs = ({ replyLength = 0, random = Math.random, persona } = {}) =
 const replyToDm = async ({
     message,          // the inbound Message doc from `receive-message`
     agent,            // { user, persona } from the roster
-    session,          // AgentSession — memory + thread reads
+    session,          // AgentSession — the agent's OWN token: thread reads, sends
+    runtimeSession,   // AgentSession — the ADMIN token: memory reads/writes only
     chatSocket,       // AgentChatSocket — the send
     llmClient,
     budget,
@@ -106,7 +107,10 @@ const replyToDm = async ({
         });
         thread = gathered.messages || [];
         counterpartName = gathered.counterpartName || 'they';
-        memory = await api.loadMemory(session, agentId, counterpartId);
+        // Memory lives behind the ADMIN-guarded runtime endpoint, so it takes
+        // the runtime session. The agent's own token gets a 403 here — which
+        // killed every reply until this was fixed.
+        memory = await api.loadMemory(runtimeSession, agentId, counterpartId);
     } catch (err) {
         return skip('dm-context-failed', err.message);
     }
@@ -145,7 +149,7 @@ const replyToDm = async ({
     // shape the next conversation.
     if (parsed.reply.fact) {
         try {
-            await api.writeMemory(session, agentId, {
+            await api.writeMemory(runtimeSession, agentId, {
                 events: [{
                     type: 'dm_received', withUserId: counterpartId,
                     summary: `${counterpartName}: ${String(message.text || '').slice(0, 200)}`,
@@ -187,7 +191,7 @@ const replyToDm = async ({
     audit.action({ agentId, agentName, action: 'dm_reply', target: counterpartId, ok: true });
 
     try {
-        await api.writeMemory(session, agentId, {
+        await api.writeMemory(runtimeSession, agentId, {
             events: [{
                 type: 'dm_sent', withUserId: counterpartId,
                 summary: `I replied to ${counterpartName}: ${text.slice(0, 200)}`,

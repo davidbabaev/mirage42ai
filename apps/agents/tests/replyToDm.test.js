@@ -298,3 +298,48 @@ describe('failures are recorded, never silent', () => {
         expect(h.audit.entries.some(e => e.type === 'memory_write_failed')).toBe(true);
     });
 });
+
+// The memory endpoints are ADMIN-guarded (`/agents/admin/:id/memory`). The
+// worker holds two sessions on purpose: the agent's ordinary user token, and
+// the admin runtime token. Handing the agent's token to a memory call returns
+// 403 and kills every reply — which is exactly what shipped, because `api` is
+// mocked here and no test ever looked at WHICH session it was given.
+describe('the memory calls use the ADMIN runtime session, not the agent token', () => {
+    const AGENT_SESSION = { id: 'agent-session' };
+    const RUNTIME_SESSION = { id: 'runtime-session' };
+
+    const runWithSessions = (h) => replyToDm({
+        message: INBOUND, agent: h.agent,
+        session: AGENT_SESSION,
+        runtimeSession: RUNTIME_SESSION,
+        chatSocket: h.chatSocket, llmClient: {},
+        budget: h.budget, audit: h.audit, now: AWAKE,
+        random: () => 0.5, sleep: async () => {},
+        api: h.api, decideImpl: h.decideImpl,
+    });
+
+    it('loadMemory is called with the runtime session', async () => {
+        const h = mkHarness({ reply: 'hi', fact: 'f' });
+        await runWithSessions(h);
+
+        expect(h.api.loadMemory).toHaveBeenCalled();
+        expect(h.api.loadMemory.mock.calls[0][0]).toBe(RUNTIME_SESSION);
+    });
+
+    it('every writeMemory is called with the runtime session', async () => {
+        const h = mkHarness({ reply: 'hi', fact: 'f' });
+        await runWithSessions(h);
+
+        expect(h.api.writeMemory).toHaveBeenCalled();
+        for (const call of h.api.writeMemory.mock.calls) {
+            expect(call[0]).toBe(RUNTIME_SESSION);
+        }
+    });
+
+    it('the THREAD read still uses the agent own token — it is an ordinary user route', async () => {
+        const h = mkHarness({ reply: 'hi' });
+        await runWithSessions(h);
+
+        expect(h.api.fetchThread.mock.calls[0][0]).toBe(AGENT_SESSION);
+    });
+});

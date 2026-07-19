@@ -158,7 +158,8 @@ const main = async (env = process.env, logger = console, deps = {}) => {
         // Deliberately not awaited: a reply sits through a 30s-15min delay, and
         // blocking the socket handler on it would stall every later message.
         replyToDm({
-            message, agent: self, session, chatSocket, llmClient, budget, audit,
+            message, agent: self, session, runtimeSession,
+            chatSocket, llmClient, budget, audit,
             api: dmApi,
             decideImpl: replyToMessage,
         }).catch((err) => {
