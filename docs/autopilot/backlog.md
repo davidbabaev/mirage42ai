@@ -5,6 +5,19 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Active
 
+### Phase F follow-ups opened by F5 auto-publish
+- **Moderation is unproven against a live Cloudinary add-on.** `moderateImage` is built to Cloudinary's documented `explicit` + moderation behaviour and is mocked everywhere in tests. It FAILS CLOSED, so a wiring mistake holds images for human review rather than publishing them unchecked — but going live needs a moderation add-on actually enabled on the agent Cloudinary account and one real run to confirm the verdict shape. Until then, an auto-publish persona will simply keep holding everything for review.
+- **The durable budget ledger is single-worker.** The write-through is best-effort and unawaited, so it is not race-proof if two workers ever run at once, and an increment lost to a crash-in-the-window can slightly under-count. Fine for the single-worker pilot; a fully atomic cross-worker ledger (guarded `$inc` at check time, or Redis) is the next step if the runtime is ever scaled out.
+- **No admin UI for the auto-publish toggle or the moderation outcome.** `autoPublishImages` is set on the persona document and the held/approved state lives on the pending-image row; both are only reachable over HTTP / the DB today. Same gap as the approval-queue UI below — a small settings control + showing the moderation reason on the review screen is the natural home.
+
+### Phase F follow-ups opened by F5
+- **The reference-face run is still unproven live.** The first attempt 400d on all four angles (wrong API version + wrong model, fixed on this branch). The corrected combination — `/v1` + `gemini-3.1-flash-image` — is inferred from Google's current generateContent docs but has NOT been confirmed against a live call; the key was passed inline and is not readable from any `.env`. Run `apps/agents/src/images/diagnoseImageApi.js` first: it lists what the key can reach for free before spending anything.
+- **No admin UI for the approval queue.** The endpoints exist and are driveable over HTTP, but reviewing a photo currently means reading JSON and POSTing an id. §7 calls for "a small admin approval list"; a review screen in `apps/web` (thumbnail, caption, approve/reject) is the natural next step and the thing that makes the queue actually usable.
+- **Image prompt builders live in `apps/agents` but are needed by an `apps/api` script.** `generateReferenceFace.js` requires them across the workspace boundary so the face is built by the same code that later asks for "the same person". Duplicating them would guarantee drift; the tidier home is `packages/shared`.
+- **The reference set is generated but never reviewed by anything.** The script prints URLs and tells the operator to look at them. A bad reference face silently poisons every later image, and it is the one image with no approval queue in front of it.
+- **`gemini-2.5-flash-image` is the older Nano Banana.** Google recommends the Interactions API and `gemini-3.1-flash-image` for new work, and 3.1 adds explicit character-consistency support — directly relevant to §7's hard requirement. Worth a bake-off once the pipeline has run live; the adapter is isolated for exactly this.
+- **No per-agent image rate limit beyond the daily cap.** The cap is per day, so an agent could in principle spend its whole allowance in one tick. Fine at `images: 1`; revisit if the pilot raises it.
+
 ### Phase F follow-ups opened by F4
 - **The worker drives ONE agent's DMs.** It opens a single socket as the account it logged in as, and `main()` picks that agent out of the roster. Multiple agents need one socket per agent, which needs one credential per agent — the same credential-duplication problem filed in F2, now genuinely blocking the 3-agent pilot (§4).
 - ~~**No unread sweep on startup.**~~ DONE, merged to main as 1ef6ab0 — `dm/unreadSweep.js` walks `GET /chats` on boot, queues ONE catch-up trigger per conversation with `unreadCount > 0`, and is bounded at 10 pages so it cannot walk an unbounded list.
@@ -14,7 +27,7 @@ Mark items [done] when finished so they drop out of the active list.
 
 ### Phase F follow-ups opened by F3
 - **The runtime holds an ADMIN credential.** `GET /agents/admin` is admin-guarded, so the worker's runtime account can also ban users and promote admins — far more authority than "read one list" needs. The agent's own token is correctly an ordinary user's, so the blast radius is limited to the runtime account, but a dedicated non-admin `runtime` capability (or a signed service token scoped to one endpoint) is the right shape. This is a permission-model decision, not an implementation detail, which is why it was filed rather than invented.
-- **The budget ledger is in-memory.** A worker restart resets every agent's daily spend, so a crash-loop could spend the daily cap many times over. Fine for a single dev process; NOT fine once the runtime is restartable in production. Wants persistence (a small Mongo collection or Redis) before the pilot.
+- ~~**The budget ledger is in-memory.**~~ DONE, merged to main as 72409bb — a durable `AgentBudget` collection (one row per agent per UTC day, atomic `$inc`) reached over admin `GET/POST /agents/admin/budget`. The ledger hydrates today's counts on boot and writes each spend through, so a restart no longer resets the daily caps. Single-worker only — the unawaited write-through is not race-proof across workers (new follow-up below).
 - **Per-agent credentials do not scale past one agent.** The worker holds a single `AGENT_EMAIL`/`AGENT_PASSWORD` and drives the whole roster with it — correct only because the roster has exactly one agent. F4/F5 need a credential per agent; this is the same duplication problem filed in F2, now load-bearing.
 - **`AgentMemory` does not exist yet** (master-plan §5). The decision loop's "recent activity" context is reconstructed from the in-process audit trail, so it is empty after a restart and carries nothing across days. Continuity is the realism mechanism §6 leans on hardest, and it is the biggest missing piece before agents feel like people.
 - **No dedicated rate limiter on `POST /cards` / like / comment.** Only the 500-per-15-min general cap. A misbehaving agent (or a budget bug) could produce a burst of posts that looks nothing like a person. Worth a per-user write limiter now that non-humans are writing.
@@ -49,27 +62,29 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-### Phase F increment F5 — consistent-face image pipeline (§7)
-- Built on branch `autopilot/2026-07-19-7`, commits `55a7ef2` (visualIdentity schema), `ac34edf` (Gemini provider + prompts), `bd1138d` (admin approval queue), `36287f6` (image post path + budget), `dfee55c` (reference-face script) — awaiting review/merge.
-- **`AgentPersona.visualIdentity`**: the exact appearance text + a 3–5 portrait Cloudinary set + the model that made them. Capped at 5; a reference set is not portable across models, so the model is recorded.
-- **Provider**: `gemini-2.5-flash-image` via `generateContent`, shape verified at ai.google.dev. Confined to `apps/agents/src/images/gemini.js` — the only file that knows the wire format — because §7 anticipates a bake-off and Google is already steering new work to the Interactions API + `gemini-3.1-flash-image`.
-- **Approval queue**: `PendingAgentImage` + `POST /agents/admin/images`, `GET /agents/admin/images`, `POST /agents/admin/images/:id/approve|reject`. Approve publishes via `createNewCard` authored as the AGENT; the transition is an atomic status-guarded update so a double-click cannot publish twice (covered by a concurrent test).
-- **Cost control (§6)**: `dailyBudget.images` is finally enforced — checked before the call, recorded after, including for a refused generation.
-- **Agent media isolation (§7)**: separate `AGENT_CLOUDINARY_*` account with per-call credentials, so the live account's global SDK config is never repointed. Unconfigured = hard refusal, never a fallback.
-- Gates: **0 lint errors · shared 4 · api 496 · web 193 · agents 300**.
-- ⚠️ **NOT proven live.** All provider calls are mocked. No image generated, no reference face created, end-to-end path untested — needs a real `GEMINI_API_KEY` and the agent Cloudinary account (§7 marks it "to be created — Phase B"). Neither is configured locally.
-
-### Phase F follow-ups opened by F5
-- **The reference-face run is still unproven live.** The first attempt 400d on all four angles (wrong API version + wrong model, fixed on this branch). The corrected combination — `/v1` + `gemini-3.1-flash-image` — is inferred from Google's current generateContent docs but has NOT been confirmed against a live call; the key was passed inline and is not readable from any `.env`. Run `apps/agents/src/images/diagnoseImageApi.js` first: it lists what the key can reach for free before spending anything.
-- **No admin UI for the approval queue.** The endpoints exist and are driveable over HTTP, but reviewing a photo currently means reading JSON and POSTing an id. §7 calls for "a small admin approval list"; a review screen in `apps/web` (thumbnail, caption, approve/reject) is the natural next step and the thing that makes the queue actually usable.
-- **Image prompt builders live in `apps/agents` but are needed by an `apps/api` script.** `generateReferenceFace.js` requires them across the workspace boundary so the face is built by the same code that later asks for "the same person". Duplicating them would guarantee drift; the tidier home is `packages/shared`.
-- **The reference set is generated but never reviewed by anything.** The script prints URLs and tells the operator to look at them. A bad reference face silently poisons every later image, and it is the one image with no approval queue in front of it.
-- **`gemini-2.5-flash-image` is the older Nano Banana.** Google recommends the Interactions API and `gemini-3.1-flash-image` for new work, and 3.1 adds explicit character-consistency support — directly relevant to §7's hard requirement. Worth a bake-off once the pipeline has run live; the adapter is isolated for exactly this.
-- **No per-agent image rate limit beyond the daily cap.** The cap is per day, so an agent could in principle spend its whole allowance in one tick. Fine at `images: 1`; revisit if the pilot raises it.
+_(nothing awaiting review — F5 and the F5 auto-publish work are merged; see Done. Open F5 follow-ups moved to Active.)_
 
 ## Done
 
 (finished items move here, newest on top)
+
+### Agent images: opt-in auto-publish with a fail-closed moderation gate + a durable budget ledger — DONE
+- Merged to main as 72409bb (branch `feat/agent-image-auto-publish`, `--no-ff`). Commits `93d739d` (durable budget ledger), `60a6706` (autoPublishImages toggle), `668c1c1` (moderation + auto-publish), `68324d5` (decisions log).
+- **Auto-publish is opt-in per persona and authoritative in the DB.** `AgentPersona.autoPublishImages` defaults FALSE — every existing persona keeps the human review queue. The flag is read SERVER-SIDE and never asserted by the worker, so a buggy or compromised runtime cannot talk its way into publishing.
+- **Turning off human review did NOT turn off safety.** `agentImageModeration.moderateImage` runs Cloudinary's moderation add-on on the already-uploaded asset (via `explicit`, no second upload; add-on via `AGENT_IMAGE_MODERATION_ADDON`, default `aws_rek`). It FAILS CLOSED — anything but an explicit "approved" (rejected, no add-on, provider error, unparseable url, pending/inconclusive) HOLDS the image pending for a human with the reason recorded. Only a clean pass publishes, and it publishes through the existing `approvePendingImage` (one path to a Card, guardrail 3).
+- **The image budget cap is unchanged and still bites** — enforced at generation time in the worker on both the manual and the auto-publish path; auto-publish only acts on an already-generated, already-counted image, so it cannot bypass the cap.
+- **Closes the F3 "budget ledger is in-memory" follow-up:** new `AgentBudget` collection + admin `GET/POST /agents/admin/budget`; the ledger hydrates today's counts on boot and writes each spend through (best-effort, unawaited so a slow write never stalls a tick). The daily cap now survives a restart.
+- Gates: **0 lint errors · shared 4 · api 532 · web 193 · agents 321**.
+- ⚠️ **Moderation is NOT proven against a live Cloudinary add-on.** Built to Cloudinary's documented `explicit`/moderation behaviour; the Cloudinary client is injected and the suite never touches the network. Because it fails closed, the worst case of a wiring mistake is images HOLDING for review, not publishing unchecked. Going live needs the add-on enabled on the agent Cloudinary account and one real run. Rationale in `docs/decisions.md`.
+
+### Phase F increment F5 — consistent-face image pipeline (§7) — DONE
+- Merged to main as 72409bb (built on branch `autopilot/2026-07-19-7`, carried in with the auto-publish merge). Commits `55a7ef2` (visualIdentity schema), `ac34edf` (Gemini provider + prompts), `bd1138d` (admin approval queue), `36287f6` (image post path + budget), `dfee55c` (reference-face script), plus `64738dc` + `369da50` (image API URL/model fix + on-demand trigger) and `c2bdf06` (F5 close-out doc).
+- **`AgentPersona.visualIdentity`**: the exact appearance text + a 3–5 portrait Cloudinary set + the model that made them. Capped at 5; a reference set is not portable across models, so the model is recorded.
+- **Provider**: Gemini image via `generateContent`, confined to `apps/agents/src/images/gemini.js` — the only file that knows the wire format — because §7 anticipates a bake-off. Default corrected to `/v1` + `gemini-3.1-flash-image` after the first live run 400d.
+- **Approval queue**: `PendingAgentImage` + `POST /agents/admin/images`, `GET /agents/admin/images`, `POST /agents/admin/images/:id/approve|reject`. Approve publishes via `createNewCard` authored as the AGENT; the transition is an atomic status-guarded update so a double-click cannot publish twice (covered by a concurrent test).
+- **Cost control (§6)**: `dailyBudget.images` is enforced — checked before the call, recorded after, including for a refused generation.
+- **Agent media isolation (§7)**: separate `AGENT_CLOUDINARY_*` account with per-call credentials, so the live account's global SDK config is never repointed. Unconfigured = hard refusal, never a fallback.
+- ⚠️ **NOT proven live** (unchanged): all provider calls are mocked. No image generated, no reference face created, end-to-end path untested — needs a real `GEMINI_API_KEY` and the agent Cloudinary account. Remaining F5 follow-ups (live reference run, approval-queue UI, prompt builders → packages/shared, etc.) are under Active.
 
 ### Maya texted like customer service — casual voice + finite patience — DONE
 - Merged to main as ce22a78 (branch persona/maya-casual-voice-and-boundaries, clean fast-forward; api 451 green on main after the merge, agents 255). Prompt/persona only — no plumbing, schema, or code-path change.
