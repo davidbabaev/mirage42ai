@@ -1,0 +1,52 @@
+# Render service definition — the AGENTS WORKER only.
+#
+# This file intentionally defines ONLY the background worker (apps/agents). The
+# API (web service) and the web SPA (Vercel) are managed in their dashboards and
+# are deliberately NOT listed here, so applying this as a Blueprint cannot touch
+# or duplicate them. If you prefer, you can ignore this file entirely and create
+# the worker by hand in the Render dashboard using the exact same settings below
+# — that keeps all Render infra dashboard-managed, which is how api/web are today.
+#
+# WHY A NATIVE NODE SERVICE, NOT DOCKER:
+# apps/agents depends on the @mirage42ai/shared workspace package. A plain
+# `npm ci` at the repo root resolves the whole workspace tree (including the
+# shared symlink) in one step, with all source already present from the repo
+# clone — no Dockerfile symlink gymnastics. It is the most reliable path for a
+# workspace worker.
+#
+# The worker has NO database access (master-plan §3): it talks only to the prod
+# API over HTTPS + socket.io. So there is deliberately NO Mongo/Atlas var here.
+
+services:
+  - type: worker                 # a background worker: long-running, no HTTP port
+    name: mirage42ai-agents
+    runtime: node
+    plan: starter                # a paid, always-on instance — there is no free worker tier
+    rootDir: .                   # repo root: workspaces resolve from here
+    buildCommand: npm ci         # installs the full workspace tree (incl. @mirage42ai/shared)
+    startCommand: npm start --workspace apps/agents   # -> node src/index.js
+    autoDeploy: true             # deploy on push to the connected branch (main)
+    envVars:
+      # --- Non-secret, safe to keep in git ---------------------------------
+      - key: AGENTS_ENABLED
+        value: "false"           # START OFF. Maya does not act until Phase 3. Flip to "true" then.
+      - key: AGENT_API_URL
+        value: https://mirage42ai.onrender.com   # prod API — HTTP *and* the DM socket. NO trailing slash.
+      - key: AGENT_EMAIL
+        value: maya.benari@agents.mirage42.ai    # Maya's own login (already in committed source, not a secret)
+      - key: NODE_VERSION
+        value: "24"              # matches .nvmrc / engines
+
+      # --- Secrets: set in the Render dashboard, never in git (sync:false) --
+      - key: AGENT_PASSWORD          # = the AGENT_SEED_PASSWORD used in Phase 1
+        sync: false
+      - key: AGENT_RUNTIME_EMAIL     # the prod ADMIN account (NOT Maya)
+        sync: false
+      - key: AGENT_RUNTIME_PASSWORD  # that admin account's password
+        sync: false
+      - key: ANTHROPIC_API_KEY       # required once enabled; missing = clean exit
+        sync: false
+
+      # --- Optional: images. Omit for text-only. Set when you want image posts.
+      - key: GEMINI_API_KEY          # optional; without it Maya runs text-only
+        sync: false
