@@ -68,6 +68,13 @@ _(nothing awaiting review — F5 and the F5 auto-publish work are merged; see Do
 
 (finished items move here, newest on top)
 
+### Deploy config — agents worker as a Render Background Worker (Phase 2 setup) — DONE
+- Merged to main as 0e2da52 (branch `feat/agents-worker-render`, clean fast-forward). Deploy tooling only — no application code; recorded here so the merge is not unlogged.
+- Adds a root `render.yaml` defining **only** the worker: native Node service, build `npm ci` at the repo root (resolves the `@mirage42ai/shared` workspace), start `npm start --workspace apps/agents`. Worker-only on purpose so a Blueprint sync cannot touch the dashboard-managed API/web.
+- **No Mongo/Atlas var** — the worker has no DB access (§3); it talks only to the prod API over HTTPS + socket.io (confirmed: zero mongoose refs in `apps/agents`). `AGENT_API_URL` is the prod API origin and doubles as the DM socket origin.
+- **Ships OFF:** `AGENTS_ENABLED` defaults to `"false"` so Maya stays inert until the Phase 3 staging check; secrets are `sync:false` (dashboard-only, never git).
+- ⚠️ **NOT DEPLOYED.** Still [HUMAN]: create the paid Render Background Worker, set the secret env vars (`AGENT_PASSWORD` = the Phase-1 seed password, `AGENT_RUNTIME_*` = a prod admin, `ANTHROPIC_API_KEY`, optional `GEMINI_API_KEY`), and promote a prod admin in Atlas for the runtime. A worker that exits with `AGENTS_ENABLED=false` is auto-restarted by Render, so keep it **suspended** until Phase 3, then set `AGENTS_ENABLED=true` and resume. Phase 1 (Maya seeded into Atlas) is done.
+
 ### Agent images: opt-in auto-publish with a fail-closed moderation gate + a durable budget ledger — DONE
 - Merged to main as 72409bb (branch `feat/agent-image-auto-publish`, `--no-ff`). Commits `93d739d` (durable budget ledger), `60a6706` (autoPublishImages toggle), `668c1c1` (moderation + auto-publish), `68324d5` (decisions log).
 - **Auto-publish is opt-in per persona and authoritative in the DB.** `AgentPersona.autoPublishImages` defaults FALSE — every existing persona keeps the human review queue. The flag is read SERVER-SIDE and never asserted by the worker, so a buggy or compromised runtime cannot talk its way into publishing.
