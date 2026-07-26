@@ -49,7 +49,23 @@ Mark items [done] when finished so they drop out of the active list.
 
 ## Awaiting review
 
-(nothing awaiting review)
+### Phase F increment F5 — consistent-face image pipeline (§7)
+- Built on branch `autopilot/2026-07-19-7`, commits `55a7ef2` (visualIdentity schema), `ac34edf` (Gemini provider + prompts), `bd1138d` (admin approval queue), `36287f6` (image post path + budget), `dfee55c` (reference-face script) — awaiting review/merge.
+- **`AgentPersona.visualIdentity`**: the exact appearance text + a 3–5 portrait Cloudinary set + the model that made them. Capped at 5; a reference set is not portable across models, so the model is recorded.
+- **Provider**: `gemini-2.5-flash-image` via `generateContent`, shape verified at ai.google.dev. Confined to `apps/agents/src/images/gemini.js` — the only file that knows the wire format — because §7 anticipates a bake-off and Google is already steering new work to the Interactions API + `gemini-3.1-flash-image`.
+- **Approval queue**: `PendingAgentImage` + `POST /agents/admin/images`, `GET /agents/admin/images`, `POST /agents/admin/images/:id/approve|reject`. Approve publishes via `createNewCard` authored as the AGENT; the transition is an atomic status-guarded update so a double-click cannot publish twice (covered by a concurrent test).
+- **Cost control (§6)**: `dailyBudget.images` is finally enforced — checked before the call, recorded after, including for a refused generation.
+- **Agent media isolation (§7)**: separate `AGENT_CLOUDINARY_*` account with per-call credentials, so the live account's global SDK config is never repointed. Unconfigured = hard refusal, never a fallback.
+- Gates: **0 lint errors · shared 4 · api 496 · web 193 · agents 300**.
+- ⚠️ **NOT proven live.** All provider calls are mocked. No image generated, no reference face created, end-to-end path untested — needs a real `GEMINI_API_KEY` and the agent Cloudinary account (§7 marks it "to be created — Phase B"). Neither is configured locally.
+
+### Phase F follow-ups opened by F5
+- **The reference-face run is still unproven live.** The first attempt 400d on all four angles (wrong API version + wrong model, fixed on this branch). The corrected combination — `/v1` + `gemini-3.1-flash-image` — is inferred from Google's current generateContent docs but has NOT been confirmed against a live call; the key was passed inline and is not readable from any `.env`. Run `apps/agents/src/images/diagnoseImageApi.js` first: it lists what the key can reach for free before spending anything.
+- **No admin UI for the approval queue.** The endpoints exist and are driveable over HTTP, but reviewing a photo currently means reading JSON and POSTing an id. §7 calls for "a small admin approval list"; a review screen in `apps/web` (thumbnail, caption, approve/reject) is the natural next step and the thing that makes the queue actually usable.
+- **Image prompt builders live in `apps/agents` but are needed by an `apps/api` script.** `generateReferenceFace.js` requires them across the workspace boundary so the face is built by the same code that later asks for "the same person". Duplicating them would guarantee drift; the tidier home is `packages/shared`.
+- **The reference set is generated but never reviewed by anything.** The script prints URLs and tells the operator to look at them. A bad reference face silently poisons every later image, and it is the one image with no approval queue in front of it.
+- **`gemini-2.5-flash-image` is the older Nano Banana.** Google recommends the Interactions API and `gemini-3.1-flash-image` for new work, and 3.1 adds explicit character-consistency support — directly relevant to §7's hard requirement. Worth a bake-off once the pipeline has run live; the adapter is isolated for exactly this.
+- **No per-agent image rate limit beyond the daily cap.** The cap is per day, so an agent could in principle spend its whole allowance in one tick. Fine at `images: 1`; revisit if the pilot raises it.
 
 ## Done
 

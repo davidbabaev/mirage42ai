@@ -48,7 +48,22 @@ const buildUserMessage = ({ feed = [], notifications = [] }) => {
         '- do_nothing  (usually the right answer)',
         '- like        (needs cardId)',
         '- comment     (needs cardId and text)',
-        '- post        (needs text; a text-only post, no image)',
+        '- post        (needs text)',
+        '',
+        // F5 (§7). This paragraph is load-bearing: the imageScene field existed
+        // in the schema for a whole increment while this list still said "a
+        // text-only post, no image", so the model was told images were
+        // impossible and never asked for one. The plumbing was never reached.
+        'A post may include ONE photo. To add one, set `imageScene` to a short',
+        'description of what the photo shows — e.g. "the shakshuka she just',
+        'ordered, on a cafe table" or "the sea from the promenade, early morning".',
+        'Leave `imageScene` out for a text-only post.',
+        '',
+        // §7: "not every post needs the agent's face (food, views, screenshots
+        // — also cheaper)". Stated as the norm so the default is the cheap one.
+        'Most photos are of THINGS, not of you. Only set `imageIncludesFace` to',
+        'true if you are genuinely in the shot. Text-only posts are still the',
+        'most common kind — a photo should be the exception, not the habit.',
         '',
         'Always include a short `reason`.',
     );

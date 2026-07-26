@@ -13,8 +13,10 @@ const mongoose = require('mongoose');
  * data with a very different shape and lifecycle, and because User is on every
  * hot read path in the app — nobody should pay to load a backstory.
  *
- * NOT here yet: `visualIdentity` (reference portrait set + appearance text).
- * That arrives with the image pipeline in F5 (§7).
+ * `visualIdentity` (F5, §7) is the same idea for the agent's FACE: one
+ * reference portrait set plus the exact appearance text, generated once and
+ * reused as conditioning for every later image, so it is the same person in
+ * every photo rather than a new stranger each post.
  *
  * NEVER exposed on any public API response. Persona text is the illusion's
  * backstage; leaking it would out the account as an agent just as surely as
@@ -74,6 +76,52 @@ const AgentPersonaSchema = new mongoose.Schema({
         trim: true,
     },
 
+    // ---- Face (§7) ----------------------------------------------------
+    // The reference identity: generated ONCE per persona, then used as
+    // conditioning for every subsequent image so the same synthetic person
+    // shows up in every photo. Absent until the one-time reference run.
+    visualIdentity: {
+        // The exact appearance text that produced the reference set. Sent
+        // verbatim alongside the reference image on every later generation —
+        // the words are half the consistency, the image is the other half.
+        appearance: {
+            type: String,
+            maxLength: 2048,
+            trim: true,
+        },
+        // 3–5 angles/expressions of the SAME face (§7). Cloudinary URLs only;
+        // the bytes live in the separate agent Cloudinary account, never here.
+        referenceUrls: {
+            type: [String],
+            default: [],
+            validate: {
+                // A reference "set" of one is not a set, and past ~5 the extra
+                // angles stop helping and just cost upload time.
+                validator: (urls) => urls.length <= 5,
+                message: 'visualIdentity.referenceUrls holds at most 5 portraits',
+            },
+        },
+        // Which reference URL to send as the conditioning image by default.
+        // Kept explicit so a bad angle can be demoted without re-generating.
+        primaryUrl: {
+            type: String,
+            maxLength: 512,
+            trim: true,
+        },
+        // Stamped by the one-time reference script so it is obvious whether a
+        // persona's face predates a prompt or model change.
+        generatedAt: {
+            type: Date,
+        },
+        // e.g. 'gemini-2.5-flash-image'. Recorded because reference sets are
+        // not portable across models — a new model means a new face.
+        model: {
+            type: String,
+            maxLength: 128,
+            trim: true,
+        },
+    },
+
     // ---- Soul ---------------------------------------------------------
     // What this person cares about. Short phrases, not prose — they are
     // injected as bullets into the system prompt.
@@ -128,6 +176,25 @@ const AgentPersonaSchema = new mongoose.Schema({
         llmCalls: { type: Number, min: 0, default: 40 },
         images: { type: Number, min: 0, default: 1 },
         actions: { type: Number, min: 0, default: 20 },
+    },
+
+    // ---- Publishing policy (§7 human-review queue) --------------------
+    // Whether images this agent generates PUBLISH automatically or wait in the
+    // admin review queue.
+    //
+    // Default FALSE, deliberately: §7's pilot rule is "generated images land in
+    // a small admin approval list before publishing, so one bad hand doesn't
+    // break the illusion." Auto-publish is opt-IN, set per persona by a human.
+    //
+    // This flag is AUTHORITATIVE HERE, in the database — never asserted by the
+    // runtime. A buggy or compromised worker must not be able to talk its way
+    // into publishing; the decision is read server-side from this document. And
+    // even when it is true, an image only publishes if it PASSES automated
+    // moderation; anything moderation flags or cannot check still holds for a
+    // human (see agentImagesSvc.submitAndMaybePublish).
+    autoPublishImages: {
+        type: Boolean,
+        default: false,
     },
 
     // Per-agent pause, independent of the global AGENTS_ENABLED kill-switch.

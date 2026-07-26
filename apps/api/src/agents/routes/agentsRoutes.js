@@ -6,6 +6,12 @@ const { getAgentRoster } = require('../service/agentsSvc');
 const { loadMemory, appendEvent, appendFact } = require('../service/agentMemorySvc');
 const { ACCOUNT_KIND } = require('@mirage42ai/shared');
 const User = require('../../users/models/User');
+const { uploadImageOnly } = require('../../middlewares/multer');
+const { uploadAgentMedia, isAgentCloudinaryConfigured } = require('../../utils/agentCloudinary');
+const {
+    submitAndMaybePublish, listPendingImages, approvePendingImage, rejectPendingImage,
+} = require('../service/agentImagesSvc');
+const { getBudgetForDay, incrementBudget } = require('../service/agentBudgetSvc');
 
 /**
  * Memory belongs to an AGENT account and nothing else. Writing memory onto a
@@ -43,6 +49,49 @@ router.get('/agents/admin', auth, async (req, res) => {
         if (!req.user.isAdmin) throw createError(403, 'Admin only');
         const roster = await getAgentRoster();
         res.send({ agents: roster });
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+/**
+ * GET /agents/admin/budget?day=YYYY-MM-DD — one UTC day's spend, per agent.
+ *
+ * The runtime keeps its daily caps in an in-memory ledger for speed, which a
+ * restart resets. This is how it HYDRATES that ledger back on boot so a
+ * restarted worker does not forget what it already spent today (§6/§11). Same
+ * admin guard and same reason as the roster: the worker has no database access.
+ *
+ * Registered before any `/agents/admin/:id`-shaped route so the literal `budget`
+ * segment is never captured as an id.
+ */
+router.get('/agents/admin/budget', auth, async (req, res) => {
+    try {
+        if (!req.user.isAdmin) throw createError(403, 'Admin only');
+        const budgets = await getBudgetForDay(req.query.day);
+        res.send({ day: req.query.day, budgets });
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+/**
+ * POST /agents/admin/budget/:agentUserId — write through one unit of spend.
+ *
+ * Body: { kind: 'llmCalls'|'images'|'actions', amount?, day: 'YYYY-MM-DD' }
+ *
+ * Called by the ledger after a real spend so the count survives a restart. It
+ * only ever ADDS (atomic `$inc`): there is no route that lowers a spend, because
+ * a cap that can be talked back down is not a cap.
+ */
+router.post('/agents/admin/budget/:agentUserId', auth, async (req, res) => {
+    try {
+        if (!req.user.isAdmin) throw createError(403, 'Admin only');
+        const { kind, amount = 1, day } = req.body || {};
+        const result = await incrementBudget({
+            agentUserId: req.params.agentUserId, day, kind, amount,
+        });
+        res.send(result);
     } catch (err) {
         handleError(res, err);
     }
@@ -111,6 +160,109 @@ router.post('/agents/admin/:userId/memory', auth, async (req, res) => {
             eventCount: (memory.events || []).length,
             factCount: (memory.facts || []).length,
         });
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+/**
+ * POST /agents/admin/images — file a generated image for review (F5, §7).
+ *
+ * The runtime generates the image and hands over the BYTES; the API owns the
+ * upload, because the agent Cloudinary credentials belong to the server and the
+ * worker should not hold a second set of storage keys.
+ *
+ * By default this produces a `pending` row and the approve route below is the
+ * sole path to a real post. The ONE exception is a persona a human has opted
+ * into auto-publish (`autoPublishImages`): such an image is published here only
+ * if it PASSES automated moderation, and otherwise stays pending for review. The
+ * decision is read server-side from the persona — the runtime cannot ask for it.
+ */
+router.post('/agents/admin/images', auth, uploadImageOnly.single('media'), async (req, res) => {
+    try {
+        if (!req.user.isAdmin) throw createError(403, 'Admin only');
+        if (!req.file) throw createError(400, 'An image file is required');
+
+        const { agentUserId, caption = '', prompt = '', model = '' } = req.body || {};
+        if (!agentUserId) throw createError(400, 'agentUserId is required');
+
+        // §7: the separate agent account, or nothing. Never the live one.
+        if (!isAgentCloudinaryConfigured()) {
+            throw createError(
+                503,
+                'Agent media storage is not configured; refusing to upload agent media to the live account'
+            );
+        }
+
+        const imageUrl = await uploadAgentMedia(req.file.buffer, 'pending');
+        const result = await submitAndMaybePublish({
+            agentUserId,
+            imageUrl,
+            caption,
+            prompt,
+            model,
+            includedFace: req.body?.includedFace !== 'false',
+        });
+
+        res.status(201).send({
+            id: result.id,
+            status: result.status,
+            imageUrl,
+            ...(result.cardId ? { cardId: result.cardId } : {}),
+        });
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+/**
+ * GET /agents/admin/images — the review queue.
+ *
+ * Query: ?status=pending|approved|rejected|all &agentUserId=... &limit=...
+ */
+router.get('/agents/admin/images', auth, async (req, res) => {
+    try {
+        if (!req.user.isAdmin) throw createError(403, 'Admin only');
+        const images = await listPendingImages({
+            status: req.query.status || 'pending',
+            agentUserId: req.query.agentUserId,
+            limit: req.query.limit,
+        });
+        res.send({ images, count: images.length });
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+/**
+ * POST /agents/admin/images/:id/approve — publish it, as the agent.
+ *
+ * The ONLY route in the codebase that turns a generated image into a Card.
+ */
+router.post('/agents/admin/images/:id/approve', auth, async (req, res) => {
+    try {
+        if (!req.user.isAdmin) throw createError(403, 'Admin only');
+        const result = await approvePendingImage({ id: req.params.id, adminUserId: req.user.userId });
+        res.send({
+            id: result.pendingImage._id,
+            status: result.pendingImage.status,
+            cardId: result.pendingImage.publishedCardId,
+        });
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+/** POST /agents/admin/images/:id/reject — it stops here. Nothing is published. */
+router.post('/agents/admin/images/:id/reject', auth, async (req, res) => {
+    try {
+        if (!req.user.isAdmin) throw createError(403, 'Admin only');
+        const rejected = await rejectPendingImage({
+            id: req.params.id,
+            adminUserId: req.user.userId,
+            note: req.body?.note || '',
+        });
+        res.send({ id: rejected._id, status: rejected.status });
     } catch (err) {
         handleError(res, err);
     }

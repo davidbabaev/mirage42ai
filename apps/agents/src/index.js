@@ -23,11 +23,12 @@ require('dotenv').config({ path: path.join(__dirname, '../.env'), quiet: true })
 const { ACCOUNT_KIND } = require('@mirage42ai/shared');
 const {
     isAgentsEnabled, readAgentCredentials, readRuntimeCredentials,
-    readLlmConfig, readHeartbeatConfig,
+    readLlmConfig, readImageConfig, readHeartbeatConfig,
 } = require('./config');
 const { AgentSession } = require('./session');
 const { Scheduler } = require('./scheduler');
-const { BudgetLedger } = require('./budget');
+const { BudgetLedger, utcDayKey } = require('./budget');
+const { fetchBudget, persistBudget } = require('./api/budget');
 const { AuditTrail } = require('./audit');
 const { runTick } = require('./loop');
 const { AgentChatSocket } = require('./chatSocket');
@@ -95,7 +96,14 @@ const main = async (env = process.env, logger = console, deps = {}) => {
     const runtimeSession = deps.runtimeSession
         || new AgentSession({ ...runtimeCredentials, logger });
     const audit = deps.audit || new AuditTrail();
-    const budget = deps.budget || new BudgetLedger();
+    // The ledger writes each spend THROUGH to the durable server-side ledger so a
+    // restart does not reset the daily caps. The write-through uses the admin
+    // (runtime) session — the budget endpoints are an admin surface, like the
+    // roster — and the worker's own token stays an ordinary user's.
+    const budget = deps.budget || new BudgetLedger({
+        persist: (spend) => persistBudget(runtimeSession, spend),
+        logger,
+    });
 
     try {
         await session.start();
@@ -123,6 +131,25 @@ const main = async (env = process.env, logger = console, deps = {}) => {
         roster.map((a) => displayName(a.user)).join(', ')
     );
 
+    // Hydrate today's spend from the durable ledger, so a restart mid-day picks
+    // up where it left off rather than forgetting the morning's cost. A failure
+    // here is a WARNING, not an exit: the caps still work in-memory: the worst
+    // case is that a restart-after-outage under-counts, which is a cost risk to
+    // log, not a reason to refuse to run.
+    try {
+        const day = utcDayKey(Date.now());
+        const budgets = await fetchBudget(runtimeSession, day);
+        budget.hydrate(budgets);
+        logger.log(
+            `agents: budget ledger hydrated for ${day} ` +
+            `(${budgets.length} agent(s) with spend already today)`
+        );
+    } catch (err) {
+        logger.error?.(
+            `agents: budget hydrate failed (${err.message}) — starting today's caps from zero`
+        );
+    }
+
     // The LLM client is constructed only now — after the kill-switch, the
     // credentials, and the roster have all checked out.
     const llmClient = deps.llmClient || (() => {
@@ -131,13 +158,25 @@ const main = async (env = process.env, logger = console, deps = {}) => {
         return new Anthropic({ apiKey: llm.apiKey });
     })();
 
+    // F5 (§7): images are optional. A missing key is a logged SKIP, not an exit
+    // — the agent keeps its full text-only life, which is the default anyway.
+    const imageConfig = deps.imageConfig || readImageConfig(env);
+    logger.log(
+        imageConfig.hasKey
+            ? `agents: image posts enabled (${imageConfig.model}), pending admin approval`
+            : 'agents: no GEMINI_API_KEY — image posts disabled, running text-only'
+    );
+
     const heartbeat = readHeartbeatConfig(env);
     const scheduler = deps.scheduler || new Scheduler({ ...heartbeat, logger });
 
     scheduler.start(async (now) => {
         budget.prune();
         for (const agent of roster) {
-            await runTick({ session, llmClient, agent, budget, audit, now });
+            await runTick({
+                session, llmClient, agent, budget, audit, now,
+                runtimeSession, imageConfig,
+            });
         }
     });
 

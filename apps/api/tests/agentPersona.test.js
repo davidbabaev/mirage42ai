@@ -126,6 +126,19 @@ describe('AgentPersona — defaults', () => {
     it('is enabled by default (creating a persona is already deliberate)', async () => {
         expect(new AgentPersona(validPersona()).enabled).toBe(true);
     });
+
+    it('does NOT auto-publish images by default — human review is opt-out, not opt-in', async () => {
+        // §7: generated images land in the admin approval queue unless a human
+        // has deliberately turned auto-publish on for this persona.
+        expect(new AgentPersona(validPersona()).autoPublishImages).toBe(false);
+    });
+
+    it('accepts autoPublishImages: true when a human opts a persona in', async () => {
+        const doc = new AgentPersona(validPersona({ autoPublishImages: true }));
+        await expect(doc.validate()).resolves.toBeUndefined();
+        const saved = await doc.save();
+        expect(saved.autoPublishImages).toBe(true);
+    });
 });
 
 describe('AgentPersona — one soul per account', () => {
@@ -140,5 +153,51 @@ describe('AgentPersona — one soul per account', () => {
     it('allows personas for different userIds', async () => {
         await new AgentPersona(validPersona()).save();
         await expect(new AgentPersona(validPersona()).save()).resolves.toBeTruthy();
+    });
+});
+
+// Phase F / F5 — the reference identity (§7).
+//
+// `visualIdentity` is what makes every generated photo the SAME synthetic
+// person. It is optional (a persona is valid before its one-time reference run)
+// but once present it has to hold both halves of the conditioning: the exact
+// appearance text AND the reference portraits.
+describe('AgentPersona — visualIdentity (F5, §7)', () => {
+    it('is absent on a fresh persona — the face comes from a one-time run', async () => {
+        const doc = new AgentPersona(validPersona());
+        await expect(doc.validate()).resolves.toBeUndefined();
+        expect(doc.visualIdentity?.referenceUrls ?? []).toHaveLength(0);
+        expect(doc.visualIdentity?.appearance).toBeFalsy();
+    });
+
+    it('stores the appearance text and the reference portrait set', async () => {
+        const doc = new AgentPersona(validPersona({
+            visualIdentity: {
+                appearance: 'early-30s woman, dark curly hair, freckles, warm olive skin',
+                referenceUrls: ['https://res.cloudinary.com/a/1.jpg', 'https://res.cloudinary.com/a/2.jpg'],
+                primaryUrl: 'https://res.cloudinary.com/a/1.jpg',
+                generatedAt: new Date('2026-07-19T00:00:00Z'),
+                model: 'gemini-3.1-flash-image',
+            },
+        }));
+
+        await expect(doc.validate()).resolves.toBeUndefined();
+        const saved = await doc.save();
+        expect(saved.visualIdentity.appearance).toMatch(/dark curly hair/);
+        expect(saved.visualIdentity.referenceUrls).toHaveLength(2);
+        expect(saved.visualIdentity.primaryUrl).toBe('https://res.cloudinary.com/a/1.jpg');
+        expect(saved.visualIdentity.model).toBe('gemini-3.1-flash-image');
+    });
+
+    it('accepts a full 5-portrait set (the §7 upper bound of 3–5 angles)', async () => {
+        const urls = Array.from({ length: 5 }, (_, i) => `https://res.cloudinary.com/a/${i}.jpg`);
+        const doc = new AgentPersona(validPersona({ visualIdentity: { referenceUrls: urls } }));
+        await expect(doc.validate()).resolves.toBeUndefined();
+    });
+
+    it('rejects more than 5 portraits — past that the angles stop helping', async () => {
+        const urls = Array.from({ length: 6 }, (_, i) => `https://res.cloudinary.com/a/${i}.jpg`);
+        const doc = new AgentPersona(validPersona({ visualIdentity: { referenceUrls: urls } }));
+        await expect(doc.validate()).rejects.toThrow(/at most 5 portraits/);
     });
 });

@@ -35,9 +35,22 @@ const Comment = z.object({
     reason: z.string().max(300).optional(),
 });
 
+// F5 (§7): a post MAY carry a photo. Modelled as an optional field on the
+// existing post action rather than a separate `post_image` action, because from
+// the model's point of view it is the same decision — "say this" — with an
+// optional "and here is the picture". A second action would double the surface
+// the model has to reason about for no gain, and every text-only post would
+// then need the model to pick between two near-identical options.
+//
+// `imageScene` is what the photo shows, in the agent's own words. Empty or
+// absent means text-only, which stays the default (§7).
 const Post = z.object({
     action: z.literal('post'),
     text: z.string().min(3).max(MAX_POST),
+    imageScene: z.string().max(500).optional(),
+    // §7: "not every post needs the agent's face (food, views, screenshots —
+    // also cheaper)". Defaults to false so a face is a deliberate ask.
+    imageIncludesFace: z.boolean().optional(),
     reason: z.string().max(300).optional(),
 });
 
@@ -65,6 +78,16 @@ const DECISION_JSON_SCHEMA = {
         text: {
             type: 'string',
             description: 'The comment body, or the text of a new post. Required for comment and post; omit otherwise.',
+        },
+        imageScene: {
+            type: 'string',
+            description:
+                'Optional, post only. If this post should have a photo, describe what the photo shows in one short phrase, e.g. "the shakshuka she just ordered, on a cafe table". Omit for a text-only post — most posts are text-only.',
+        },
+        imageIncludesFace: {
+            type: 'boolean',
+            description:
+                'Optional, post only. True only if you are actually in the photo. Most photos are of things, not of you.',
         },
         reason: {
             type: 'string',

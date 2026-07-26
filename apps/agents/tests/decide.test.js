@@ -183,3 +183,32 @@ describe('decide — the context it sends', () => {
         expect(msg).toMatch(/do_nothing\s+\(usually the right answer\)/);
     });
 });
+
+// REGRESSION (F5, §7) — the imageScene field lived in the decision schema for a
+// whole increment while this prompt still said "a text-only post, no image".
+// The model was told photos were impossible, so it never asked for one and the
+// entire image pipeline was unreachable in practice. Schema support is not
+// feature support until the prompt says so.
+describe('the decision prompt offers image posts', () => {
+    const msg = () => buildUserMessage({ feed: [] });
+
+    it('does NOT tell her a post must be text-only', () => {
+        expect(msg()).not.toMatch(/text-only post, no image/i);
+        expect(msg()).not.toMatch(/no image\b/i);
+    });
+
+    it('tells her how to attach a photo, by field name', () => {
+        expect(msg()).toContain('imageScene');
+        expect(msg()).toMatch(/may include ONE photo/i);
+    });
+
+    it('steers toward faceless photos and keeps text-only the norm (§7)', () => {
+        expect(msg()).toContain('imageIncludesFace');
+        expect(msg()).toMatch(/photos are of THINGS/i);
+        expect(msg()).toMatch(/exception, not the habit/i);
+    });
+
+    it('still lists post as an available action', () => {
+        expect(msg()).toMatch(/- post\s+\(needs text\)/);
+    });
+});

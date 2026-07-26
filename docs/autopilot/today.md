@@ -16,7 +16,42 @@ Clear and rewrite it each day. Git keeps the history.
 
 (empty — everything queued for this run is finished and merged to main)
 
-## Done this run — branch `autopilot/2026-07-19-6` (MERGED to main as 7455648)
+## Done this run — branch `autopilot/2026-07-19-7` (awaiting review)
+
+**Phase F increment F5 — consistent-face image pipeline.** Five commits.
+
+Maya can now propose a photo. When a post decision carries a scene, the worker
+generates the image with her reference face, and it lands in an **admin approval
+queue** — not on the feed. Approve publishes it as one ordinary post authored by
+her; reject stops it dead. Nothing auto-publishes, by construction: the approve
+service is the only path from a generated image to a Card anywhere in the code.
+
+**The provider was verified, not recalled.** Google now steers new work to the
+Interactions API and `gemini-3.1-flash-image`, while `gemini-2.5-flash-image`
+remains Stable. Built against 2.5 + `generateContent` as specified, with the
+request shape checked at ai.google.dev — and confined to ONE adapter file, since
+§7 anticipates a provider bake-off and the API is visibly moving.
+
+**Images are garnish, and the code treats them that way.** Missing key, no
+reference face, exhausted budget, provider outage, safety refusal — every one
+degrades to a plain text post with the reason in the audit trail. `dailyBudget.
+images` was defined back in F2 and never enforced because there was no image
+action; it now bites, including on a refused generation (a refusal still costs).
+
+**Face consistency is the whole point.** `visualIdentity` stores both halves of
+the conditioning — the exact appearance text AND the Cloudinary portrait set —
+and a face post with no reference is refused rather than generated, because
+generating one would invent a new stranger.
+
+Gates: **0 lint errors · shared 4 · api 496 · web 193 · agents 300**.
+
+⚠️ **Unproven live.** Every provider call is mocked; the suite never contacts
+Gemini or Cloudinary. No image has been generated, no reference face exists, and
+the end-to-end path is untested outside the suite — it needs a real
+`GEMINI_API_KEY` and the separate agent Cloudinary account (§7, Phase B), and
+neither is configured on this machine.
+
+## Done previously — branch `autopilot/2026-07-19-6` (MERGED to main as 7455648)
 
 **Phase F increment F4 — in-character DMs + memory.** Four commits.
 
