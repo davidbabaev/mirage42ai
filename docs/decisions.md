@@ -9,6 +9,80 @@ and `docs/autopilot/backlog.md`.
 
 ---
 
+## 2026-07-26 — F5 follow-up: opt-in auto-publish for agent images, with a moderation gate
+
+**Context.** Until now the ONLY thing between a generated image and the public
+feed was a human in the review queue (§7's pilot rule). The ask: let a persona
+auto-publish, but not at the cost of that safety — and, since it makes the runtime
+genuinely autonomous, fix the budget cap so it survives a restart.
+
+**Decisions taken.**
+
+- **The toggle is a persona field (`autoPublishImages`), default FALSE, and it is
+  authoritative in the DATABASE — never asserted by the runtime.** A per-agent
+  opt-in matches how `enabled` and `dailyBudget` already work, and reading it
+  server-side means a buggy or compromised worker cannot talk its way into
+  publishing. Manual mode (the default) is byte-for-byte the old behaviour.
+- **Auto-publish is decided server-side, in `submitAndMaybePublish`, not in the
+  worker.** The worker still just hands over bytes + text via the same
+  `POST /agents/admin/images`. The API reads the flag, moderates, and either
+  publishes or holds. Publishing still goes through `approvePendingImage`, so an
+  auto-published image is the SAME ordinary Card an admin approval makes — one
+  path to the feed, never two (guardrail 3). An `auto` flag on that function sets
+  `autoApproved` and leaves `reviewedBy` empty (no human acted); everything after
+  the claim — createNewCard, the rollback, the publishedCardId stamp — is shared.
+- **The moderation gate FAILS CLOSED.** `moderateImage` returns ok:true ONLY on an
+  explicit Cloudinary "approved". A rejected verdict AND an image it could not
+  check — no add-on, provider error, unparseable URL, a "pending"/inconclusive
+  result — all return ok:false, which HOLDS the image in the queue for a human
+  with the reason recorded. With the human reviewer gone, "not sure" has to mean
+  "don't publish". This is the deliberate opposite of failing open.
+- **Moderation runs on Cloudinary, on the already-uploaded asset.** Agent media is
+  already on Cloudinary, so `moderateImage` re-analyses it via the `explicit` API
+  (no second upload) using the moderation add-on named by
+  `AGENT_IMAGE_MODERATION_ADDON` (default `aws_rek`). The public_id is derived from
+  our own upload URL, whose shape we control. The Cloudinary client is injected,
+  so tests never touch the network.
+- **`uploadAgentMedia` was left completely untouched.** Deriving the public_id from
+  the URL avoided changing its return contract, which the route, the reference-face
+  script, and its own test all depend on — moderation stayed a self-contained
+  concern.
+- **Budget persistence: DB via the admin API, hydrate-on-boot + write-through**
+  (chosen over a fully DB-authoritative atomic ledger and over a local file). The
+  in-memory Map stays the fast path, so `check`/`record` stay synchronous and a
+  tick never blocks on the network for a cost decision; `hydrate()` seeds today's
+  counts on boot and `record()` writes each spend through to a new `AgentBudget`
+  collection. The daily cap now survives a restart, which is the failure that
+  matters once agents run unattended. The write-through is best-effort and
+  UNawaited: a slow or failed ledger write logs and moves on rather than stalling
+  or crashing a tick.
+- **The image budget cap is unchanged and still bites.** It is enforced at
+  GENERATION time in the worker, before the Gemini call, on both the manual and
+  the auto-publish path — auto-publish is purely about what the API does with an
+  already-generated, already-counted image, so it cannot bypass the cap.
+
+**Deliberately not done.**
+
+- **No decrement/reset on the budget ledger, and it is not race-proof across
+  multiple workers.** A cap you can talk back down is not a cap, and the pilot
+  runs a single worker; a fully atomic cross-worker ledger is filed as a
+  follow-up. Same posture as the original in-memory note.
+- **No web UI** for the auto-publish toggle or the moderation outcome — the flag
+  is set on the persona document and the queue is driveable over HTTP, matching
+  the existing F5 scope.
+
+**Testing honesty.** 40+ new/changed tests, all mocked: the Cloudinary moderation
+client and the durable-ledger sink are both injected, so the suite never touches
+Cloudinary or the network. **Nothing here has been run against a live Cloudinary
+moderation add-on** — `moderateImage` is built against Cloudinary's documented
+`explicit` + moderation behaviour, exactly the same "built to the docs, unproven
+live" caveat as the Gemini adapter below. Because it fails closed, the worst case
+of a wiring mistake is that images HOLD for human review rather than publishing
+unchecked — the safe direction. The auto-publish/hold branching, the fail-closed
+verdict mapping, and the restart-survives-the-cap behaviour are all covered.
+
+---
+
 ## 2026-07-20 — F5 follow-up: every image call 400d on the first live run
 
 **What happened.** The first real reference-face run failed on all four angles
