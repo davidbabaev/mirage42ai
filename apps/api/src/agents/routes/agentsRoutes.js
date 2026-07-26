@@ -11,6 +11,7 @@ const { uploadAgentMedia, isAgentCloudinaryConfigured } = require('../../utils/a
 const {
     queuePendingImage, listPendingImages, approvePendingImage, rejectPendingImage,
 } = require('../service/agentImagesSvc');
+const { getBudgetForDay, incrementBudget } = require('../service/agentBudgetSvc');
 
 /**
  * Memory belongs to an AGENT account and nothing else. Writing memory onto a
@@ -48,6 +49,49 @@ router.get('/agents/admin', auth, async (req, res) => {
         if (!req.user.isAdmin) throw createError(403, 'Admin only');
         const roster = await getAgentRoster();
         res.send({ agents: roster });
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+/**
+ * GET /agents/admin/budget?day=YYYY-MM-DD — one UTC day's spend, per agent.
+ *
+ * The runtime keeps its daily caps in an in-memory ledger for speed, which a
+ * restart resets. This is how it HYDRATES that ledger back on boot so a
+ * restarted worker does not forget what it already spent today (§6/§11). Same
+ * admin guard and same reason as the roster: the worker has no database access.
+ *
+ * Registered before any `/agents/admin/:id`-shaped route so the literal `budget`
+ * segment is never captured as an id.
+ */
+router.get('/agents/admin/budget', auth, async (req, res) => {
+    try {
+        if (!req.user.isAdmin) throw createError(403, 'Admin only');
+        const budgets = await getBudgetForDay(req.query.day);
+        res.send({ day: req.query.day, budgets });
+    } catch (err) {
+        handleError(res, err);
+    }
+});
+
+/**
+ * POST /agents/admin/budget/:agentUserId — write through one unit of spend.
+ *
+ * Body: { kind: 'llmCalls'|'images'|'actions', amount?, day: 'YYYY-MM-DD' }
+ *
+ * Called by the ledger after a real spend so the count survives a restart. It
+ * only ever ADDS (atomic `$inc`): there is no route that lowers a spend, because
+ * a cap that can be talked back down is not a cap.
+ */
+router.post('/agents/admin/budget/:agentUserId', auth, async (req, res) => {
+    try {
+        if (!req.user.isAdmin) throw createError(403, 'Admin only');
+        const { kind, amount = 1, day } = req.body || {};
+        const result = await incrementBudget({
+            agentUserId: req.params.agentUserId, day, kind, amount,
+        });
+        res.send(result);
     } catch (err) {
         handleError(res, err);
     }
