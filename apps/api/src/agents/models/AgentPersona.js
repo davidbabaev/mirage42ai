@@ -178,6 +178,25 @@ const AgentPersonaSchema = new mongoose.Schema({
         actions: { type: Number, min: 0, default: 20 },
     },
 
+    // ---- Publishing policy (§7 human-review queue) --------------------
+    // Whether images this agent generates PUBLISH automatically or wait in the
+    // admin review queue.
+    //
+    // Default FALSE, deliberately: §7's pilot rule is "generated images land in
+    // a small admin approval list before publishing, so one bad hand doesn't
+    // break the illusion." Auto-publish is opt-IN, set per persona by a human.
+    //
+    // This flag is AUTHORITATIVE HERE, in the database — never asserted by the
+    // runtime. A buggy or compromised worker must not be able to talk its way
+    // into publishing; the decision is read server-side from this document. And
+    // even when it is true, an image only publishes if it PASSES automated
+    // moderation; anything moderation flags or cannot check still holds for a
+    // human (see agentImagesSvc.submitAndMaybePublish).
+    autoPublishImages: {
+        type: Boolean,
+        default: false,
+    },
+
     // Per-agent pause, independent of the global AGENTS_ENABLED kill-switch.
     // Lets one misbehaving agent be silenced without stopping the others.
     enabled: {

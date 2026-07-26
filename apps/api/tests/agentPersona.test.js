@@ -126,6 +126,19 @@ describe('AgentPersona — defaults', () => {
     it('is enabled by default (creating a persona is already deliberate)', async () => {
         expect(new AgentPersona(validPersona()).enabled).toBe(true);
     });
+
+    it('does NOT auto-publish images by default — human review is opt-out, not opt-in', async () => {
+        // §7: generated images land in the admin approval queue unless a human
+        // has deliberately turned auto-publish on for this persona.
+        expect(new AgentPersona(validPersona()).autoPublishImages).toBe(false);
+    });
+
+    it('accepts autoPublishImages: true when a human opts a persona in', async () => {
+        const doc = new AgentPersona(validPersona({ autoPublishImages: true }));
+        await expect(doc.validate()).resolves.toBeUndefined();
+        const saved = await doc.save();
+        expect(saved.autoPublishImages).toBe(true);
+    });
 });
 
 describe('AgentPersona — one soul per account', () => {
