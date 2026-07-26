@@ -74,6 +74,23 @@ const PendingAgentImageSchema = new mongoose.Schema({
         required: true,
         index: true,
     },
+    // True when this image was published by the automated auto-publish path
+    // rather than by a human. It carries no `reviewedBy` (no human acted), so
+    // this flag is how the queue tells an auto-approval from an admin's.
+    autoApproved: {
+        type: Boolean,
+        default: false,
+    },
+    // The automated moderation verdict, stamped whenever the auto-publish path
+    // runs — on a pass (before publishing) and on a hold (why it stayed pending).
+    // Forensics, exactly like `prompt`: when an auto-decision looks wrong, the
+    // first question is "what did the moderator actually say?".
+    moderation: {
+        status: { type: String, maxLength: 32, trim: true },   // approved|rejected|unavailable|pending
+        reason: { type: String, maxLength: 512, trim: true },
+        provider: { type: String, maxLength: 128, trim: true },
+        checkedAt: { type: Date },
+    },
     // Set on approve/reject so a queue entry is never ambiguous about who acted.
     reviewedBy: {
         type: mongoose.Schema.Types.ObjectId,

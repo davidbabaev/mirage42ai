@@ -9,7 +9,7 @@ const User = require('../../users/models/User');
 const { uploadImageOnly } = require('../../middlewares/multer');
 const { uploadAgentMedia, isAgentCloudinaryConfigured } = require('../../utils/agentCloudinary');
 const {
-    queuePendingImage, listPendingImages, approvePendingImage, rejectPendingImage,
+    submitAndMaybePublish, listPendingImages, approvePendingImage, rejectPendingImage,
 } = require('../service/agentImagesSvc');
 const { getBudgetForDay, incrementBudget } = require('../service/agentBudgetSvc');
 
@@ -172,8 +172,11 @@ router.post('/agents/admin/:userId/memory', auth, async (req, res) => {
  * upload, because the agent Cloudinary credentials belong to the server and the
  * worker should not hold a second set of storage keys.
  *
- * This endpoint cannot publish. It only ever produces a `pending` row — the
- * approve route below is the sole path to a real post.
+ * By default this produces a `pending` row and the approve route below is the
+ * sole path to a real post. The ONE exception is a persona a human has opted
+ * into auto-publish (`autoPublishImages`): such an image is published here only
+ * if it PASSES automated moderation, and otherwise stays pending for review. The
+ * decision is read server-side from the persona — the runtime cannot ask for it.
  */
 router.post('/agents/admin/images', auth, uploadImageOnly.single('media'), async (req, res) => {
     try {
@@ -192,7 +195,7 @@ router.post('/agents/admin/images', auth, uploadImageOnly.single('media'), async
         }
 
         const imageUrl = await uploadAgentMedia(req.file.buffer, 'pending');
-        const pending = await queuePendingImage({
+        const result = await submitAndMaybePublish({
             agentUserId,
             imageUrl,
             caption,
@@ -202,9 +205,10 @@ router.post('/agents/admin/images', auth, uploadImageOnly.single('media'), async
         });
 
         res.status(201).send({
-            id: pending._id,
-            status: pending.status,
-            imageUrl: pending.imageUrl,
+            id: result.id,
+            status: result.status,
+            imageUrl,
+            ...(result.cardId ? { cardId: result.cardId } : {}),
         });
     } catch (err) {
         handleError(res, err);

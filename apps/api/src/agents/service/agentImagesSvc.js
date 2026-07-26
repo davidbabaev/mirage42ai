@@ -1,9 +1,11 @@
 const PendingAgentImage = require('../models/PendingAgentImage');
 const { STATUS } = require('../models/PendingAgentImage');
+const AgentPersona = require('../models/AgentPersona');
 const { createNewCard } = require('../../cards/service/cardsSvc');
 const { createError } = require('../../utils/handleErrors');
 const User = require('../../users/models/User');
 const { ACCOUNT_KIND } = require('@mirage42ai/shared');
+const { moderateImage } = require('./agentImageModeration');
 
 /**
  * The approval queue's business logic (F5, §7).
@@ -71,10 +73,19 @@ const listPendingImages = async ({ status = STATUS.PENDING, agentUserId, limit =
  * otherwise both read a pending row and both publish, putting the same photo on
  * the feed twice. The guard makes the loser a no-op.
  */
-const approvePendingImage = async ({ id, adminUserId, now = () => new Date() }) => {
+const approvePendingImage = async ({ id, adminUserId = null, auto = false, now = () => new Date() }) => {
+    // The claim's $set carries who acted: a human's id in reviewedBy, or the
+    // autoApproved flag when the automated path published it (no human, so no
+    // reviewedBy). Everything after this point — createNewCard, the rollback, the
+    // publishedCardId stamp — is identical for both, which is what keeps this the
+    // SINGLE path from a generated image to a Card.
+    const set = { status: STATUS.APPROVED, reviewedAt: now() };
+    if (adminUserId) set.reviewedBy = adminUserId;
+    if (auto) set.autoApproved = true;
+
     const claimed = await PendingAgentImage.findOneAndUpdate(
         { _id: id, status: STATUS.PENDING },
-        { $set: { status: STATUS.APPROVED, reviewedBy: adminUserId, reviewedAt: now() } },
+        { $set: set },
         { returnDocument: 'after' }
     );
 
@@ -113,6 +124,78 @@ const approvePendingImage = async ({ id, adminUserId, now = () => new Date() }) 
     return { pendingImage: { ...claimed.toObject(), publishedCardId: cardId }, card };
 };
 
+/**
+ * Runs a queued image through automated moderation and, only on a clean pass,
+ * publishes it. The safety gate for auto-publish (§7).
+ *
+ * FAILS CLOSED. A "rejected" verdict AND an image the moderator could not check
+ * (no add-on, provider error, unparseable url, inconclusive result) BOTH leave
+ * the image `pending` for a human, with the reason recorded. The only thing that
+ * publishes an image here is an explicit pass — because with the human reviewer
+ * gone, "not sure" has to mean "don't publish", not "publish anyway".
+ *
+ * Publishing still goes through `approvePendingImage`, so an auto-published image
+ * is the same ordinary Card an admin approval would produce — one path to the
+ * feed, never two.
+ */
+const moderateAndPublish = async ({ id, moderateImpl = moderateImage, now = () => new Date() } = {}) => {
+    const row = await PendingAgentImage.findById(id).lean();
+    if (!row) throw createError(404, 'No such pending image');
+    if (row.status !== STATUS.PENDING) throw createError(409, `Image is already ${row.status}`);
+
+    const verdict = await moderateImpl({ imageUrl: row.imageUrl });
+    const moderation = {
+        status: verdict?.status || 'unavailable',
+        reason: verdict?.reason || '',
+        provider: verdict?.provider || '',
+        checkedAt: now(),
+    };
+
+    if (!verdict?.ok) {
+        // HOLD for human review. Nothing is published; the row stays pending and
+        // records why, so the queue shows an admin what the moderator objected to.
+        await PendingAgentImage.updateOne(
+            { _id: id, status: STATUS.PENDING },
+            { $set: { moderation, reviewNote: `auto-publish held: ${moderation.reason || moderation.status}` } }
+        );
+        return { published: false, status: STATUS.PENDING, moderation };
+    }
+
+    const result = await approvePendingImage({ id, auto: true, now });
+    await PendingAgentImage.updateOne({ _id: id }, { $set: { moderation } });
+    return {
+        published: true,
+        status: STATUS.APPROVED,
+        cardId: result.pendingImage.publishedCardId,
+        moderation,
+    };
+};
+
+/**
+ * Files a generated image and then EITHER leaves it for human review OR, when
+ * the persona opts in and the image passes moderation, publishes it.
+ *
+ * The auto-publish decision is read from the persona document HERE, server-side.
+ * It is never taken from the caller: the runtime hands over bytes and text, and
+ * this — reading the authoritative `autoPublishImages` flag — is what decides.
+ * A missing persona or a false flag keeps the original, unchanged behaviour: the
+ * image waits in the queue for an admin.
+ */
+const submitAndMaybePublish = async ({
+    agentUserId, imageUrl, caption = '', prompt, model, includedFace = true,
+    moderateImpl = moderateImage, now = () => new Date(),
+} = {}) => {
+    const pending = await queuePendingImage({ agentUserId, imageUrl, caption, prompt, model, includedFace });
+
+    const persona = await AgentPersona.findOne({ userId: agentUserId }, 'autoPublishImages').lean();
+    if (!persona?.autoPublishImages) {
+        return { id: pending._id, status: pending.status, autoPublish: false };
+    }
+
+    const outcome = await moderateAndPublish({ id: pending._id, moderateImpl, now });
+    return { id: pending._id, autoPublish: true, ...outcome };
+};
+
 /** Rejects one image. Publishes nothing, ever — the image simply stops here. */
 const rejectPendingImage = async ({ id, adminUserId, note = '', now = () => new Date() }) => {
     const updated = await PendingAgentImage.findOneAndUpdate(
@@ -135,5 +218,7 @@ module.exports = {
     listPendingImages,
     approvePendingImage,
     rejectPendingImage,
+    moderateAndPublish,
+    submitAndMaybePublish,
     STATUS,
 };
